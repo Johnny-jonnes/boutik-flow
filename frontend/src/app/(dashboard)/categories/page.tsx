@@ -186,7 +186,7 @@ export default function CategoriesPage() {
             className="hover-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <div style={{ padding: '0.75rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '12px', color: '#10b981', flexShrink: 0 }}>
+                  <div style={{ padding: '0.75rem', background: 'var(--brand-alpha-10)', borderRadius: '12px', color: 'var(--color-brand-500)', flexShrink: 0 }}>
                     <FolderTree size={24} />
                   </div>
                   <div>
@@ -242,7 +242,7 @@ export default function CategoriesPage() {
       <style jsx>{`
         .hover-card:hover {
           transform: translateY(-4px);
-          border-color: rgba(16, 185, 129, 0.3) !important;
+          border-color: var(--border-default) !important;
           box-shadow: 0 12px 24px rgba(0, 0, 0, 0.05) !important;
         }
         .btn-icon { padding: 0.4rem; border-radius: 6px; }

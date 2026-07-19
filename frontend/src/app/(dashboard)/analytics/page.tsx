@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useTheme } from 'next-themes';
 import { BarChart3, TrendingUp, Users, ShoppingBag, ArrowUpRight, ArrowDownRight, DollarSign, Target } from 'lucide-react';
 import {
   BarChart,
@@ -25,9 +26,28 @@ function formatGNF(amount: number) {
 }
 
 export default function AnalyticsPage() {
+  const { theme } = useTheme();
   const [period, setPeriod] = useState('7j');
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Couleurs des graphiques adaptées au thème actif
+  const chartColors = useMemo(() => ({
+    grid:      theme === 'light' ? 'rgba(0,0,0,0.06)'      : 'rgba(255,255,255,0.06)',
+    barFill0:  theme === 'light' ? '#25D366'               : '#10b981',
+    barFill1:  theme === 'light' ? '#128C7E'               : '#059669',
+    areaOrders: theme === 'light' ? '#3b82f6'              : '#3b82f6',
+    areaDelivered: theme === 'light' ? '#25D366'           : '#10b981',
+    areaOrdersFill: theme === 'light' ? 'rgba(59,130,246,0.08)' : 'rgba(59,130,246,0.10)',
+    areaDeliveredFill: theme === 'light' ? 'rgba(37,211,102,0.08)' : 'rgba(16,185,129,0.10)',
+    rankBg:    theme === 'light' ? 'rgba(37,211,102,0.10)' : 'rgba(16,185,129,0.10)',
+    rankColor: theme === 'light' ? '#128C7E'               : '#10b981',
+    revenueColor: theme === 'light' ? '#128C7E'            : '#10b981',
+    trendUp:   theme === 'light' ? '#1da960'               : '#10b981',
+    trendDown: theme === 'light' ? '#ef4444'               : '#f43f5e',
+    activeTab: theme === 'light' ? '#128C7E'               : '#10b981',
+    activeTabBg: theme === 'light' ? 'rgba(37,211,102,0.12)' : 'rgba(16,185,129,0.15)',
+  }), [theme]);
 
   useEffect(() => {
     const fetchAnalytics = async () => {
@@ -148,7 +168,7 @@ export default function AnalyticsPage() {
             ) : (
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={revenue_data}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
                   <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
                   <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `${val.toLocaleString('fr-GN')}`} />
                   <Tooltip 
@@ -158,8 +178,8 @@ export default function AnalyticsPage() {
                   <Bar dataKey="value" fill="url(#barGradient)" radius={[6, 6, 0, 0]} />
                   <defs>
                     <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10b981" />
-                      <stop offset="100%" stopColor="#059669" />
+                      <stop offset="0%" stopColor={chartColors.barFill0} />
+                      <stop offset="100%" stopColor={chartColors.barFill1} />
                     </linearGradient>
                   </defs>
                 </BarChart>
@@ -178,22 +198,22 @@ export default function AnalyticsPage() {
             ) : (
               <ResponsiveContainer width="100%" height={300}>
                 <AreaChart data={orders_data}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
                   <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
                   <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
                   <Tooltip 
                     contentStyle={{ background: 'var(--surface-1)', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: 'var(--text-primary)' }}
                   />
-                  <Area type="monotone" dataKey="commandes" stroke="#3b82f6" fill="rgba(59, 130, 246, 0.1)" strokeWidth={2} />
-                  <Area type="monotone" dataKey="livrees" stroke="#10b981" fill="rgba(16, 185, 129, 0.1)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="commandes" stroke={chartColors.areaOrders} fill={chartColors.areaOrdersFill} strokeWidth={2} />
+                  <Area type="monotone" dataKey="livrees" stroke={chartColors.areaDelivered} fill={chartColors.areaDeliveredFill} strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
             )}
           </div>
           {orders_data.length > 0 && (
             <div className="chart-legend">
-              <span className="legend-item"><span className="legend-dot" style={{ background: '#3b82f6' }} /> Commandes</span>
-              <span className="legend-item"><span className="legend-dot" style={{ background: '#10b981' }} /> Livrées</span>
+              <span className="legend-item"><span className="legend-dot" style={{ background: chartColors.areaOrders }} /> Commandes</span>
+              <span className="legend-item"><span className="legend-dot" style={{ background: chartColors.areaDelivered }} /> Livrées</span>
             </div>
           )}
         </div>
@@ -271,9 +291,9 @@ export default function AnalyticsPage() {
           transition: all 0.2s ease;
         }
         .kpi-card:hover {
-          border-color: rgba(16, 185, 129, 0.2);
+          border-color: var(--border-default);
           transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+          box-shadow: var(--shadow-md);
         }
         .kpi-header {
           display: flex;
@@ -283,15 +303,15 @@ export default function AnalyticsPage() {
         }
         .kpi-label { color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; }
         .kpi-icon { padding: 0.5rem; border-radius: 10px; display: flex; }
-        .kpi-icon--green { background: rgba(16, 185, 129, 0.1); color: #10b981; }
-        .kpi-icon--blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
-        .kpi-icon--purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
-        .kpi-icon--orange { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+        .kpi-icon--green  { background: rgba(37, 211, 102, 0.10); color: var(--color-brand-500); }
+        .kpi-icon--blue   { background: rgba(59, 130, 246, 0.10);  color: #3b82f6; }
+        .kpi-icon--purple { background: rgba(139, 92, 246, 0.10);  color: #8b5cf6; }
+        .kpi-icon--orange { background: rgba(245, 158, 11, 0.10);  color: #f59e0b; }
         .kpi-value { font-size: 1.75rem; font-weight: 700; color: var(--text-primary); }
         .kpi-currency { font-size: 0.85rem; font-weight: 500; color: var(--text-muted); }
         .kpi-trend { font-size: 0.75rem; margin-top: 0.5rem; display: flex; align-items: center; gap: 0.25rem; }
-        .kpi-trend--up { color: #10b981; }
-        .kpi-trend--down { color: #f43f5e; }
+        .kpi-trend--up   { color: var(--color-success); }
+        .kpi-trend--down { color: var(--color-error); }
 
         .period-tabs {
           display: flex;
@@ -314,8 +334,8 @@ export default function AnalyticsPage() {
         }
         .period-tab:hover { color: var(--text-primary); }
         .period-tab--active {
-          background: rgba(16, 185, 129, 0.15);
-          color: #10b981;
+          background: var(--border-default);
+          color: var(--color-brand-600);
           font-weight: 600;
         }
 
@@ -373,21 +393,21 @@ export default function AnalyticsPage() {
           align-items: center;
           gap: 1rem;
           padding: 0.75rem;
-          background: rgba(255, 255, 255, 0.02);
+          background: var(--overlay-subtle);
           border: 1px solid var(--border-subtle);
           border-radius: 10px;
           transition: all 0.15s ease;
         }
         .top-product-row:hover {
-          border-color: rgba(16, 185, 129, 0.2);
-          background: rgba(16, 185, 129, 0.03);
+          border-color: var(--border-default);
+          background: var(--surface-hover);
         }
         .top-product-rank {
           width: 32px;
           height: 32px;
           border-radius: 8px;
-          background: rgba(16, 185, 129, 0.1);
-          color: #10b981;
+          background: rgba(37, 211, 102, 0.10);
+          color: var(--color-brand-500);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -416,7 +436,7 @@ export default function AnalyticsPage() {
         .top-product-revenue {
           font-weight: 600;
           font-size: 0.85rem;
-          color: #10b981;
+          color: var(--color-brand-500);
           white-space: nowrap;
         }
 

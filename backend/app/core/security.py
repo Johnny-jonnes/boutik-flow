@@ -36,6 +36,17 @@ def create_refresh_token(data: dict[str, Any]) -> str:
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
+def create_password_reset_token(user_id: str) -> str:
+    """
+    Crée un JWT à courte durée de vie dédié à la réinitialisation de mot de passe.
+    Stateless : aucune donnée n'est persistée en base, la validité repose
+    uniquement sur la signature et l'expiration du token.
+    """
+    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.RESET_TOKEN_EXPIRE_MINUTES)
+    to_encode = {"sub": user_id, "type": "password_reset", "exp": expire}
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
 def decode_token(token: str) -> dict[str, Any]:
     """Décode et valide un JWT token."""
     try:

@@ -457,7 +457,7 @@ export default function OrdersPage() {
         .kanban-dot { width: 8px; height: 8px; border-radius: 50%; }
         .kanban-dot.badge-warning { background: #f59e0b; }
         .kanban-dot.badge-info { background: #3b82f6; }
-        .kanban-dot.badge-success { background: #10b981; }
+        .kanban-dot.badge-success { background: var(--color-brand-500); }
         .kanban-dot.badge-error { background: #f43f5e; }
         .kanban-count { background: var(--surface-2); color: var(--text-muted); font-size: 0.75rem; padding: 0.1rem 0.5rem; border-radius: 999px; }
         .kanban-cards {

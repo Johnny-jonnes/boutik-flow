@@ -101,7 +101,7 @@
 
 .planFeatures li::before {
   content: '✓';
-  color: #10B981;
+  color: var(--color-brand-500);
   margin-right: 8px;
   font-weight: bold;
 }
@@ -121,7 +121,7 @@
 }
 
 .selectButton:hover {
-  background: rgba(255,255,255,0.05);
+  background: var(--overlay-medium);
 }
 
 .selectButtonPro {
@@ -232,7 +232,7 @@
   margin-top: 1rem;
   padding: 1rem;
   border-radius: 8px;
-  background: #ecfdf5;
-  color: #065f46;
+  background: rgba(37, 211, 102, 0.10);
+  color: var(--color-brand-600);
   text-align: center;
 }

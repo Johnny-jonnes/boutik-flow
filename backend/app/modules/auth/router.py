@@ -15,23 +15,31 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
+from app.core.config import settings
 from app.core.database import get_db
+from app.core.mailer import send_password_reset_email, send_admin_new_registration_notification
 from app.core.security import (
     hash_password,
     verify_password,
     create_access_token,
     create_refresh_token,
+    create_password_reset_token,
     decode_token,
 )
 from app.core.deps import get_current_user, CurrentUser
-from app.modules.auth.models import Tenant, User, PlanEnum, RoleEnum
+from app.modules.auth.models import Tenant, User, PlanEnum, RoleEnum, TenantStatusEnum, AdminNotification, AdminNotificationTypeEnum
 from app.modules.auth.schemas import (
     RegisterRequest,
     LoginRequest,
     TokenResponse,
+    RegisterResponse,
     RefreshTokenRequest,
     UserResponse,
     TenantResponse,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    ResetPasswordRequest,
+    ResetPasswordResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -58,22 +66,26 @@ def _build_token_response(user: User) -> TokenResponse:
 
 @router.post(
     "/register",
-    response_model=TokenResponse,
+    response_model=RegisterResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Créer une boutique et son propriétaire",
+    summary="Demander la création d'une boutique (validation admin requise)",
 )
 def register(
     payload: RegisterRequest,
     db: Annotated[Session, Depends(get_db)],
-) -> TokenResponse:
+) -> RegisterResponse:
     """
     Inscription en une seule étape :
-    1. Crée le tenant (boutique)
+    1. Crée le tenant (boutique), statut "pending"
     2. Crée l'utilisateur owner
-    3. Retourne les tokens JWT
+    3. Crée une notification admin + tente l'envoi d'un email à l'équipe
+
+    Aucun paiement en ligne n'étant intégré, chaque boutique doit être
+    validée manuellement depuis l'espace admin avant de pouvoir se
+    connecter. Aucun token n'est émis à cette étape.
 
     Route publique (pas de JWT requis).
-    """
+    
     # Vérifier unicité du slug
     existing_tenant = db.query(Tenant).filter(
         and_(Tenant.slug == payload.boutique_slug, Tenant.deleted_at.is_(None))
@@ -220,6 +232,92 @@ def refresh_token(
         )
 
     return _build_token_response(user)
+
+
+# ──────────────────────────── POST /forgot-password ────────────────────────────
+
+@router.post(
+    "/forgot-password",
+    response_model=ForgotPasswordResponse,
+    summary="Demander la réinitialisation du mot de passe",
+)
+def forgot_password(
+    payload: ForgotPasswordRequest,
+    db: Annotated[Session, Depends(get_db)],
+) -> ForgotPasswordResponse:
+    """
+    Génère un lien de réinitialisation et l'envoie par email.
+    La réponse est volontairement générique : elle ne révèle jamais si le
+    couple boutique/email correspond à un compte existant (anti-énumération).
+    """
+    generic_message = (
+        "Si un compte correspondant existe, un email de réinitialisation "
+        "vient de lui être envoyé."
+    )
+
+    tenant = db.query(Tenant).filter(
+        and_(Tenant.slug == payload.boutique_slug, Tenant.deleted_at.is_(None))
+    ).first()
+
+    if tenant and tenant.is_active:
+        user = db.query(User).filter(
+            and_(
+                User.tenant_id == tenant.id,
+                User.email == payload.email,
+                User.deleted_at.is_(None),
+                User.is_active.is_(True),
+            )
+        ).first()
+
+        if user:
+            token = create_password_reset_token(str(user.id))
+            reset_link = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+            send_password_reset_email(user.email, reset_link, tenant.name)
+            logger.info(
+                "Demande de réinitialisation de mot de passe pour %s (tenant=%s)",
+                user.email, tenant.slug,
+            )
+
+    return ForgotPasswordResponse(message=generic_message)
+
+
+# ──────────────────────────── POST /reset-password ────────────────────────────
+
+@router.post(
+    "/reset-password",
+    response_model=ResetPasswordResponse,
+    summary="Réinitialiser le mot de passe à partir d'un token",
+)
+def reset_password(
+    payload: ResetPasswordRequest,
+    db: Annotated[Session, Depends(get_db)],
+) -> ResetPasswordResponse:
+    """Valide le token de réinitialisation (courte durée de vie) et met à jour le mot de passe."""
+    token_payload = decode_token(payload.token)
+
+    if token_payload.get("type") != "password_reset":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Lien de réinitialisation invalide",
+        )
+
+    user_id = token_payload.get("sub")
+    user = db.query(User).filter(
+        and_(User.id == uuid.UUID(user_id), User.deleted_at.is_(None))
+    ).first()
+
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Lien de réinitialisation invalide ou expiré",
+        )
+
+    user.hashed_password = hash_password(payload.new_password)
+    db.commit()
+
+    logger.info("Mot de passe réinitialisé pour %s", user.email)
+
+    return ResetPasswordResponse(message="Votre mot de passe a été réinitialisé avec succès.")
 
 
 # ──────────────────────────── GET /me ────────────────────────────

@@ -336,7 +336,7 @@ export default function ProductsPage() {
         .tag-pill { background: var(--surface-3); color: var(--text-secondary); padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; border: 1px solid var(--border-default); }
 
         .stock-badge { font-size: 0.8rem; font-weight: 600; padding: 0.2rem 0.5rem; border-radius: 4px; }
-        .stock-high { color: var(--color-brand-400); background: rgba(16, 185, 129, 0.1); }
+        .stock-high { color: var(--color-brand-500); background: var(--brand-alpha-10); }
         .stock-low { color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
         .stock-out { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
 

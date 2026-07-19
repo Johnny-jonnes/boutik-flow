@@ -70,3 +70,7 @@ rules_combined.txt
 test_req.py
 read_rules.py
 get_users.py
+
+# Logs
+*.log
+nul

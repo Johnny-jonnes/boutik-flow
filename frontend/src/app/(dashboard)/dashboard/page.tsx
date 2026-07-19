@@ -40,7 +40,7 @@ function KPICard({
       </div>
       <div className="kpi-value">{value}</div>
       <div className="kpi-change">
-        <span className="kpi-change-badge">↑ {change}</span>
+        <span className="kpi-change-badge">↑ {change}</span>
         <span className="kpi-change-label">ce mois</span>
       </div>
 
@@ -85,7 +85,7 @@ function KPICard({
           font-size: 0.75rem;
           font-weight: 600;
           color: var(--color-brand-400);
-          background: rgba(16, 185, 129, 0.1);
+          background: var(--brand-alpha-10);
           padding: 0.15rem 0.4rem;
           border-radius: 4px;
         }
@@ -266,7 +266,7 @@ export default function DashboardPage() {
 
           {/* WhatsApp quick action */}
           <div className="whatsapp-quick card" style={{ borderColor: 'rgba(37,211,102,0.2)', background: 'rgba(37,211,102,0.05)' }}>
-            <div className="wa-icon"><MessageCircle size={24} color="#25d366" /></div>
+            <div className="wa-icon"><MessageCircle size={24} style={{ color: 'var(--color-brand-500)' }} /></div>
             <div className="wa-content">
               <span className="wa-title">WhatsApp actif</span>
               <span className="wa-sub">Connecté et opérationnel</span>
@@ -492,7 +492,7 @@ export default function DashboardPage() {
           width: 10px;
           height: 10px;
           border-radius: 50%;
-          background: #25d366;
+          background: var(--color-brand-500);
           animation: pulse-brand 2s infinite;
           flex-shrink: 0;
         }

@@ -2,29 +2,23 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Check } from 'lucide-react';
+import { ArrowLeft, Mail } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 
-export default function LoginPage() {
-  const router = useRouter();
+export default function ForgotPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [form, setForm] = useState({
-    boutique_slug: '',
-    email: '',
-    password: '',
-  });
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [form, setForm] = useState({ boutique_slug: '', email: '' });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await api.login(form);
-      toast.success('Connexion réussie !');
-      router.push('/dashboard');
+      await api.forgotPassword(form);
+      setIsSubmitted(true);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erreur de connexion');
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de la demande');
     } finally {
       setIsLoading(false);
     }
@@ -40,10 +34,10 @@ export default function LoginPage() {
         <div className="auth-logo">
           <div className="auth-logo-icon">
             <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-              <path d="M14 2L26 8V20L14 26L2 20V8L14 2Z" fill="url(#grad)" />
+              <path d="M14 2L26 8V20L14 26L2 20V8L14 2Z" fill="url(#gradfp)" />
               <path d="M9 14L12.5 17.5L19 11" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               <defs>
-                <linearGradient id="grad" x1="2" y1="2" x2="26" y2="26" gradientUnits="userSpaceOnUse">
+                <linearGradient id="gradfp" x1="2" y1="2" x2="26" y2="26" gradientUnits="userSpaceOnUse">
                   <stop stopColor="#10b981" />
                   <stop offset="1" stopColor="#047857" />
                 </linearGradient>
@@ -54,91 +48,91 @@ export default function LoginPage() {
         </div>
 
         <div className="auth-card glass">
-          <div className="auth-header">
-            <h1 className="auth-title">Bon retour</h1>
-            <p className="auth-subtitle">Connectez-vous à votre boutique</p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="auth-form">
-            <div className="form-group">
-              <label className="form-label" htmlFor="boutique_slug">
-                Identifiant boutique
-              </label>
-              <div className="input-wrapper">
-                <span className="input-prefix">boutikflow.app/</span>
-                <input
-                  id="boutique_slug"
-                  type="text"
-                  className="input input-with-prefix"
-                  placeholder="ma-boutique"
-                  value={form.boutique_slug}
-                  onChange={e => setForm(f => ({ ...f, boutique_slug: e.target.value.toLowerCase() }))}
-                  required
-                  autoComplete="off"
-                />
+          {isSubmitted ? (
+            <>
+              <div className="auth-header">
+                <div className="forgot-icon-wrap">
+                  <Mail size={28} />
+                </div>
+                <h1 className="auth-title">Vérifiez votre boîte mail</h1>
+                <p className="auth-subtitle">
+                  Si un compte correspond à ces informations, un email contenant les
+                  instructions de réinitialisation vient de vous être envoyé.
+                </p>
               </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="email">
-                Adresse email
-              </label>
-              <input
-                id="email"
-                type="email"
-                className="input"
-                placeholder="vous@exemple.com"
-                value={form.email}
-                onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                required
-                autoComplete="email"
-              />
-            </div>
-
-            <div className="form-group">
-              <div className="form-label-row">
-                <label className="form-label" htmlFor="password">Mot de passe</label>
-                <Link href="/forgot-password" className="form-link">Oublié ?</Link>
+              <Link href="/login" className="btn btn-secondary auth-submit auth-link-btn">
+                <ArrowLeft size={16} /> Retour à la connexion
+              </Link>
+            </>
+          ) : (
+            <>
+              <div className="auth-header">
+                <h1 className="auth-title">Mot de passe oublié</h1>
+                <p className="auth-subtitle">
+                  Indiquez votre boutique et votre email, nous vous envoyons un lien de réinitialisation.
+                </p>
               </div>
-              <input
-                id="password"
-                type="password"
-                className="input"
-                placeholder="••••••••"
-                value={form.password}
-                onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                required
-                autoComplete="current-password"
-              />
-            </div>
 
-            <button
-              type="submit"
-              id="btn-login"
-              className="btn btn-primary auth-submit"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <span className="spinner" />
-                  Connexion en cours...
-                </>
-              ) : (
-                'Se connecter'
-              )}
-            </button>
-          </form>
+              <form onSubmit={handleSubmit} className="auth-form">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="boutique_slug">
+                    Identifiant boutique
+                  </label>
+                  <div className="input-wrapper">
+                    <span className="input-prefix">boutikflow.app/</span>
+                    <input
+                      id="boutique_slug"
+                      type="text"
+                      className="input input-with-prefix"
+                      placeholder="ma-boutique"
+                      value={form.boutique_slug}
+                      onChange={e => setForm(f => ({ ...f, boutique_slug: e.target.value.toLowerCase() }))}
+                      required
+                      autoComplete="off"
+                    />
+                  </div>
+                </div>
 
-          <div className="auth-footer">
-            <span className="auth-footer-text">Pas encore de boutique ?</span>
-            <Link href="/register" className="auth-footer-link">Créer un compte</Link>
-          </div>
-        </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="email">
+                    Adresse email
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    className="input"
+                    placeholder="vous@exemple.com"
+                    value={form.email}
+                    onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                    required
+                    autoComplete="email"
+                  />
+                </div>
 
-        {/* Plan freemium badge */}
-        <div className="auth-badge">
-          <span className="badge badge-success flex items-center gap-1"><Check size={14} /> Dès 50 000 GNF/mois</span>
-          <span className="badge badge-neutral">Pas de carte bancaire requise</span>
+                <button
+                  type="submit"
+                  id="btn-forgot-password"
+                  className="btn btn-primary auth-submit"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <span className="spinner" />
+                      Envoi en cours...
+                    </>
+                  ) : (
+                    'Envoyer le lien de réinitialisation'
+                  )}
+                </button>
+              </form>
+
+              <div className="auth-footer">
+                <Link href="/login" className="auth-footer-link auth-footer-link--icon">
+                  <ArrowLeft size={14} /> Retour à la connexion
+                </Link>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -224,6 +218,18 @@ export default function LoginPage() {
           margin-bottom: 1.75rem;
         }
 
+        .forgot-icon-wrap {
+          width: 56px;
+          height: 56px;
+          border-radius: 50%;
+          background: var(--brand-alpha-10);
+          color: var(--color-brand-500);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 1.25rem;
+        }
+
         .auth-title {
           font-size: 1.5rem;
           margin-bottom: 0.375rem;
@@ -232,6 +238,7 @@ export default function LoginPage() {
         .auth-subtitle {
           color: var(--text-secondary);
           font-size: 0.9rem;
+          line-height: 1.6;
         }
 
         .auth-form {
@@ -251,21 +258,6 @@ export default function LoginPage() {
           font-weight: 500;
           color: var(--text-secondary);
         }
-
-        .form-label-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .form-link {
-          font-size: 0.8rem;
-          color: var(--color-brand-600);
-          text-decoration: none;
-          transition: var(--transition-fast);
-        }
-
-        .form-link:hover { color: var(--color-brand-500); }
 
         .input-wrapper {
           position: relative;
@@ -294,10 +286,15 @@ export default function LoginPage() {
           margin-top: 0.5rem;
         }
 
+        .auth-link-btn {
+          text-decoration: none;
+          gap: 0.5rem;
+        }
+
         .spinner {
           width: 16px;
           height: 16px;
-          border: 2px solid rgba(255,255,255,0.3);
+          border: 2px solid rgba(255, 255, 255, 0.3);
           border-top-color: white;
           border-radius: 50%;
           animation: spin 0.7s linear infinite;
@@ -307,14 +304,11 @@ export default function LoginPage() {
         .auth-footer {
           display: flex;
           justify-content: center;
-          gap: 0.5rem;
           margin-top: 1.5rem;
           padding-top: 1.5rem;
           border-top: 1px solid var(--border-subtle);
           font-size: 0.875rem;
         }
-
-        .auth-footer-text { color: var(--text-muted); }
 
         .auth-footer-link {
           color: var(--color-brand-600);
@@ -323,13 +317,14 @@ export default function LoginPage() {
           transition: var(--transition-fast);
         }
 
-        .auth-footer-link:hover { color: var(--color-brand-500); }
-
-        .auth-badge {
+        .auth-footer-link--icon {
           display: flex;
-          gap: 0.5rem;
-          flex-wrap: wrap;
-          justify-content: center;
+          align-items: center;
+          gap: 0.375rem;
+        }
+
+        .auth-footer-link:hover {
+          color: var(--color-brand-500);
         }
       `}</style>
     </div>

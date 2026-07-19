@@ -298,4 +298,72 @@ export interface CampaignCreate {
 
 export interface CampaignUpdate extends Partial<CampaignCreate> {}
 
+// ─── Admin ────────────────────────────────────────────────────────────────────
 
+export type TenantStatus = 'pending' | 'active' | 'blocked' | 'rejected';
+export type TenantPlan = 'freemium' | 'starter' | 'pro';
+
+export interface AdminStats {
+  total_tenants: number;
+  pending_tenants: number;
+  active_tenants: number;
+  blocked_tenants: number;
+  rejected_tenants: number;
+  total_users: number;
+  unread_notifications: number;
+}
+
+export interface AdminTenantOwner {
+  id: string;
+  email: string;
+  full_name: string | null;
+  phone: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface AdminTenantListItem {
+  id: string;
+  name: string;
+  slug: string;
+  plan: TenantPlan;
+  status: TenantStatus;
+  is_active: boolean;
+  created_at: string;
+  owner_email: string | null;
+  owner_name: string | null;
+}
+
+export interface AdminTenantDetail {
+  id: string;
+  name: string;
+  slug: string;
+  plan: TenantPlan;
+  status: TenantStatus;
+  is_active: boolean;
+  whatsapp_phone_id: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  owner: AdminTenantOwner | null;
+}
+
+export interface AdminNotification {
+  id: string;
+  type: string;
+  title: string;
+  message: string | null;
+  tenant_id: string | null;
+  tenant_name: string | null;
+  tenant_slug: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface PaginatedAdminTenants {
+  items: AdminTenantListItem[];
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
+}

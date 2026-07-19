@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.core.database import Base
 
 # Import all models here to ensure they are registered with Base.metadata
-from app.modules.auth.models import Tenant, User
+from app.modules.auth.models import Tenant, User, AdminNotification
 from app.modules.crm.models import Client
 from app.modules.products.models import Product, InventoryLog, Order, OrderItem, OrderLog, WhatsAppMessage, AILog, Subscription
 from app.modules.marketing.models import Campaign

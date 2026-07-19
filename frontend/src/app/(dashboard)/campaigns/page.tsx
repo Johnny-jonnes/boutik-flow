@@ -173,7 +173,7 @@ export default function CampaignsPage() {
                   <tr key={campaign.id} style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 0.2s' }}>
                     <td style={{ padding: '1rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--brand-alpha-10)', color: 'var(--color-brand-500)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <Megaphone size={20} />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -186,7 +186,7 @@ export default function CampaignsPage() {
                     </td>
                     <td style={{ padding: '1rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        {campaign.channel === 'whatsapp' && <MessageSquare size={16} style={{ color: '#25D366' }} />}
+                        {campaign.channel === 'whatsapp' && <MessageSquare size={16} style={{ color: 'var(--color-brand-500)' }} />}
                         {campaign.channel === 'sms' && <AlertCircle size={16} style={{ color: '#3b82f6' }} />}
                         {campaign.channel === 'email' && <Mail size={16} style={{ color: '#ef4444' }} />}
                         <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', textTransform: 'capitalize' }}>{campaign.channel}</span>

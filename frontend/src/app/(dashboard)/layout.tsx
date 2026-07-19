@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Toaster } from '@/components/ui/sonner';
+
 import { 
   LayoutDashboard, 
   Users, 
@@ -21,9 +21,11 @@ import {
   BarChart3,
   Tags,
   FolderTree,
-  Megaphone
+  Megaphone,
+  Shield
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const NAV_CATEGORIES = [
   {
@@ -69,7 +71,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     'Tableau de Bord': true,
     'CRM': true,
     'Ventes': true,
-    'Marketing': true
+    'Marketing': true,
+    'Administration': true
   });
   const [userInfo, setUserInfo] = useState({ boutiqueName: 'Ma Boutique', email: '', role: 'Admin' });
   const profileDropdownRef = useRef<HTMLDivElement>(null);
@@ -124,9 +127,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
           <span className="brand-text">BoutikFlow</span>
         </div>
-        <button className="mobile-toggle" onClick={() => setIsMobileMenuOpen(true)} aria-label="Menu">
-          <Menu size={22} />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <ThemeToggle />
+          <button className="mobile-toggle" onClick={() => setIsMobileMenuOpen(true)} aria-label="Menu">
+            <Menu size={22} />
+          </button>
+        </div>
       </header>
 
       {/* Backdrop */}
@@ -145,9 +151,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
           <span className="brand-text">BoutikFlow</span>
           
-          <button className="sidebar-collapse-btn" onClick={() => setIsMobileMenuOpen(false)} aria-label="Fermer la sidebar">
-            <ChevronLeft size={16} />
-          </button>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <ThemeToggle />
+            <button className="sidebar-collapse-btn" onClick={() => setIsMobileMenuOpen(false)} aria-label="Fermer la sidebar">
+              <ChevronLeft size={16} />
+            </button>
+          </div>
         </div>
 
         {/* Boutique Card */}
@@ -164,7 +173,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Navigation */}
         <nav className="sidebar__nav">
-          {NAV_CATEGORIES.map((category) => {
+          {[
+            ...NAV_CATEGORIES,
+            ...(userInfo.role && userInfo.role.toLowerCase() === 'admin' ? [{
+              title: 'Administration',
+              icon: Shield,
+              items: [
+                { href: '/admin', icon: LayoutDashboard, label: 'Vue d\'ensemble', id: 'nav-admin-dashboard' },
+                { href: '/admin/tenants', icon: Store, label: 'Gestion Boutiques', id: 'nav-admin-tenants' },
+              ]
+            }] : [])
+          ].map((category) => {
             const CategoryIcon = category.icon;
             const isExpanded = expandedCategories[category.title];
             return (
@@ -264,8 +283,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="main__inner">{children}</div>
       </main>
 
-      <Toaster richColors position="top-right" />
-
       <style jsx>{`
         /* ─── Shell ─────────────────────────────────── */
         .shell {
@@ -297,15 +314,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         .logo-mark {
           width: 32px; height: 32px;
           border-radius: 8px;
-          background: rgba(16, 185, 129, 0.1);
-          border: 1px solid rgba(16, 185, 129, 0.2);
+          background: var(--brand-alpha-10);
+          border: 1px solid var(--brand-alpha-20);
           display: flex; align-items: center; justify-content: center;
           flex-shrink: 0;
         }
         .brand-text {
           font-family: var(--font-display);
           font-size: 1.2rem; font-weight: 700;
-          background: linear-gradient(135deg, #10b981, #059669);
+          background: linear-gradient(135deg, var(--logo-gradient-from), var(--logo-gradient-to));
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
@@ -317,7 +334,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           height: 100vh;
           position: sticky; top: 0;
           display: flex; flex-direction: column;
-          background: linear-gradient(180deg, var(--surface-1) 0%, rgba(13, 20, 18, 0.95) 100%);
+          background: linear-gradient(180deg, var(--surface-1) 0%, var(--sidebar-gradient-end) 100%);
           backdrop-filter: blur(16px);
           border-right: 1px solid var(--border-subtle);
           flex-shrink: 0;
@@ -340,9 +357,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
 
         .sidebar-collapse-btn {
-          margin-left: auto;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: var(--overlay-subtle);
+          border: 1px solid var(--overlay-border);
           color: var(--text-muted);
           border-radius: 6px;
           width: 26px; height: 26px;
@@ -351,7 +367,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           transition: all 0.2s ease;
         }
         .sidebar-collapse-btn:hover {
-          background: rgba(255, 255, 255, 0.08);
+          background: var(--overlay-medium);
           color: var(--text-primary);
         }
 
@@ -361,20 +377,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           margin: 0.25rem 0.75rem 1.25rem;
           padding: 0.75rem;
           border-radius: 12px;
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: var(--overlay-subtle);
+          border: 1px solid var(--overlay-border);
           transition: all 0.2s ease;
           cursor: pointer;
         }
         .boutique-card:hover {
-          background: rgba(255, 255, 255, 0.04);
-          border-color: rgba(255, 255, 255, 0.1);
+          background: var(--overlay-light);
+          border-color: var(--overlay-medium);
         }
         .boutique-icon {
           width: 36px; height: 36px;
           border-radius: 8px;
-          background: rgba(16, 185, 129, 0.1);
-          color: #10b981;
+          background: var(--brand-alpha-10);
+          color: var(--color-brand-500);
           display: flex; align-items: center; justify-content: center;
           flex-shrink: 0;
         }
@@ -390,7 +406,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
         .boutique-badge {
           font-size: 0.7rem;
-          color: #10b981;
+          color: var(--color-brand-500);
           font-weight: 500;
           margin-top: 1px;
         }
@@ -471,8 +487,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
         
         .nav-link--active {
-          background: rgba(16, 185, 129, 0.08);
-          color: #10b981;
+          background: var(--brand-alpha-08);
+          color: var(--color-brand-500);
           font-weight: 600;
         }
         
@@ -486,7 +502,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         .nav-indicator {
           position: absolute; left: 0; top: 0;
           width: 3px; height: 100%;
-          background: #10b981;
+          background: var(--color-brand-500);
           border-radius: 0 4px 4px 0;
         }
 
@@ -517,8 +533,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
 
         .plan-usage-block {
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid rgba(255, 255, 255, 0.05);
+          background: var(--overlay-subtle);
+          border: 1px solid var(--overlay-border);
           border-radius: 12px;
           padding: 0.75rem;
           display: flex;
@@ -541,7 +557,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         .progress-bar {
           height: 6px;
-          background: rgba(255, 255, 255, 0.08);
+          background: var(--progress-track-bg);
           border-radius: 3px;
           overflow: hidden;
           width: 100%;
@@ -559,7 +575,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           justify-content: center;
           gap: 0.5rem;
           width: 100%;
-          background: linear-gradient(135deg, #10b981, #059669);
+          background: linear-gradient(135deg, var(--logo-gradient-from), var(--logo-gradient-to));
           color: white;
           border: none;
           border-radius: 8px;
@@ -578,7 +594,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         .footer-separator {
           height: 1px;
-          background: rgba(255, 255, 255, 0.08);
+          background: var(--overlay-medium);
           margin: 0.5rem 0.25rem 0.75rem;
         }
 
@@ -599,14 +615,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
 
         .profile-card:hover, .profile-card--open {
-          background: rgba(255, 255, 255, 0.04);
+          background: var(--overlay-light);
         }
 
         .profile-avatar {
           width: 32px; height: 32px;
           border-radius: 50%;
-          background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255, 255, 255, 0.15);
+          background: var(--overlay-medium);
+          border: 1px solid var(--overlay-border-strong);
           color: var(--text-primary);
           display: flex;
           align-items: center;
@@ -651,8 +667,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           position: absolute;
           bottom: calc(100% + 4px);
           left: 0; right: 0;
-          background: #151d1a;
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: var(--profile-dropdown-bg);
+          border: 1px solid var(--overlay-border);
           border-radius: 10px;
           padding: 0.25rem;
           display: flex;
@@ -676,7 +692,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
 
         .dropdown-item:hover {
-          background: rgba(255, 255, 255, 0.04);
+          background: var(--overlay-light);
           color: var(--text-primary);
         }
 
@@ -703,7 +719,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         .backdrop {
           display: none;
           position: fixed; inset: 0;
-          background: rgba(0,0,0,0.5);
+          background: rgba(0, 0, 0, 0.45);
           backdrop-filter: blur(4px);
           z-index: 45;
         }

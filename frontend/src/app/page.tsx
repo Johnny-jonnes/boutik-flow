@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { MapPin, MessageSquareText, Users, Package, BarChart3, Bot, Smartphone } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function HomePage() {
   return (
@@ -28,8 +29,9 @@ export default function HomePage() {
           <span className="nav-logo-text">BoutikFlow</span>
         </div>
         <div className="nav-actions">
+          <ThemeToggle />
           <Link href="/login" className="btn btn-ghost" id="btn-nav-login">Se connecter</Link>
-          <Link href="/register" className="btn btn-primary" id="btn-nav-register">Démarrer gratuitement</Link>
+          <Link href="/register" className="btn btn-primary" id="btn-nav-register">Créer ma boutique</Link>
         </div>
       </nav>
 
@@ -48,7 +50,7 @@ export default function HomePage() {
         </p>
         <div className="hero-actions">
           <Link href="/register" className="btn btn-primary hero-cta" id="btn-hero-start">
-            Créer ma boutique gratuite
+            Créer ma boutique
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M3 8H13M9 4L13 8L9 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -59,9 +61,9 @@ export default function HomePage() {
         </div>
         <div className="hero-stats">
           {[
-            { value: '0 GNF', label: 'Pour commencer' },
+            { value: '50 000 GNF', label: 'Pour commencer' },
             { value: 'WhatsApp', label: 'Intégration native' },
-            { value: 'IA Groq', label: 'Réponses intelligentes' },
+            { value: 'Assistant virtuel', label: 'Réponses intelligentes' },
           ].map(stat => (
             <div key={stat.label} className="hero-stat">
               <span className="hero-stat-value">{stat.value}</span>
@@ -101,8 +103,8 @@ export default function HomePage() {
             },
             {
               icon: <Bot size={32} className="text-brand-500" />,
-              title: 'IA Groq',
-              desc: 'Générez des réponses intelligentes, résumez les conversations et analysez vos clients avec l\'IA.',
+              title: 'Assistant virtuel',
+              desc: 'Générez des réponses intelligentes, résumez les conversations et analysez vos clients avec votre assistant virtuel.',
             },
             {
               icon: <Smartphone size={32} className="text-brand-500" />,
@@ -123,16 +125,16 @@ export default function HomePage() {
       <section className="pricing">
         <div className="section-header">
           <h2>Tarifs simples et transparents</h2>
-          <p>Commencez gratuitement, évoluez selon vos besoins</p>
+          <p>Des tarifs accessibles, évoluez selon vos besoins</p>
         </div>
         <div className="pricing-grid">
           {[
             {
               name: 'Freemium',
-              price: '0',
-              period: 'Pour toujours',
+              price: '50 000',
+              period: 'GNF / mois',
               features: ['1 utilisateur', '50 clients max', 'Réponses auto simples', 'Catalogue limité', 'Dashboard basique'],
-              cta: 'Commencer gratuitement',
+              cta: 'Commencer',
               href: '/register',
               highlighted: false,
             },
@@ -140,7 +142,7 @@ export default function HomePage() {
               name: 'Starter',
               price: '800 000',
               period: 'GNF / mois',
-              features: ['Clients illimités', 'Automatisation avancée', 'Relances automatiques', 'Statistiques IA Groq', 'Support prioritaire'],
+              features: ['Clients illimités', 'Automatisation avancée', 'Relances automatiques', 'Assistant virtuel intégré', 'Support prioritaire'],
               cta: 'Démarrer l\'essai',
               href: '/register',
               highlighted: true,
@@ -149,7 +151,7 @@ export default function HomePage() {
               name: 'Pro',
               price: '1 500 000',
               period: 'GNF / mois',
-              features: ['Multi-utilisateurs', 'Dashboard avancé', 'Rapports exportables', 'IA premium', 'Support dédié'],
+              features: ['Multi-utilisateurs', 'Dashboard avancé', 'Rapports exportables', 'Assistant virtuel premium', 'Support dédié'],
               cta: 'Contacter l\'équipe',
               href: '/register',
               highlighted: false,

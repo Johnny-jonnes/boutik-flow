@@ -44,7 +44,7 @@ export default function BillingPage() {
     {
       id: 'freemium',
       name: 'Freemium',
-      price: '0',
+      price: '50 000',
       features: ['Jusqu\'à 50 clients', 'Gestion des commandes basique', 'Support communautaire'],
       buttonText: 'Plan actuel',
       isPro: false,
@@ -86,7 +86,7 @@ export default function BillingPage() {
             </ul>
             <button 
               className={`${styles.selectButton} ${plan.isPro ? styles.selectButtonPro : ''}`}
-              onClick={() => plan.price !== '0' && setSelectedPlan(plan.id)}
+              onClick={() => plan.id !== 'freemium' && setSelectedPlan(plan.id)}
               disabled={plan.name === currentPlan}
             >
               {plan.name === currentPlan ? 'Plan Actuel' : plan.buttonText}

@@ -308,7 +308,7 @@ export default function WhatsAppPage() {
                     style={{
                       display: 'flex', alignItems: 'center', gap: '0.35rem',
                       padding: '0.4rem 0.8rem', borderRadius: '8px',
-                      background: '#10b981', color: 'white', border: 'none',
+                      background: 'var(--color-brand-500)', color: 'white', border: 'none',
                       fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer',
                       opacity: (client.phone || client.telephone) ? 1 : 0.4,
                       whiteSpace: 'nowrap', flexShrink: 0,
@@ -443,7 +443,7 @@ export default function WhatsAppPage() {
                       <div style={{ display: 'flex', gap: '0.4rem' }}>
                         <button
                           onClick={() => handleSendToContact(contact)}
-                          style={{ padding: '0.3rem 0.6rem', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                          style={{ padding: '0.3rem 0.6rem', background: 'var(--color-brand-500)', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
                         >
                           <ExternalLink size={12} /> Envoyer
                         </button>

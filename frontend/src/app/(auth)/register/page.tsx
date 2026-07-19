@@ -51,14 +51,14 @@ export default function RegisterPage() {
   const plans = [
     {
       name: 'Freemium',
-      price: 'Gratuit',
+      price: '50 000 GNF/mois',
       features: ['1 utilisateur', '50 clients max', 'Catalogue limité', 'Réponses auto simples'],
       recommended: false,
     },
     {
       name: 'Starter',
       price: '800 000 GNF/mois',
-      features: ['Clients illimités', 'Automatisation avancée', 'Statistiques IA', 'Support prioritaire'],
+      features: ['Clients illimités', 'Automatisation avancée', 'Assistant virtuel intégré', 'Support prioritaire'],
       recommended: true,
     },
   ];
@@ -91,7 +91,7 @@ export default function RegisterPage() {
           <div className="auth-card glass">
             <div className="auth-header">
               <h1 className="auth-title">Créer votre boutique</h1>
-              <p className="auth-subtitle">Démarrez gratuitement en 2 minutes</p>
+              <p className="auth-subtitle">Démarrez en 2 minutes</p>
             </div>
 
             {/* Steps */}
@@ -264,8 +264,8 @@ export default function RegisterPage() {
           position: absolute;
           inset: 0;
           background-image:
-            linear-gradient(rgba(16, 185, 129, 0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(16, 185, 129, 0.03) 1px, transparent 1px);
+            linear-gradient(var(--auth-grid-color) 1px, transparent 1px),
+            linear-gradient(90deg, var(--auth-grid-color) 1px, transparent 1px);
           background-size: 40px 40px;
         }
         .auth-glow {
@@ -275,7 +275,7 @@ export default function RegisterPage() {
           transform: translateX(-50%);
           width: 800px;
           height: 800px;
-          background: radial-gradient(circle, rgba(16, 185, 129, 0.06) 0%, transparent 70%);
+          background: radial-gradient(circle, var(--auth-glow-color) 0%, transparent 70%);
         }
         .register-container {
           position: relative;
@@ -306,7 +306,7 @@ export default function RegisterPage() {
           font-family: var(--font-display);
           font-size: 1.5rem;
           font-weight: 700;
-          background: linear-gradient(135deg, #10b981, #047857);
+          background: linear-gradient(135deg, var(--logo-gradient-from), var(--logo-gradient-to));
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
@@ -359,7 +359,7 @@ export default function RegisterPage() {
           background: var(--color-brand-600);
           border-color: var(--color-brand-500);
           color: white;
-          box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+          box-shadow: 0 0 0 4px var(--focus-ring-color);
         }
         .step-line {
           width: 60px;
@@ -414,7 +414,7 @@ export default function RegisterPage() {
         }
         .auth-footer-text { color: var(--text-muted); }
         .auth-footer-link {
-          color: var(--color-brand-400);
+          color: var(--color-brand-600);
           font-weight: 600;
           text-decoration: none;
         }
@@ -430,7 +430,7 @@ export default function RegisterPage() {
           overflow: hidden;
         }
         .plan-recommended {
-          border-color: rgba(16, 185, 129, 0.3) !important;
+          border-color: var(--border-default) !important;
           box-shadow: var(--shadow-brand);
         }
         .plan-badge {

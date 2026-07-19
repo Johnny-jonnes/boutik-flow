@@ -215,7 +215,7 @@ export default function SegmentsPage() {
                   <tr key={segment.id} style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 0.2s' }}>
                     <td style={{ padding: '1rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#10b981' }} />
+                        <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'var(--color-brand-500)' }} />
                         <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{segment.name}</span>
                       </div>
                     </td>
