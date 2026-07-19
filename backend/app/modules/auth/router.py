@@ -85,6 +85,7 @@ def register(
     connecter. Aucun token n'est émis à cette étape.
 
     Route publique (pas de JWT requis).
+    """
     
     # Vérifier unicité du slug
     existing_tenant = db.query(Tenant).filter(
