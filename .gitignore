@@ -11,6 +11,9 @@ lib/
 include/
 share/
 
+# Unignore Next.js app lib folder
+!frontend/src/lib/
+
 # Next.js build output
 .next/
 out/
