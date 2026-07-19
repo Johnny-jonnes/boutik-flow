@@ -1,0 +1,72 @@
+# Dependency directories
+node_modules/
+jspm_packages/
+web_modules/
+venv/
+.venv/
+env/
+ENV/
+bin/
+lib/
+include/
+share/
+
+# Next.js build output
+.next/
+out/
+build/
+dist/
+
+# Python cache & build outputs
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+htmlcov/
+.tox/
+.nosexy/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+pip-log.txt
+pip-delete-this-directory.txt
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Environment and secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+*.pem
+*.key
+
+# System & IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*~
+
+# Antigravity & Agent temporary files
+.agents/
+.gemini/
+scratch/
+task.md
+walkthrough.md
+implementation_plan.md
+whatsapp_api_guide.md
+rules_combined.txt
+test_req.py
+read_rules.py
+get_users.py
