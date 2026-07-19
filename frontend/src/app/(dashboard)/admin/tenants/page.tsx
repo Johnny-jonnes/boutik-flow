@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
@@ -61,7 +61,7 @@ function ConfirmModal({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function AdminTenantsPage() {
+function AdminTenantsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -692,3 +692,12 @@ export default function AdminTenantsPage() {
     </div>
   );
 }
+
+export default function AdminTenantsPage() {
+  return (
+    <Suspense fallback={<div className="at-loader"><div className="spinner" /></div>}>
+      <AdminTenantsContent />
+    </Suspense>
+  );
+}
+
