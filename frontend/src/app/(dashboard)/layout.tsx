@@ -334,9 +334,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           height: 100vh;
           position: sticky; top: 0;
           display: flex; flex-direction: column;
-          background: linear-gradient(180deg, var(--surface-1) 0%, var(--sidebar-gradient-end) 100%);
+          /* Mélange haut de gamme de vert forêt émeraude mi-clair */
+          background: linear-gradient(180deg, #123d30 0%, #081d16 100%);
           backdrop-filter: blur(16px);
-          border-right: 1px solid var(--border-subtle);
+          border-right: 1px solid rgba(52, 211, 153, 0.15);
           flex-shrink: 0;
           z-index: 50;
           overflow-y: auto;
@@ -357,9 +358,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
 
         .sidebar-collapse-btn {
-          background: var(--overlay-subtle);
-          border: 1px solid var(--overlay-border);
-          color: var(--text-muted);
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          color: #a7b8b0;
           border-radius: 6px;
           width: 26px; height: 26px;
           display: flex; align-items: center; justify-content: center;
@@ -367,8 +368,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           transition: all 0.2s ease;
         }
         .sidebar-collapse-btn:hover {
-          background: var(--overlay-medium);
-          color: var(--text-primary);
+          background: rgba(255, 255, 255, 0.08);
+          color: #f0fdf4;
         }
 
         /* ─── Boutique Card ────────────────────────── */
@@ -377,20 +378,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           margin: 0.25rem 0.75rem 1.25rem;
           padding: 0.75rem;
           border-radius: 12px;
-          background: var(--overlay-subtle);
-          border: 1px solid var(--overlay-border);
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid rgba(255, 255, 255, 0.05);
           transition: all 0.2s ease;
           cursor: pointer;
         }
         .boutique-card:hover {
-          background: var(--overlay-light);
-          border-color: var(--overlay-medium);
+          background: rgba(255, 255, 255, 0.05);
+          border-color: rgba(255, 255, 255, 0.08);
         }
         .boutique-icon {
           width: 36px; height: 36px;
           border-radius: 8px;
-          background: var(--brand-alpha-10);
-          color: var(--color-brand-500);
+          background: rgba(52, 211, 153, 0.12);
+          color: #34d399;
           display: flex; align-items: center; justify-content: center;
           flex-shrink: 0;
         }
@@ -401,17 +402,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
         .boutique-name {
           font-size: 0.85rem; font-weight: 600;
-          color: var(--text-primary);
+          color: #f0fdf4;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .boutique-badge {
           font-size: 0.7rem;
-          color: var(--color-brand-500);
+          color: #34d399;
           font-weight: 500;
           margin-top: 1px;
         }
         .boutique-chevron {
-          color: var(--text-muted);
+          color: #8fa399;
           flex-shrink: 0;
         }
 
@@ -426,7 +427,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         
         .nav-section-title {
           font-size: 0.75rem; font-weight: 600;
-          color: var(--text-muted);
+          color: #8fa399;
           text-transform: none;
           letter-spacing: normal;
           padding: 0.5rem 0.75rem;
@@ -443,7 +444,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
 
         .nav-section-title:hover {
-          color: var(--text-primary);
+          color: #f0fdf4;
         }
 
         .nav-section-title-left {
@@ -471,7 +472,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           padding: 0.5rem 0.75rem 0.5rem 1rem;
           border-radius: 8px;
           text-decoration: none;
-          color: var(--text-secondary);
+          color: #a7b8b0;
           font-size: 0.85rem; font-weight: 500;
           position: relative;
           transition: all 0.2s ease;
@@ -482,13 +483,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
         
         .nav-link:hover {
-          background: var(--surface-2);
-          color: var(--text-primary);
+          background: rgba(255, 255, 255, 0.05);
+          color: #f0fdf4;
         }
         
         .nav-link--active {
-          background: var(--brand-alpha-08);
-          color: var(--color-brand-500);
+          background: rgba(52, 211, 153, 0.12);
+          color: #34d399;
           font-weight: 600;
         }
         
@@ -502,7 +503,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         .nav-indicator {
           position: absolute; left: 0; top: 0;
           width: 3px; height: 100%;
-          background: var(--color-brand-500);
+          background: #34d399;
           border-radius: 0 4px 4px 0;
         }
 
@@ -533,8 +534,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
 
         .plan-usage-block {
-          background: var(--overlay-subtle);
-          border: 1px solid var(--overlay-border);
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.06);
           border-radius: 12px;
           padding: 0.75rem;
           display: flex;
@@ -547,17 +548,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           display: flex;
           justify-content: space-between;
           font-size: 0.7rem;
-          color: var(--text-muted);
+          color: #8fa399;
         }
 
         .plan-percentage {
           font-weight: 600;
-          color: var(--text-secondary);
+          color: #a7b8b0;
         }
 
         .progress-bar {
           height: 6px;
-          background: var(--progress-track-bg);
+          background: rgba(255, 255, 255, 0.08);
           border-radius: 3px;
           overflow: hidden;
           width: 100%;
@@ -565,7 +566,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         .progress-fill {
           height: 100%;
-          background: #10b981;
+          background: #34d399;
           border-radius: 3px;
         }
 
@@ -575,7 +576,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           justify-content: center;
           gap: 0.5rem;
           width: 100%;
-          background: linear-gradient(135deg, var(--logo-gradient-from), var(--logo-gradient-to));
+          background: linear-gradient(135deg, #10b981, #059669);
           color: white;
           border: none;
           border-radius: 8px;
@@ -589,12 +590,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         .upgrade-btn:hover {
           transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+          box-shadow: 0 4px 12px rgba(52, 211, 153, 0.25);
         }
 
         .footer-separator {
           height: 1px;
-          background: var(--overlay-medium);
+          background: rgba(255, 255, 255, 0.06);
           margin: 0.5rem 0.25rem 0.75rem;
         }
 
@@ -615,15 +616,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
 
         .profile-card:hover, .profile-card--open {
-          background: var(--overlay-light);
+          background: rgba(255, 255, 255, 0.05);
         }
 
         .profile-avatar {
           width: 32px; height: 32px;
           border-radius: 50%;
-          background: var(--overlay-medium);
-          border: 1px solid var(--overlay-border-strong);
-          color: var(--text-primary);
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          color: #f0fdf4;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -642,7 +643,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         .profile-name {
           font-size: 0.8rem;
           font-weight: 600;
-          color: var(--text-primary);
+          color: #f0fdf4;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -650,11 +651,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         .profile-role {
           font-size: 0.7rem;
-          color: var(--text-muted);
+          color: #8fa399;
         }
 
         .profile-chevron {
-          color: var(--text-muted);
+          color: #8fa399;
           transition: transform 0.2s ease;
           flex-shrink: 0;
         }
@@ -667,8 +668,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           position: absolute;
           bottom: calc(100% + 4px);
           left: 0; right: 0;
-          background: var(--profile-dropdown-bg);
-          border: 1px solid var(--overlay-border);
+          background: #112d24;
+          border: 1px solid rgba(255, 255, 255, 0.08);
           border-radius: 10px;
           padding: 0.25rem;
           display: flex;
@@ -685,15 +686,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           padding: 0.5rem;
           border-radius: 6px;
           font-size: 0.8rem;
-          color: var(--text-secondary);
+          color: #a7b8b0;
           text-decoration: none;
           cursor: pointer;
           transition: all 0.15s ease;
+          border: none;
+          background: transparent;
         }
 
         .dropdown-item:hover {
-          background: var(--overlay-light);
-          color: var(--text-primary);
+          background: rgba(255, 255, 255, 0.05);
+          color: #f0fdf4;
         }
 
         .dropdown-item--logout {
