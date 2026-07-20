@@ -1,13 +1,219 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { MapPin, MessageSquareText, Users, Package, BarChart3, Bot, Smartphone } from 'lucide-react';
+import { 
+  MapPin, 
+  MessageSquareText, 
+  Users, 
+  Package, 
+  BarChart3, 
+  Bot, 
+  Smartphone, 
+  CheckCircle, 
+  ShieldCheck, 
+  Zap, 
+  Globe, 
+  ArrowRight, 
+  Sparkles,
+  ChevronDown,
+  Layers,
+  Sparkle
+} from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
+function FAQItem({ question, answer }: { question: string; answer: string }) {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <div className={`faq-item ${isOpen ? 'faq-open' : ''}`} onClick={() => setIsOpen(!isOpen)}>
+      <div className="faq-question">
+        <span>{question}</span>
+        <ChevronDown size={18} className="faq-arrow" />
+      </div>
+      <div className="faq-answer">
+        <p>{answer}</p>
+      </div>
+      <style jsx>{`
+        .faq-item {
+          background: rgba(255, 255, 255, 0.01);
+          border: 1px solid var(--border-subtle);
+          border-radius: 12px;
+          padding: 1.25rem;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          margin-bottom: 0.75rem;
+        }
+        .faq-item:hover {
+          background: rgba(255, 255, 255, 0.03);
+          border-color: var(--color-brand-400);
+        }
+        .faq-question {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-weight: 600;
+          color: var(--text-primary);
+          font-size: 1rem;
+        }
+        .faq-arrow {
+          transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          color: var(--text-muted);
+        }
+        .faq-open .faq-arrow {
+          transform: rotate(180deg);
+          color: var(--color-brand-400);
+        }
+        .faq-answer {
+          max-height: 0;
+          overflow: hidden;
+          transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), margin-top 0.3s ease;
+        }
+        .faq-open .faq-answer {
+          max-height: 200px;
+          margin-top: 0.75rem;
+        }
+        .faq-answer p {
+          font-size: 0.9rem;
+          color: var(--text-secondary);
+          line-height: 1.6;
+        }
+      `}</style>
+    </div>
+  );
+}
+
 export default function HomePage() {
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly' | 'lifetime'>('monthly');
+
+  const plans = {
+    monthly: [
+      {
+        name: 'Pack Standard',
+        badge: 'idéal pour démarrer',
+        features: [
+          'Réponse automatique intelligente',
+          'Gestion de 100 clients actifs',
+          'Catalogue produits basique',
+          'Rapports de ventes hebdomadaires',
+          'Support par e-mail standard'
+        ],
+        highlighted: false,
+        cta: 'Essayer BoutikFlow'
+      },
+      {
+        name: 'Pack Pro',
+        badge: 'le plus populaire',
+        features: [
+          'Clients et ventes illimités',
+          'Relances intelligentes par relance WhatsApp',
+          'Assistant virtuel IA inclus',
+          'Génération de SKU et codes barres',
+          'Support WhatsApp prioritaire'
+        ],
+        highlighted: true,
+        cta: 'Lancer ma boutique'
+      },
+      {
+        name: 'Pack Entreprise',
+        badge: 'recommandé pour la croissance',
+        features: [
+          'Multi-boutiques & multi-utilisateurs',
+          'Automatisation marketing poussée',
+          'Export comptable en un clic',
+          'Accès API & intégrations dédiées',
+          'Gestionnaire de compte dédié'
+        ],
+        highlighted: false,
+        cta: 'Contactez-nous'
+      }
+    ],
+    yearly: [
+      {
+        name: 'Pack Standard (Annuel)',
+        badge: '2 mois gratuits inclus',
+        features: [
+          'Réponse automatique intelligente',
+          'Gestion de 200 clients actifs',
+          'Catalogue produits complet',
+          'Rapports de ventes hebdomadaires',
+          'Support par e-mail & WhatsApp'
+        ],
+        highlighted: false,
+        cta: 'Essayer BoutikFlow'
+      },
+      {
+        name: 'Pack Pro (Annuel)',
+        badge: 'meilleur rapport qualité/prix',
+        features: [
+          'Clients et ventes illimités',
+          'Relances intelligentes par relance WhatsApp',
+          'Assistant virtuel IA inclus',
+          'Génération de SKU et codes barres',
+          'Support WhatsApp prioritaire 24/7'
+        ],
+        highlighted: true,
+        cta: 'Lancer ma boutique'
+      },
+      {
+        name: 'Pack Entreprise (Annuel)',
+        badge: 'recommandé pour la croissance',
+        features: [
+          'Multi-boutiques & multi-utilisateurs',
+          'Automatisation marketing poussée',
+          'Export comptable en un clic',
+          'Accès API & intégrations dédiées',
+          'Gestionnaire de compte dédié'
+        ],
+        highlighted: false,
+        cta: 'Contactez-nous'
+      }
+    ],
+    lifetime: [
+      {
+        name: 'Pack Standard à Vie',
+        badge: 'licence perpétuelle standard',
+        features: [
+          'Réponse automatique intelligente',
+          'Gestion de 500 clients actifs',
+          'Catalogue produits complet',
+          'Mises à jour standard incluses à vie',
+          'Support client standard à vie'
+        ],
+        highlighted: false,
+        cta: 'Essayer BoutikFlow'
+      },
+      {
+        name: 'Pack Pro à Vie',
+        badge: 'recommandé pour les leaders',
+        features: [
+          'Clients, ventes et produits illimités',
+          'Relances intelligentes par relance WhatsApp à vie',
+          'Assistant virtuel IA inclus à vie',
+          'Accès prioritaire à toutes les nouveautés',
+          'Support client VIP à vie'
+        ],
+        highlighted: true,
+        cta: 'Lancer ma boutique'
+      },
+      {
+        name: 'Pack Entreprise à Vie',
+        badge: 'solution complète illimitée',
+        features: [
+          'Multi-boutiques & multi-utilisateurs illimités',
+          'Toutes les automatisations incluses à vie',
+          'Hébergement et bande passante inclus à vie',
+          'Déploiement sur mesure',
+          'Support VIP téléphonique dédié 24/7'
+        ],
+        highlighted: false,
+        cta: 'Contactez-nous'
+      }
+    ]
+  };
+
   return (
     <main className="landing">
-      {/* Background */}
+      {/* Background elements */}
       <div className="landing-bg-grid" />
       <div className="landing-glow-top" />
       <div className="landing-glow-bottom" />
@@ -31,39 +237,35 @@ export default function HomePage() {
         <div className="nav-actions">
           <ThemeToggle />
           <Link href="/login" className="btn btn-ghost" id="btn-nav-login">Se connecter</Link>
-          <Link href="/register" className="btn btn-primary" id="btn-nav-register">Créer ma boutique</Link>
+          <Link href="/register" className="btn btn-primary" id="btn-nav-register">Essayer BoutikFlow</Link>
         </div>
       </nav>
 
-      {/* Hero */}
+      {/* Hero Section */}
       <section className="hero">
         <div className="hero-badge">
-          <span className="badge badge-success"><MapPin size={14} className="mr-1" /> Fait pour la Guinée</span>
+          <span className="badge badge-success"><MapPin size={14} className="mr-1" /> Conçu pour les commerçants africains</span>
         </div>
         <h1 className="hero-title">
-          Vendez plus via <br />
-          <span className="text-gradient">WhatsApp</span>
+          Ne perdez plus aucun client sur <span className="text-gradient">WhatsApp</span>
         </h1>
         <p className="hero-subtitle">
-          BoutikFlow est le CRM intelligent conçu pour les boutiques africaines.
-          Gérez vos clients, automatisez vos ventes WhatsApp et ne perdez plus jamais une vente.
+          Le premier assistant intelligent qui répond instantanément à vos acheteurs, gère vos stocks et centralise vos commandes 24h/24. Développez votre chiffre d'affaires sans effort.
         </p>
         <div className="hero-actions">
-          <Link href="/register" className="btn btn-primary hero-cta" id="btn-hero-start">
-            Créer ma boutique
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M3 8H13M9 4L13 8L9 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+          <Link href="/register" className="btn btn-primary hero-cta animate-pulse-light" id="btn-hero-start">
+            Commencer gratuitement
+            <ArrowRight size={16} />
           </Link>
           <Link href="/login" className="btn btn-ghost hero-cta-secondary" id="btn-hero-login">
-            J&apos;ai déjà une boutique
+            Accéder à mon espace
           </Link>
         </div>
         <div className="hero-stats">
           {[
-            { value: '50 000 GNF', label: 'Pour commencer' },
-            { value: 'WhatsApp', label: 'Intégration native' },
-            { value: 'Assistant virtuel', label: 'Réponses intelligentes' },
+            { value: '24h/7j', label: 'Disponibilité absolue' },
+            { value: '100% Automatique', label: 'Prise de commandes' },
+            { value: '0 Client Perdu', label: 'Satisfaction garantie' },
           ].map(stat => (
             <div key={stat.label} className="hero-stat">
               <span className="hero-stat-value">{stat.value}</span>
@@ -73,43 +275,69 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Features */}
+      {/* Credibility section */}
+      <section className="credibility-section">
+        <div className="cred-grid">
+          <div className="cred-card">
+            <Smartphone size={24} className="text-brand-400" />
+            <h3>100% Mobile & Rapide</h3>
+            <p>Pilotez votre boutique directement depuis votre téléphone ou votre tablette, où que vous soyez.</p>
+          </div>
+          <div className="cred-card">
+            <ShieldCheck size={24} className="text-brand-400" />
+            <h3>Données Sécurisées</h3>
+            <p>Vos conversations, fiches clients et historiques de ventes sont cryptés et stockés en toute sécurité.</p>
+          </div>
+          <div className="cred-card">
+            <Zap size={24} className="text-brand-400" />
+            <h3>Synchro Temps Réel</h3>
+            <p>Dès qu'un client commande sur WhatsApp, vos stocks se mettent à jour instantanément.</p>
+          </div>
+          <div className="cred-card">
+            <Sparkles size={24} className="text-brand-400" />
+            <h3>Assistant IA intégré</h3>
+            <p>Optimisez vos descriptions de produits et générez des réponses intelligentes automatiques.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
       <section className="features">
         <div className="section-header">
-          <h2>Tout ce dont votre boutique a besoin</h2>
-          <p>Une plateforme complète pour vendre via WhatsApp</p>
+          <h2>Faites grandir votre boutique simplement</h2>
+          <p>Toutes les fonctionnalités pensées pour maximiser la satisfaction client et simplifier votre quotidien.</p>
         </div>
         <div className="features-grid">
           {[
             {
               icon: <MessageSquareText size={32} className="text-brand-500" />,
-              title: 'WhatsApp Automatique',
-              desc: 'Répondez automatiquement à vos clients 24h/7j. Menus interactifs, messages de bienvenue et relances automatiques.',
+              title: 'Réponses instantanées 24h/7j',
+              desc: 'Notre assistant WhatsApp intelligent accueille vos clients, répond aux questions fréquentes et prend les commandes même pendant que vous dormez.',
             },
             {
               icon: <Users size={32} className="text-brand-500" />,
-              title: 'CRM Clients',
-              desc: 'Fiche client complète avec historique, tags, statut VIP et notes. Ne perdez plus jamais un client.',
+              title: 'CRM Clients & Fidélisation',
+              desc: "Retrouvez instantanément l'historique de chaque client, catégorisez-les avec des étiquettes intelligentes et personnalisez vos échanges pour multiplier vos ventes.",
             },
             {
               icon: <Package size={32} className="text-brand-500" />,
-              title: 'Catalogue Produits',
-              desc: 'Gérez votre catalogue avec images, prix et stocks. Vos clients peuvent commander directement via WhatsApp.',
+              title: 'Gestion de stock intelligente',
+              desc: 'Ajoutez vos produits, gérez vos prix et suivez l\'inventaire en temps réel. Fini les ruptures imprévues ou les erreurs de prix communiqués.',
             },
             {
               icon: <BarChart3 size={32} className="text-brand-500" />,
-              title: 'Tableau de Bord',
-              desc: 'Suivez vos ventes en temps réel. Chiffre d\'affaires, commandes, clients actifs et tendances.',
+              title: 'Tableau de bord de performance',
+              desc: 'Suivez la croissance de votre chiffre d\'affaires, le volume de commandes et l\'activité de vos clients en un clin d\'œil sur des graphiques clairs.',
             },
             {
               icon: <Bot size={32} className="text-brand-500" />,
-              title: 'Assistant virtuel',
-              desc: 'Générez des réponses intelligentes, résumez les conversations et analysez vos clients avec votre assistant virtuel.',
+              title: 'Remplissage Assisté par IA',
+              desc: 'Prenez une photo de votre produit et laissez notre intelligence artificielle rédiger des descriptions captivantes et générer des fiches produits complètes.',
             },
             {
-              icon: <Smartphone size={32} className="text-brand-500" />,
-              title: '100% Mobile',
-              desc: 'Interface optimisée pour votre téléphone. Gérez votre boutique depuis n\'importe où.',
+              icon: <Layers size={32} className="text-brand-500" />,
+              title: 'Scanner POS Intégré',
+              desc: 'Enregistrez vos ventes physiques instantanément grâce au scanner de code-barres et SKU directement depuis l\'appareil photo de votre mobile.',
             },
           ].map(f => (
             <div key={f.title} className="feature-card card">
@@ -121,49 +349,79 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Pricing */}
+      {/* Why Choose BoutikFlow Section */}
+      <section className="why-choose">
+        <div className="section-header">
+          <h2>Pourquoi choisir BoutikFlow ?</h2>
+          <p>Le meilleur allié pour digitaliser votre activité et accélérer votre croissance commerciale.</p>
+        </div>
+        <div className="why-grid">
+          <div className="why-item">
+            <div className="why-num">1</div>
+            <div>
+              <h3>Focalisé sur la rentabilité</h3>
+              <p>Chaque message automatique est conçu pour amener le client vers l'achat et réduire les abandons.</p>
+            </div>
+          </div>
+          <div className="why-item">
+            <div className="why-num">2</div>
+            <div>
+              <h3>Zéro formation requise</h3>
+              <p>Une interface claire, ergonomique et épurée que vous et vos employés prendrez en main en moins de 10 minutes.</p>
+            </div>
+          </div>
+          <div className="why-item">
+            <div className="why-num">3</div>
+            <div>
+              <h3>Proximité client préservée</h3>
+              <p>L'IA qualifie le client, vous prenez le relais quand vous le souhaitez pour finaliser les ventes importantes.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
       <section className="pricing">
         <div className="section-header">
-          <h2>Tarifs simples et transparents</h2>
-          <p>Des tarifs accessibles, évoluez selon vos besoins</p>
+          <h2>Formules adaptées à vos besoins</h2>
+          <p>Aucun frais caché. Choisissez l'accès qui correspond à la dynamique de votre commerce.</p>
         </div>
+
+        {/* Billing Period Selector */}
+        <div className="pricing-toggle-container">
+          <div className="pricing-toggle-bar">
+            <button 
+              className={`toggle-btn ${billingPeriod === 'monthly' ? 'active' : ''}`}
+              onClick={() => setBillingPeriod('monthly')}
+            >
+              Mensuel
+            </button>
+            <button 
+              className={`toggle-btn ${billingPeriod === 'yearly' ? 'active' : ''}`}
+              onClick={() => setBillingPeriod('yearly')}
+            >
+              Annuel
+            </button>
+            <button 
+              className={`toggle-btn ${billingPeriod === 'lifetime' ? 'active' : ''}`}
+              onClick={() => setBillingPeriod('lifetime')}
+            >
+              À vie
+            </button>
+          </div>
+        </div>
+
         <div className="pricing-grid">
-          {[
-            {
-              name: 'Freemium',
-              price: '50 000',
-              period: 'GNF / mois',
-              features: ['1 utilisateur', '50 clients max', 'Réponses auto simples', 'Catalogue limité', 'Dashboard basique'],
-              cta: 'Commencer',
-              href: '/register',
-              highlighted: false,
-            },
-            {
-              name: 'Starter',
-              price: '800 000',
-              period: 'GNF / mois',
-              features: ['Clients illimités', 'Automatisation avancée', 'Relances automatiques', 'Assistant virtuel intégré', 'Support prioritaire'],
-              cta: 'Démarrer l\'essai',
-              href: '/register',
-              highlighted: true,
-            },
-            {
-              name: 'Pro',
-              price: '1 500 000',
-              period: 'GNF / mois',
-              features: ['Multi-utilisateurs', 'Dashboard avancé', 'Rapports exportables', 'Assistant virtuel premium', 'Support dédié'],
-              cta: 'Contacter l\'équipe',
-              href: '/register',
-              highlighted: false,
-            },
-          ].map(plan => (
+          {plans[billingPeriod].map(plan => (
             <div key={plan.name} className={`pricing-card glass ${plan.highlighted ? 'pricing-highlighted' : ''}`}>
-              {plan.highlighted && <div className="pricing-badge">Populaire</div>}
+              <div className="pricing-badge">{plan.badge}</div>
               <div className="pricing-name">{plan.name}</div>
+              
               <div className="pricing-price">
-                <span className="pricing-amount">{plan.price}</span>
-                <span className="pricing-period">{plan.period}</span>
+                <span className="pricing-amount">Tarif sur demande</span>
+                <span className="pricing-period">Contactez notre support pour activer</span>
               </div>
+              
               <ul className="pricing-features">
                 {plan.features.map(f => (
                   <li key={f} className="pricing-feature">
@@ -173,9 +431,9 @@ export default function HomePage() {
                 ))}
               </ul>
               <Link
-                href={plan.href}
+                href="/register"
                 className={`btn ${plan.highlighted ? 'btn-primary' : 'btn-ghost'} pricing-cta`}
-                id={`btn-pricing-${plan.name.toLowerCase()}`}
+                id={`btn-pricing-${plan.name.replace(/\s+/g, '-').toLowerCase()}`}
               >
                 {plan.cta}
               </Link>
@@ -184,12 +442,67 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="landing-footer">
-        <div className="footer-logo">
-          <span className="text-gradient" style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>BoutikFlow</span>
+      {/* FAQ Section */}
+      <section className="faq-section">
+        <div className="section-header">
+          <h2>Questions fréquentes</h2>
+          <p>Toutes les réponses à vos interrogations pour démarrer sereinement.</p>
         </div>
-        <p className="footer-text">© 2026 BoutikFlow. Conçu pour les commerçants guinéens.</p>
+        <div className="faq-grid">
+          <FAQItem 
+            question="Dois-je utiliser un compte WhatsApp Business ?" 
+            answer="BoutikFlow fonctionne aussi bien avec un compte WhatsApp classique qu'avec un compte WhatsApp Business. L'intégration s'effectue simplement en quelques secondes." 
+          />
+          <FAQItem 
+            question="Puis-je conserver mon numéro de téléphone actuel ?" 
+            answer="Oui absolument. Vous n'avez pas besoin d'acheter une nouvelle carte SIM. Vous connectez votre numéro de téléphone habituel directement sur notre plateforme." 
+          />
+          <FAQItem 
+            question="Est-il possible de gérer plusieurs boutiques à la fois ?" 
+            answer="Oui, nos plans avancés (Pack Entreprise) vous permettent de configurer et basculer facilement entre plusieurs boutiques à partir du même tableau de bord." 
+          />
+          <FAQItem 
+            question="Mes données et celles de mes clients sont-elles sécurisées ?" 
+            answer="La sécurité est notre priorité absolue. Vos bases de données clients sont isolées par boutique, cryptées, et stockées sur des serveurs sécurisés sans aucun partage." 
+          />
+          <FAQItem 
+            question="Puis-je annuler ou changer d'abonnement à tout moment ?" 
+            answer="Oui, les formules mensuelles et annuelles sont sans engagement de durée. Vous pouvez annuler, suspendre ou modifier votre formule librement depuis votre espace." 
+          />
+          <FAQItem 
+            question="L'application fonctionne-t-elle correctement sur mobile ?" 
+            answer="Tout à fait. L'ensemble de l'interface commerçant a été pensé pour le mobile. Vous pouvez gérer vos stocks, ajouter des produits et valider des commandes directement en déplacement." 
+          />
+        </div>
+      </section>
+
+      {/* Footer Overhaul */}
+      <footer className="landing-footer-premium">
+        <div className="footer-cols">
+          <div className="footer-brand-col">
+            <span className="text-gradient brand-title-footer">BoutikFlow</span>
+            <p className="brand-subtitle-footer">Le CRM WhatsApp conçu pour digitaliser et accélérer les ventes des commerçants.</p>
+          </div>
+          <div className="footer-links-col">
+            <h4>Produit</h4>
+            <Link href="#features">Fonctionnalités</Link>
+            <Link href="#pricing">Tarification</Link>
+            <Link href="/login">Espace Client</Link>
+          </div>
+          <div className="footer-links-col">
+            <h4>Support</h4>
+            <a href="mailto:support@boutikflow.app">Contact</a>
+            <Link href="#faq">Centre d'aide</Link>
+          </div>
+          <div className="footer-links-col">
+            <h4>Légal</h4>
+            <Link href="/privacy">Politique de confidentialité</Link>
+            <Link href="/terms">Conditions d'utilisation</Link>
+          </div>
+        </div>
+        <div className="footer-bottom">
+          <p>© 2026 BoutikFlow. Tous droits réservés. Conçu pour le commerce de demain.</p>
+        </div>
       </footer>
 
       <style jsx>{`
@@ -203,8 +516,8 @@ export default function HomePage() {
           position: fixed;
           inset: 0;
           background-image:
-            linear-gradient(rgba(16,185,129,0.025) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(16,185,129,0.025) 1px, transparent 1px);
+            linear-gradient(rgba(16,185,129,0.02) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(16,185,129,0.02) 1px, transparent 1px);
           background-size: 50px 50px;
           pointer-events: none;
         }
@@ -215,7 +528,7 @@ export default function HomePage() {
           transform: translateX(-50%);
           width: 1000px;
           height: 800px;
-          background: radial-gradient(ellipse, rgba(16,185,129,0.07) 0%, transparent 70%);
+          background: radial-gradient(ellipse, rgba(16,185,129,0.06) 0%, transparent 70%);
           pointer-events: none;
         }
         .landing-glow-bottom {
@@ -224,7 +537,7 @@ export default function HomePage() {
           right: -200px;
           width: 600px;
           height: 600px;
-          background: radial-gradient(ellipse, rgba(16,185,129,0.04) 0%, transparent 70%);
+          background: radial-gradient(ellipse, rgba(16,185,129,0.03) 0%, transparent 70%);
           pointer-events: none;
         }
 
@@ -236,7 +549,7 @@ export default function HomePage() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 1rem 2rem;
+          padding: 1rem 2.5rem;
           border-bottom: 1px solid var(--border-subtle);
         }
         .nav-logo {
@@ -256,7 +569,7 @@ export default function HomePage() {
         }
         .nav-logo-text {
           font-family: var(--font-display);
-          font-size: 1.1rem;
+          font-size: 1.15rem;
           font-weight: 700;
           background: linear-gradient(135deg, #10b981, #047857);
           -webkit-background-clip: text;
@@ -272,59 +585,106 @@ export default function HomePage() {
         /* Hero */
         .hero {
           position: relative;
-          max-width: 800px;
+          max-width: 900px;
           margin: 0 auto;
-          padding: 6rem 2rem 4rem;
+          padding: 6.5rem 2rem 4.5rem;
           text-align: center;
           animation: fadeIn 0.6s ease forwards;
         }
-        .hero-badge { margin-bottom: 1.5rem; }
+        .hero-badge { margin-bottom: 1.75rem; }
         .hero-title {
-          font-size: clamp(2.5rem, 7vw, 4.5rem);
-          line-height: 1.1;
+          font-family: var(--font-display);
+          font-size: clamp(2.25rem, 6.5vw, 4rem);
+          line-height: 1.15;
           margin-bottom: 1.5rem;
           letter-spacing: -0.03em;
+          font-weight: 800;
+          color: var(--text-primary);
         }
         .hero-subtitle {
-          font-size: 1.125rem;
+          font-size: 1.15rem;
           color: var(--text-secondary);
-          line-height: 1.7;
-          max-width: 600px;
-          margin: 0 auto 2.5rem;
+          line-height: 1.75;
+          max-width: 680px;
+          margin: 0 auto 2.75rem;
         }
         .hero-actions {
           display: flex;
           gap: 1rem;
           justify-content: center;
           flex-wrap: wrap;
-          margin-bottom: 3rem;
+          margin-bottom: 3.5rem;
         }
         .hero-cta {
-          padding: 0.875rem 1.75rem;
-          font-size: 1rem;
+          padding: 0.875rem 2rem;
+          font-size: 1.05rem;
           gap: 0.625rem;
+          font-weight: 600;
+          box-shadow: var(--shadow-brand);
         }
-        .hero-cta-secondary { padding: 0.875rem 1.5rem; font-size: 1rem; }
+        .hero-cta-secondary { padding: 0.875rem 1.75rem; font-size: 1.05rem; }
+        
         .hero-stats {
           display: flex;
           justify-content: center;
-          gap: 3rem;
+          gap: 4rem;
           flex-wrap: wrap;
+          padding-top: 1.5rem;
+          border-top: 1px solid var(--border-subtle);
+          max-width: 600px;
+          margin: 0 auto;
         }
         .hero-stat {
           display: flex;
           flex-direction: column;
           gap: 0.25rem;
+          align-items: center;
         }
         .hero-stat-value {
           font-family: var(--font-display);
-          font-size: 1.25rem;
-          font-weight: 700;
+          font-size: 1.4rem;
+          font-weight: 800;
           color: var(--color-brand-400);
         }
         .hero-stat-label {
-          font-size: 0.8rem;
+          font-size: 0.825rem;
           color: var(--text-muted);
+        }
+
+        /* Credibility cards */
+        .credibility-section {
+          max-width: 1100px;
+          margin: 0 auto;
+          padding: 2rem;
+        }
+        .cred-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 1.25rem;
+        }
+        .cred-card {
+          background: rgba(255, 255, 255, 0.01);
+          border: 1px solid var(--border-subtle);
+          border-radius: 16px;
+          padding: 1.5rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+          transition: transform 0.2s ease;
+        }
+        .cred-card:hover {
+          transform: translateY(-2px);
+          border-color: rgba(52, 211, 153, 0.2);
+        }
+        .cred-card h3 {
+          font-size: 1rem;
+          font-weight: 700;
+          color: var(--text-primary);
+        }
+        .cred-card p {
+          font-size: 0.85rem;
+          color: var(--text-secondary);
+          line-height: 1.5;
         }
 
         /* Features */
@@ -332,76 +692,185 @@ export default function HomePage() {
           position: relative;
           max-width: 1100px;
           margin: 0 auto;
-          padding: 4rem 2rem;
+          padding: 5rem 2rem;
         }
         .section-header {
           text-align: center;
-          margin-bottom: 3rem;
+          margin-bottom: 3.5rem;
         }
-        .section-header h2 { margin-bottom: 0.75rem; }
-        .section-header p { color: var(--text-secondary); font-size: 1.05rem; }
+        .section-header h2 { 
+          font-family: var(--font-display);
+          font-size: 2.25rem;
+          font-weight: 800;
+          margin-bottom: 0.75rem; 
+        }
+        .section-header p { color: var(--text-secondary); font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
+        
         .features-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-          gap: 1.25rem;
+          grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+          gap: 1.5rem;
         }
-        .feature-card { cursor: default; }
-        .feature-icon { font-size: 2rem; margin-bottom: 1rem; }
+        .feature-card { 
+          cursor: default; 
+          transition: all 0.3s ease;
+          border: 1px solid var(--border-subtle);
+          padding: 2.25rem 2rem;
+        }
+        .feature-card:hover {
+          transform: translateY(-4px);
+          border-color: rgba(52, 211, 153, 0.25);
+          box-shadow: var(--shadow-md);
+        }
+        .feature-icon { font-size: 2rem; margin-bottom: 1.25rem; }
         .feature-title {
-          font-size: 1.1rem;
+          font-size: 1.15rem;
           font-weight: 700;
-          margin-bottom: 0.5rem;
+          margin-bottom: 0.75rem;
+          color: var(--text-primary);
         }
         .feature-desc {
+          font-size: 0.925rem;
+          color: var(--text-secondary);
+          line-height: 1.65;
+        }
+
+        /* Why Choose Section */
+        .why-choose {
+          max-width: 900px;
+          margin: 0 auto;
+          padding: 4rem 2rem;
+        }
+        .why-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+        }
+        .why-item {
+          display: flex;
+          gap: 1.25rem;
+          align-items: flex-start;
+          background: rgba(255, 255, 255, 0.01);
+          border: 1px solid var(--border-subtle);
+          padding: 1.5rem;
+          border-radius: 16px;
+          transition: all 0.25s ease;
+        }
+        .why-item:hover {
+          background: rgba(255, 255, 255, 0.02);
+          border-color: rgba(52, 211, 153, 0.2);
+        }
+        .why-num {
+          background: var(--color-brand-600);
+          color: white;
+          width: 32px; height: 32px;
+          border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          font-weight: 700;
+          font-size: 0.9rem;
+          flex-shrink: 0;
+        }
+        .why-item h3 {
+          font-size: 1.05rem;
+          font-weight: 700;
+          margin-bottom: 0.375rem;
+          color: var(--text-primary);
+        }
+        .why-item p {
           font-size: 0.9rem;
           color: var(--text-secondary);
-          line-height: 1.6;
+          line-height: 1.5;
+        }
+
+        /* Pricing Toggle */
+        .pricing-toggle-container {
+          display: flex;
+          justify-content: center;
+          margin-bottom: 3rem;
+        }
+        .pricing-toggle-bar {
+          background: var(--surface-2);
+          border: 1px solid var(--border-subtle);
+          padding: 0.375rem;
+          border-radius: 100px;
+          display: flex;
+          gap: 4px;
+        }
+        .toggle-btn {
+          border: none;
+          background: transparent;
+          color: var(--text-muted);
+          padding: 0.5rem 1.25rem;
+          font-size: 0.875rem;
+          font-weight: 600;
+          border-radius: 100px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .toggle-btn.active {
+          background: var(--color-brand-600);
+          color: white;
         }
 
         /* Pricing */
         .pricing {
           position: relative;
-          max-width: 1000px;
+          max-width: 1100px;
           margin: 0 auto;
           padding: 4rem 2rem;
         }
         .pricing-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-          gap: 1.25rem;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 1.5rem;
           align-items: start;
         }
         .pricing-card {
           border-radius: var(--radius-xl);
-          padding: 2rem;
+          padding: 2.5rem 2rem;
           position: relative;
           overflow: hidden;
+          background: var(--surface-1);
+          border: 1px solid var(--border-subtle);
+          display: flex;
+          flex-direction: column;
+          transition: all 0.3s ease;
+        }
+        .pricing-card:hover {
+          transform: translateY(-4px);
+          box-shadow: var(--shadow-md);
         }
         .pricing-highlighted {
           border-color: rgba(16,185,129,0.3) !important;
           box-shadow: var(--shadow-brand);
+          background: linear-gradient(180deg, var(--surface-1) 0%, rgba(16,185,129,0.02) 100%);
         }
         .pricing-badge {
           position: absolute;
           top: 1rem;
-          right: 1rem;
-          font-size: 0.7rem;
+          right: 1.25rem;
+          font-size: 0.72rem;
           font-weight: 700;
           background: var(--color-brand-600);
           color: white;
-          padding: 0.25rem 0.625rem;
+          padding: 0.25rem 0.75rem;
           border-radius: 100px;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
         }
         .pricing-name {
           font-family: var(--font-display);
-          font-size: 1.1rem;
-          font-weight: 700;
-          margin-bottom: 1rem;
+          font-size: 1.3rem;
+          font-weight: 800;
+          margin-bottom: 1.5rem;
+          color: var(--text-primary);
         }
         .pricing-price {
           display: flex;
           flex-direction: column;
-          margin-bottom: 1.5rem;
+          margin-bottom: 2rem;
+          border-bottom: 1px solid var(--border-subtle);
+          padding-bottom: 1.5rem;
         }
         .pricing-amount {
           font-family: var(--font-display);
@@ -412,39 +881,131 @@ export default function HomePage() {
         .pricing-period {
           font-size: 0.8rem;
           color: var(--text-muted);
+          margin-top: 0.25rem;
         }
         .pricing-features {
           list-style: none;
           display: flex;
           flex-direction: column;
-          gap: 0.625rem;
-          margin-bottom: 1.75rem;
+          gap: 0.75rem;
+          margin-bottom: 2.25rem;
+          padding: 0;
+          flex-grow: 1;
         }
         .pricing-feature {
           display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-size: 0.875rem;
+          align-items: flex-start;
+          gap: 0.625rem;
+          font-size: 0.9rem;
           color: var(--text-secondary);
+          line-height: 1.4;
         }
         .pricing-check {
-          color: var(--color-brand-500);
+          color: var(--color-brand-400);
           font-weight: 700;
         }
         .pricing-cta {
           width: 100%;
           justify-content: center;
+          padding: 0.875rem;
+          font-weight: 600;
         }
 
-        /* Footer */
-        .landing-footer {
-          position: relative;
-          text-align: center;
-          padding: 3rem 2rem;
-          border-top: 1px solid var(--border-subtle);
+        /* FAQ */
+        .faq-section {
+          max-width: 800px;
+          margin: 0 auto;
+          padding: 5rem 2rem;
         }
-        .footer-logo { margin-bottom: 0.75rem; font-size: 1.25rem; }
-        .footer-text { color: var(--text-muted); font-size: 0.875rem; }
+        .faq-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+
+        /* Premium Footer */
+        .landing-footer-premium {
+          padding: 5rem 2rem 3rem;
+          border-top: 1px solid var(--border-subtle);
+          background: rgba(255, 255, 255, 0.005);
+          position: relative;
+        }
+        .footer-cols {
+          max-width: 1100px;
+          margin: 0 auto;
+          display: grid;
+          grid-template-columns: 2fr 1fr 1fr 1fr;
+          gap: 3rem;
+          margin-bottom: 4rem;
+        }
+        @media (max-width: 768px) {
+          .footer-cols {
+            grid-template-columns: 1fr;
+            gap: 2rem;
+          }
+        }
+        .footer-brand-col {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+        .brand-title-footer {
+          font-family: var(--font-display);
+          font-size: 1.5rem;
+          font-weight: 800;
+        }
+        .brand-subtitle-footer {
+          font-size: 0.9rem;
+          color: var(--text-muted);
+          line-height: 1.6;
+          max-width: 320px;
+        }
+        .footer-links-col {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+        .footer-links-col h4 {
+          font-size: 0.9rem;
+          font-weight: 700;
+          color: var(--text-primary);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin-bottom: 0.25rem;
+        }
+        .footer-links-col a {
+          font-size: 0.9rem;
+          color: var(--text-secondary);
+          text-decoration: none;
+          transition: color 0.2s ease;
+        }
+        .footer-links-col a:hover {
+          color: var(--color-brand-400);
+        }
+        .footer-bottom {
+          border-top: 1px solid var(--border-subtle);
+          padding-top: 2rem;
+          text-align: center;
+          max-width: 1100px;
+          margin: 0 auto;
+        }
+        .footer-bottom p {
+          font-size: 0.825rem;
+          color: var(--text-disabled);
+        }
+
+        /* Pulsing light effect */
+        .animate-pulse-light {
+          animation: pulse-light 2s infinite;
+        }
+        @keyframes pulse-light {
+          0%, 100% {
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+          }
+          50% {
+            box-shadow: 0 0 15px 4px rgba(16, 185, 129, 0.25);
+          }
+        }
       `}</style>
     </main>
   );
