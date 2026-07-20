@@ -55,6 +55,18 @@ def _create_inventory_log(
     db.add(log)
 
 
+import re
+import secrets
+
+def _generate_sku(name: str) -> str:
+    """Génère un SKU propre et unique à partir du nom du produit."""
+    clean_name = re.sub(r'[^a-zA-Z0-9]', '', name).upper()[:6]
+    if not clean_name:
+        clean_name = "PROD"
+    rand_suffix = secrets.token_hex(3).upper()  # 6 caractères hexadécimaux
+    return f"SKU-{clean_name}-{rand_suffix}"
+
+
 # ──────────────────────────── Catégories ────────────────────────────
 
 @router.get(
@@ -175,7 +187,13 @@ def list_products(
 
     if search:
         search_term = f"%{search}%"
-        query = query.filter(Product.name.ilike(search_term))
+        query = query.filter(
+            or_(
+                Product.name.ilike(search_term),
+                Product.sku.ilike(search_term),
+                Product.barcode == search
+            )
+        )
 
     if category_id:
         query = query.filter(Product.category_id == category_id)
@@ -242,6 +260,53 @@ def create_product(
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ) -> ProductResponse:
+    # Validation d'unicité du code-barres
+    if payload.barcode:
+        existing_barcode = db.query(Product).filter(
+            and_(
+                Product.tenant_id == current_user.tenant_id,
+                Product.barcode == payload.barcode,
+                Product.deleted_at.is_(None)
+            )
+        ).first()
+        if existing_barcode:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Ce code-barres est déjà utilisé pour un autre produit."
+            )
+
+    # Validation d'unicité ou génération de SKU
+    sku_val = payload.sku
+    if sku_val:
+        existing_sku = db.query(Product).filter(
+            and_(
+                Product.tenant_id == current_user.tenant_id,
+                Product.sku == sku_val,
+                Product.deleted_at.is_(None)
+            )
+        ).first()
+        if existing_sku:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Ce SKU est déjà utilisé pour un autre produit."
+            )
+    else:
+        # Essayer de générer un SKU unique
+        for _ in range(5):
+            generated = _generate_sku(payload.name)
+            conflict = db.query(Product).filter(
+                and_(
+                    Product.tenant_id == current_user.tenant_id,
+                    Product.sku == generated,
+                    Product.deleted_at.is_(None)
+                )
+            ).first()
+            if not conflict:
+                sku_val = generated
+                break
+        else:
+            sku_val = f"SKU-{uuid.uuid4().hex[:8].upper()}"
+
     product = Product(
         id=uuid.uuid4(),
         tenant_id=current_user.tenant_id,
@@ -252,6 +317,8 @@ def create_product(
         category_id=payload.category_id,
         images=payload.images,
         is_available=payload.is_available,
+        sku=sku_val,
+        barcode=payload.barcode,
     )
     db.add(product)
     
@@ -295,6 +362,38 @@ def update_product(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Produit introuvable",
         )
+
+    # Validation d'unicité du code-barres si modifié
+    if payload.barcode is not None:
+        existing_barcode = db.query(Product).filter(
+            and_(
+                Product.tenant_id == current_user.tenant_id,
+                Product.barcode == payload.barcode,
+                Product.id != product_id,
+                Product.deleted_at.is_(None)
+            )
+        ).first()
+        if existing_barcode:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Ce code-barres est déjà utilisé pour un autre produit."
+            )
+
+    # Validation d'unicité du SKU si modifié
+    if payload.sku is not None:
+        existing_sku = db.query(Product).filter(
+            and_(
+                Product.tenant_id == current_user.tenant_id,
+                Product.sku == payload.sku,
+                Product.id != product_id,
+                Product.deleted_at.is_(None)
+            )
+        ).first()
+        if existing_sku:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Ce SKU est déjà utilisé pour un autre produit."
+            )
 
     # Suivi des modifications sensibles
     if payload.stock is not None and payload.stock != product.stock:

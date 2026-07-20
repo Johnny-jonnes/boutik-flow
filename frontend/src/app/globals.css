@@ -33,13 +33,13 @@
   --color-brand-800: #065f46;
   --color-brand-900: #064e3b;
 
-  /* Surface — Dark */
-  --surface-0: #0a0f0d;
-  --surface-1: #111715;
-  --surface-2: #161e1a;
-  --surface-3: #1c2620;
-  --surface-4: #232e28;
-  --surface-hover: #2a3830;
+  /* Surface — Dark (Vert-Noir profond) */
+  --surface-0: #040806;
+  --surface-1: #090e0c;
+  --surface-2: #0f1513;
+  --surface-3: #151c19;
+  --surface-4: #1b2320;
+  --surface-hover: #202a26;
 
   /* Text */
   --text-primary:   #f0fdf4;
@@ -79,7 +79,7 @@
   --overlay-border-strong: rgba(255, 255, 255, 0.15);
 
   /* Sidebar */
-  --sidebar-gradient-end: rgba(13, 20, 18, 0.95);
+  --sidebar-gradient-end: #030605;
 
   /* Composants */
   --progress-track-bg:    rgba(255, 255, 255, 0.08);
@@ -136,36 +136,36 @@
    Activé quand <html class="light"> (géré par next-themes)
    ═══════════════════════════════════════════════════════════════════════════ */
 .light {
-  /* Brand Colors — WhatsApp green palette */
+  /* Brand Colors — Emerald Pro */
   --color-brand-50:  #f0fdf4;
-  --color-brand-100: #dcf8c6;
-  --color-brand-200: #a7f3d0;
-  --color-brand-300: #6ee7b7;
-  --color-brand-400: #1da960;
-  --color-brand-500: #25D366;
-  --color-brand-600: #128C7E;
-  --color-brand-700: #0d7a6a;
+  --color-brand-100: #ecfdf5;
+  --color-brand-200: #d1fae5;
+  --color-brand-300: #a7f3d0;
+  --color-brand-400: #34d399;
+  --color-brand-500: #10b981;
+  --color-brand-600: #059669;
+  --color-brand-700: #047857;
   --color-brand-800: #065f46;
   --color-brand-900: #064e3b;
 
-  /* Surface — Light (WhatsApp Web) */
-  --surface-0: #F0F2F5;
-  --surface-1: #FFFFFF;
-  --surface-2: #F7F8FA;
-  --surface-3: #EAECEF;
-  --surface-4: #DDE1E8;
-  --surface-hover: rgba(37, 211, 102, 0.07);
+  /* Surface — Light Slate (Clean SaaS look) */
+  --surface-0: #f8fafc;
+  --surface-1: #ffffff;
+  --surface-2: #f1f5f9;
+  --surface-3: #e2e8f0;
+  --surface-4: #cbd5e1;
+  --surface-hover: rgba(16, 185, 129, 0.06);
 
   /* Text */
-  --text-primary:   #111827;
-  --text-secondary: #6B7280;
-  --text-muted:     #9CA3AF;
-  --text-disabled:  #D1D5DB;
+  --text-primary:   #0f172a;
+  --text-secondary: #475569;
+  --text-muted:     #64748b;
+  --text-disabled:  #94a3b8;
 
   /* Border */
-  --border-subtle:  #E5E7EB;
-  --border-default: rgba(37, 211, 102, 0.30);
-  --border-strong:  rgba(37, 211, 102, 0.55);
+  --border-subtle:  #e2e8f0;
+  --border-default: rgba(16, 185, 129, 0.15);
+  --border-strong:  rgba(16, 185, 129, 0.30);
 
   /* Status */
   --color-success: #22C55E;
@@ -174,35 +174,35 @@
   --color-info:    #3B82F6;
 
   /* Shadows — très légères */
-  --shadow-sm:    0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-md:    0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
-  --shadow-lg:    0 10px 40px rgba(0, 0, 0, 0.10), 0 4px 8px rgba(0, 0, 0, 0.06);
-  --shadow-brand: 0 0 30px rgba(37, 211, 102, 0.18), 0 4px 16px rgba(0, 0, 0, 0.08);
-  --shadow-glow:  0 0 0 1px rgba(37, 211, 102, 0.25), 0 0 20px rgba(37, 211, 102, 0.10);
+  --shadow-sm:    0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-md:    0 4px 16px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.02);
+  --shadow-lg:    0 10px 40px rgba(0, 0, 0, 0.08), 0 4px 8px rgba(0, 0, 0, 0.04);
+  --shadow-brand: 0 0 30px rgba(16, 185, 129, 0.12), 0 4px 16px rgba(0, 0, 0, 0.06);
+  --shadow-glow:  0 0 0 1px rgba(16, 185, 129, 0.20), 0 0 20px rgba(16, 185, 129, 0.08);
 
   /* Overlays — remplacent les rgba(0,0,0,*) */
-  --overlay-subtle:        rgba(0, 0, 0, 0.025);
-  --overlay-light:         rgba(0, 0, 0, 0.04);
-  --overlay-medium:        rgba(0, 0, 0, 0.07);
-  --overlay-border:        rgba(0, 0, 0, 0.08);
-  --overlay-border-strong: rgba(0, 0, 0, 0.15);
+  --overlay-subtle:        rgba(15, 23, 42, 0.02);
+  --overlay-light:         rgba(15, 23, 42, 0.04);
+  --overlay-medium:        rgba(15, 23, 42, 0.06);
+  --overlay-border:        rgba(15, 23, 42, 0.08);
+  --overlay-border-strong: rgba(15, 23, 42, 0.12);
 
   /* Sidebar */
-  --sidebar-gradient-end: rgba(247, 248, 250, 0.98);
+  --sidebar-gradient-end: #f1f5f9;
 
   /* Composants */
-  --progress-track-bg:    rgba(0, 0, 0, 0.08);
+  --progress-track-bg:    rgba(15, 23, 42, 0.08);
   --profile-dropdown-bg:  #FFFFFF;
-  --focus-ring-color:     rgba(37, 211, 102, 0.25);
-  --logo-gradient-from:   #25D366;
-  --logo-gradient-to:     #128C7E;
-  --auth-grid-color:      rgba(37, 211, 102, 0.05);
-  --auth-glow-color:      rgba(37, 211, 102, 0.07);
-  --recharts-grid-stroke: rgba(0, 0, 0, 0.06);
-  --brand-alpha-05: rgba(37, 211, 102, 0.05);
-  --brand-alpha-08: rgba(37, 211, 102, 0.08);
-  --brand-alpha-10: rgba(37, 211, 102, 0.10);
-  --brand-alpha-20: rgba(37, 211, 102, 0.20);
+  --focus-ring-color:     rgba(16, 185, 129, 0.2);
+  --logo-gradient-from:   #10b981;
+  --logo-gradient-to:     #059669;
+  --auth-grid-color:      rgba(16, 185, 129, 0.04);
+  --auth-glow-color:      rgba(16, 185, 129, 0.06);
+  --recharts-grid-stroke: rgba(15, 23, 42, 0.06);
+  --brand-alpha-05: rgba(16, 185, 129, 0.05);
+  --brand-alpha-08: rgba(16, 185, 129, 0.08);
+  --brand-alpha-10: rgba(16, 185, 129, 0.10);
+  --brand-alpha-20: rgba(16, 185, 129, 0.20);
 
   /* Shadcn / Base UI tokens */
   --background:           oklch(0.97 0 0);

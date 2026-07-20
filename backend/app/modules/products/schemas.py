@@ -51,6 +51,8 @@ class ProductCreate(BaseModel):
     category_id: uuid.UUID | None = None
     images: list[str] = Field(default_factory=list, description="URLs des images")
     is_available: bool = True
+    sku: str | None = Field(None, max_length=100, description="Code SKU unique")
+    barcode: str | None = Field(None, max_length=100, description="Code-barres optionnel")
 
 
 class ProductUpdate(BaseModel):
@@ -62,6 +64,8 @@ class ProductUpdate(BaseModel):
     category_id: uuid.UUID | None = None
     images: list[str] | None = None
     is_available: bool | None = None
+    sku: str | None = Field(None, max_length=100)
+    barcode: str | None = Field(None, max_length=100)
 
 
 class ProductResponse(BaseModel):
@@ -76,6 +80,8 @@ class ProductResponse(BaseModel):
     category_rel: CategoryResponse | None = None
     images: list[str]
     is_available: bool
+    sku: str | None
+    barcode: str | None
     created_at: datetime
     updated_at: datetime
 

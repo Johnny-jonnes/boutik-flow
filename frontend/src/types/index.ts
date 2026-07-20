@@ -131,6 +131,8 @@ export interface Product {
   category_rel: Category | null;
   images: string[];
   is_available: boolean;
+  sku: string | null;
+  barcode: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -143,6 +145,8 @@ export interface ProductCreate {
   category_id?: string;
   images?: string[];
   is_available?: boolean;
+  sku?: string;
+  barcode?: string;
 }
 
 // ─── Commandes ────────────────────────────────────────────────────────────

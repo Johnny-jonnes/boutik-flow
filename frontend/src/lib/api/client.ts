@@ -458,9 +458,21 @@ export const api = {
     return request('/whatsapp/send', { method: 'POST', body: JSON.stringify(data) });
   },
 
-  // ── IA ────────────────────────────────────────────────────────────────
   suggestReply(data: AISuggestReplyPayload): Promise<AISuggestReplyResult> {
     return request('/ai/suggest-reply', { method: 'POST', body: JSON.stringify(data) });
+  },
+
+  analyzeProductImage(imageData: string): Promise<{
+    name?: string;
+    category?: string;
+    description?: string;
+    brand?: string;
+    attributes?: Record<string, any>;
+  }> {
+    return request('/ai/analyze-product-image', {
+      method: 'POST',
+      body: JSON.stringify({ image_data: imageData }),
+    });
   },
 
   // ── Admin — Stats ──────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Download, FileText, Eye, Pencil, Plus, LayoutGrid, List, Check, XCircle, ArrowRight, Trash2 } from 'lucide-react';
+import { Download, FileText, Eye, Pencil, Plus, LayoutGrid, List, Check, XCircle, ArrowRight, Trash2, ScanBarcode } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import type { Order, Client, Product, OrderStatus } from '@/types';
@@ -55,6 +55,9 @@ export default function OrdersPage() {
   const [newStatus, setNewStatus] = useState('');
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
+  // Scanner state for barcode/SKU quick add
+  const [scannerInput, setScannerInput] = useState('');
+
   const fetchOrders = async () => {
     try {
       const response = await api.getOrders(1); // Fetch all orders
@@ -88,6 +91,48 @@ export default function OrdersPage() {
     const newItems = [...createForm.items];
     newItems[index] = { ...newItems[index], [field]: value };
     setCreateForm(prev => ({ ...prev, items: newItems }));
+  };
+
+  // Scanner: search product by barcode or SKU
+  const handleScannerSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const query = scannerInput.trim();
+    if (!query) return;
+
+    const matched = products.find(
+      p => (p.barcode && p.barcode === query) || (p.sku && p.sku.toLowerCase() === query.toLowerCase())
+    );
+
+    if (!matched) {
+      toast.error(`Aucun produit trouvé pour "${query}"`);
+      return;
+    }
+
+    if (!matched.is_available || matched.stock <= 0) {
+      toast.error(`${matched.name} est indisponible ou en rupture de stock.`);
+      return;
+    }
+
+    // Check if already in items list
+    const existingIndex = createForm.items.findIndex(i => i.product_id === matched.id);
+    if (existingIndex >= 0) {
+      const newItems = [...createForm.items];
+      newItems[existingIndex] = { ...newItems[existingIndex], quantity: newItems[existingIndex].quantity + 1 };
+      setCreateForm(prev => ({ ...prev, items: newItems }));
+    } else {
+      // Replace first empty item or add new one
+      const emptyIndex = createForm.items.findIndex(i => !i.product_id);
+      if (emptyIndex >= 0) {
+        const newItems = [...createForm.items];
+        newItems[emptyIndex] = { product_id: matched.id, quantity: 1 };
+        setCreateForm(prev => ({ ...prev, items: newItems }));
+      } else {
+        setCreateForm(prev => ({ ...prev, items: [...prev.items, { product_id: matched.id, quantity: 1 }] }));
+      }
+    }
+
+    toast.success(`${matched.name} ajouté au panier`);
+    setScannerInput('');
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -326,6 +371,22 @@ export default function OrdersPage() {
           </div>
           
           <div className="form-section-title">Articles</div>
+
+          {/* Scanner barcode / SKU */}
+          <form onSubmit={handleScannerSubmit} className="scanner-row">
+            <div className="scanner-input-wrap">
+              <ScanBarcode size={16} className="scanner-icon" />
+              <input
+                type="text"
+                className="input scanner-input"
+                placeholder="Scanner un code-barres ou taper un SKU..."
+                value={scannerInput}
+                onChange={e => setScannerInput(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <button type="submit" className="btn btn-secondary btn-sm">Ajouter</button>
+          </form>
           <div className="items-list">
             {createForm.items.map((item, index) => (
               <div key={index} className="item-row">
@@ -517,6 +578,38 @@ export default function OrdersPage() {
         .detail-row:last-of-type { border-bottom: none; }
         .detail-label { font-size: 0.8rem; color: var(--text-muted); font-weight: 500; }
         .detail-value { font-size: 0.9rem; color: var(--text-primary); font-weight: 500; }
+
+        /* Scanner */
+        .scanner-row {
+          display: flex;
+          gap: 0.5rem;
+          align-items: center;
+          background: var(--overlay-subtle);
+          border: 1px dashed var(--border-default);
+          border-radius: 8px;
+          padding: 0.5rem 0.75rem;
+          margin-bottom: 0.5rem;
+        }
+        .scanner-input-wrap {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          flex: 1;
+        }
+        .scanner-icon {
+          color: var(--color-brand-500);
+          flex-shrink: 0;
+        }
+        .scanner-input {
+          border: none;
+          background: transparent;
+          font-size: 0.85rem;
+          padding: 0.35rem 0;
+        }
+        .scanner-input:focus {
+          box-shadow: none;
+          border: none;
+        }
       `}</style>
     </div>
   );

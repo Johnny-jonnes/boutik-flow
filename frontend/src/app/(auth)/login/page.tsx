@@ -20,9 +20,13 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await api.login(form);
+      const res = await api.login(form);
       toast.success('Connexion réussie !');
-      router.push('/dashboard');
+      if (res.user && res.user.role && res.user.role.toLowerCase() === 'admin') {
+        router.push('/admin');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erreur de connexion');
     } finally {
