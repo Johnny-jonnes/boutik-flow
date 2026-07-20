@@ -96,11 +96,19 @@ export default function ProductsPage() {
 
   useEffect(() => { fetchProductsAndCategories(); }, []);
 
+  const generateClientSku = (name: string): string => {
+    const cleanName = name.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6);
+    const prefix = cleanName || 'PROD';
+    const rand = Math.random().toString(16).slice(2, 8).toUpperCase();
+    return `SKU-${prefix}-${rand}`;
+  };
+
   // Add
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      const finalSku = addForm.sku.trim() || generateClientSku(addForm.name);
       await api.createProduct({
         name: addForm.name,
         price: Number(addForm.price),
@@ -108,7 +116,7 @@ export default function ProductsPage() {
         category_id: addForm.category_id || undefined,
         description: addForm.description || undefined,
         is_available: addForm.is_available,
-        sku: addForm.sku || undefined,
+        sku: finalSku,
         barcode: addForm.barcode || undefined,
         images: addImagePreview ? [addImagePreview] : [],
       });
@@ -145,6 +153,7 @@ export default function ProductsPage() {
     if (!editProduct) return;
     setIsEditing(true);
     try {
+      const finalSku = editForm.sku.trim() || generateClientSku(editForm.name);
       await api.updateProduct(editProduct.id, {
         name: editForm.name,
         price: Number(editForm.price),
@@ -152,7 +161,7 @@ export default function ProductsPage() {
         category_id: editForm.category_id || undefined,
         description: editForm.description || undefined,
         is_available: editForm.is_available,
-        sku: editForm.sku || undefined,
+        sku: finalSku,
         barcode: editForm.barcode || undefined,
         images: editImagePreview ? [editImagePreview] : [],
       });

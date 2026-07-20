@@ -492,7 +492,6 @@ body {
 }
 .input::placeholder { color: var(--text-muted); }
 
-/* ─── Sidebar Variables Override (Forces dark theme internally inside sidebar) ─── */
 .sidebar {
   --surface-0: #040806;
   --surface-1: #090e0c;
@@ -514,6 +513,64 @@ body {
   --brand-alpha-08: rgba(16, 185, 129, 0.12);
   --brand-alpha-10: rgba(16, 185, 129, 0.15);
   --color-brand-500: #34d399;
+}
+
+/* Forçage explicite de contraste pour la sidebar en mode clair */
+.sidebar .brand-text {
+  color: #f0fdf4 !important;
+}
+.sidebar .boutique-name {
+  color: #f0fdf4 !important;
+}
+.sidebar .boutique-badge {
+  color: #34d399 !important;
+}
+.sidebar .nav-section-title {
+  color: #8fa399 !important; /* gris-vert plus clair pour être lisible */
+}
+.sidebar .nav-section-title:hover {
+  color: #f0fdf4 !important;
+}
+.sidebar .nav-link {
+  color: #a7b8b0 !important;
+}
+.sidebar .nav-link:hover {
+  color: #f0fdf4 !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+.sidebar .nav-link--active {
+  color: #34d399 !important;
+  background: rgba(16, 185, 129, 0.15) !important;
+}
+.sidebar .profile-name {
+  color: #f0fdf4 !important;
+}
+.sidebar .profile-role {
+  color: #8fa399 !important;
+}
+.sidebar .profile-chevron, .sidebar .boutique-chevron {
+  color: #8fa399 !important;
+}
+.sidebar .plan-usage-header {
+  color: #8fa399 !important;
+}
+.sidebar .plan-percentage {
+  color: #a7b8b0 !important;
+}
+.sidebar .progress-track {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+.sidebar .progress-bar {
+  background: #34d399 !important;
+}
+.sidebar .sidebar-collapse-btn {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #a7b8b0 !important;
+}
+.sidebar .sidebar-collapse-btn:hover {
+  color: #f0fdf4 !important;
+  background: rgba(255, 255, 255, 0.08) !important;
 }
 
 /* ─── Badges ────────────────────────────────────────────────────────────── */
