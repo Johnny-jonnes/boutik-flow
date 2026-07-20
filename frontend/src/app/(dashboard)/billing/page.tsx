@@ -3,13 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import styles from './page.module.css';
 import { api } from '@/lib/api/client';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function BillingPage() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
-  const [currentPlan, setCurrentPlan] = useState('Freemium');
+  const [currentPlan, setCurrentPlan] = useState('freemium');
+  const { t } = useLanguage();
 
   useEffect(() => {
     api.getSubscription().then(data => {
@@ -42,54 +44,56 @@ export default function BillingPage() {
 
   const plans = [
     {
-      id: 'freemium',
-      name: 'Freemium',
-      price: '50 000',
-      features: ['Jusqu\'à 50 clients', 'Gestion des commandes basique', 'Support communautaire'],
-      buttonText: 'Plan actuel',
-      isPro: false,
-    },
-    {
       id: 'starter',
-      name: 'Starter',
-      price: '49,000',
-      features: ['Clients illimités', 'Analyses détaillées', 'Support email 24/7'],
-      buttonText: 'Choisir Starter',
+      name: t('bill.monthly'),
+      description: t('bill.monthly_desc'),
+      features: [
+        { fr: 'Clients illimités', en: 'Unlimited customers' },
+        { fr: 'Gestion complète des commandes', en: 'Full order management' },
+        { fr: 'Analyses détaillées', en: 'Detailed analytics' },
+        { fr: 'Support email 24/7', en: 'Email support 24/7' },
+        { fr: 'Campagnes WhatsApp', en: 'WhatsApp campaigns' },
+      ],
       isPro: false,
     },
     {
       id: 'pro',
-      name: 'Pro',
-      price: '99,000',
-      features: ['Fonctionnalités Starter', 'Campagnes SMS/Email', 'Priorité Orange Money', 'Gestion Multi-Boutiques'],
-      buttonText: 'Passer en Pro',
+      name: t('bill.lifetime'),
+      description: t('bill.lifetime_desc'),
+      features: [
+        { fr: 'Toutes les fonctionnalités Mensuel', en: 'All Monthly features' },
+        { fr: 'Campagnes SMS & Email', en: 'SMS & Email campaigns' },
+        { fr: 'Gestion Multi-Boutiques', en: 'Multi-Shop management' },
+        { fr: 'Priorité Orange Money', en: 'Orange Money priority' },
+        { fr: 'Support prioritaire', en: 'Priority support' },
+        { fr: 'Mises à jour à vie', en: 'Lifetime updates' },
+      ],
       isPro: true,
     }
   ];
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.title}>Abonnements & Facturation</h1>
-      <p className={styles.subtitle}>Choisissez le forfait qui correspond à la taille de votre boutique.</p>
+      <h1 className={styles.title}>{t('bill.title')}</h1>
+      <p className={styles.subtitle}>{t('bill.subtitle')}</p>
       
       <div className={styles.plansGrid}>
         {plans.map(plan => (
           <div key={plan.id} className={`${styles.planCard} ${plan.isPro ? styles.proCard : ''}`}>
             <h2 className={styles.planName}>{plan.name}</h2>
-            <div className={styles.planPrice}>
-              {plan.price} <span className={styles.planCurrency}>GNF / mois</span>
-            </div>
+            <p className={styles.planDescription}>{plan.description}</p>
+            <div className={styles.planFeaturesTitle}>{t('bill.features')}</div>
             <ul className={styles.planFeatures}>
               {plan.features.map((feat, idx) => (
-                <li key={idx}>{feat}</li>
+                <li key={idx}>{feat.fr}</li>
               ))}
             </ul>
             <button 
               className={`${styles.selectButton} ${plan.isPro ? styles.selectButtonPro : ''}`}
-              onClick={() => plan.id !== 'freemium' && setSelectedPlan(plan.id)}
-              disabled={plan.name === currentPlan}
+              onClick={() => plan.id !== currentPlan && setSelectedPlan(plan.id)}
+              disabled={plan.id === currentPlan}
             >
-              {plan.name === currentPlan ? 'Plan Actuel' : plan.buttonText}
+              {plan.id === currentPlan ? t('bill.current') : t('bill.choose')}
             </button>
           </div>
         ))}
@@ -98,10 +102,10 @@ export default function BillingPage() {
       {selectedPlan && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
-            <h3 className={styles.modalTitle}>Paiement Orange Money</h3>
+            <h3 className={styles.modalTitle}>{t('bill.orange_money')}</h3>
             <form onSubmit={handleCheckout}>
               <div className={styles.inputGroup}>
-                <label>Numéro de téléphone (Orange)</label>
+                <label>{t('bill.phone')}</label>
                 <input 
                   type="tel" 
                   placeholder="Ex: 620 00 00 00" 
@@ -111,10 +115,10 @@ export default function BillingPage() {
                 />
               </div>
               <button type="submit" className={styles.payButton} disabled={loading}>
-                {loading ? 'Traitement...' : 'Payer maintenant'}
+                {loading ? '...' : t('bill.pay')}
               </button>
               <button type="button" className={styles.cancelButton} onClick={() => setSelectedPlan(null)}>
-                Annuler
+                {t('bill.cancel')}
               </button>
               {message && <div className={styles.message}>{message}</div>}
             </form>

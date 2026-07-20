@@ -22,10 +22,12 @@ import {
   Tags,
   FolderTree,
   Megaphone,
-  Shield
+  Shield,
+  Globe
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useLanguage } from '@/context/LanguageContext';
 
 const NAV_CATEGORIES = [
   {
@@ -74,11 +76,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     'Marketing': true,
     'Administration': true
   });
-  const [userInfo, setUserInfo] = useState({ boutiqueName: 'Ma Boutique', email: '', role: 'Admin' });
+  const [userInfo, setUserInfo] = useState({ boutiqueName: 'Ma Boutique', email: '', role: 'Admin', plan: 'freemium' });
   const profileDropdownRef = useRef<HTMLDivElement>(null);
+  const { language, setLanguage, t } = useLanguage();
 
   useEffect(() => {
-    // Decode email from JWT token
+    // Decode user info from JWT token
     try {
       const token = localStorage.getItem('boutikflow_access_token');
       if (token) {
@@ -87,10 +90,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           boutiqueName: payload.tenant_name || 'Ma Boutique',
           email: payload.email || payload.sub || '',
           role: payload.role || 'Admin',
+          plan: payload.tenant_plan || 'freemium',
         });
       }
     } catch {
-      setUserInfo({ boutiqueName: 'Ma Boutique', email: '', role: 'Admin' });
+      setUserInfo({ boutiqueName: 'Ma Boutique', email: '', role: 'Admin', plan: 'freemium' });
     }
   }, []);
 
@@ -227,21 +231,47 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Persistent Bottom Section */}
         <div className="sidebar__footer">
-          {/* Plan block */}
+          {/* Premium Plan Status Block */}
           <div className="plan-usage-block">
-            <div className="plan-usage-header">
-              <span>Utilisation de votre plan</span>
-              <span className="plan-percentage">60% utilisé</span>
-            </div>
-            <div className="progress-bar">
-              <div className="progress-fill" style={{ width: '60%' }} />
-            </div>
-            
-            <Link href="/billing" className="upgrade-btn">
-              <Rocket size={14} />
-              <span>Passer au Starter</span>
-            </Link>
+            {userInfo.plan === 'pro' ? (
+              <>
+                <div className="plan-status-badge plan-status-badge--lifetime">
+                  <Zap size={14} />
+                  <span>{t('sidebar.lifetime')}</span>
+                </div>
+                <div className="plan-status-text">{t('sidebar.lifetimeActive')}</div>
+              </>
+            ) : userInfo.plan === 'starter' ? (
+              <>
+                <div className="plan-status-badge plan-status-badge--monthly">
+                  <Rocket size={14} />
+                  <span>{t('sidebar.monthly')}</span>
+                </div>
+                <Link href="/billing" className="upgrade-btn">
+                  <Zap size={14} />
+                  <span>{t('sidebar.upgradeLifetime')}</span>
+                </Link>
+              </>
+            ) : (
+              <>
+                <div className="plan-status-badge plan-status-badge--trial">
+                  <Store size={14} />
+                  <span>{t('sidebar.trial')}</span>
+                </div>
+                <Link href="/billing" className="upgrade-btn">
+                  <Rocket size={14} />
+                  <span>{t('sidebar.upgradePro')}</span>
+                </Link>
+              </>
+            )}
           </div>
+
+          {/* Language Selector */}
+          <button className="lang-toggle" onClick={() => setLanguage(language === 'fr' ? 'en' : 'fr')}>
+            <Globe size={14} />
+            <span>{language === 'fr' ? 'Français' : 'English'}</span>
+            <span className="lang-flag">{language === 'fr' ? '🇫🇷' : '🇬🇧'}</span>
+          </button>
 
           <div className="footer-separator" />
 
@@ -256,7 +286,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
               <div className="profile-info">
                 <span className="profile-name">{userName}</span>
-                <span className="profile-role">Administrateur</span>
+                <span className="profile-role">{userInfo.role === 'admin' ? 'Admin' : (language === 'fr' ? 'Propriétaire' : 'Owner')}</span>
               </div>
               <ChevronDown size={14} className={`profile-chevron ${isProfileDropdownOpen ? 'profile-chevron--rotated' : ''}`} />
             </div>
@@ -266,11 +296,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <div className="profile-dropdown">
                 <Link href="/billing" className="dropdown-item" onClick={() => setIsProfileDropdownOpen(false)}>
                   <Zap size={14} />
-                  <span>Facturation</span>
+                  <span>{t('sidebar.billing')}</span>
                 </Link>
                 <div className="dropdown-item dropdown-item--logout" onClick={handleLogout}>
                   <LogOut size={14} />
-                  <span>Déconnexion</span>
+                  <span>{t('sidebar.logout')}</span>
                 </div>
               </div>
             )}
@@ -540,34 +570,62 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           padding: 0.75rem;
           display: flex;
           flex-direction: column;
-          gap: 0.625rem;
-          margin-bottom: 0.75rem;
+          gap: 0.5rem;
+          margin-bottom: 0.5rem;
         }
 
-        .plan-usage-header {
+        .plan-status-badge {
           display: flex;
-          justify-content: space-between;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.75rem;
+          font-weight: 600;
+          padding: 0.375rem 0.625rem;
+          border-radius: 8px;
+        }
+        .plan-status-badge--trial {
+          background: rgba(251, 191, 36, 0.12);
+          color: #fbbf24;
+        }
+        .plan-status-badge--monthly {
+          background: rgba(52, 211, 153, 0.12);
+          color: #34d399;
+        }
+        .plan-status-badge--lifetime {
+          background: rgba(168, 85, 247, 0.12);
+          color: #c084fc;
+        }
+        .plan-status-text {
           font-size: 0.7rem;
           color: #8fa399;
+          padding: 0 0.25rem;
         }
 
-        .plan-percentage {
-          font-weight: 600;
+        /* ─── Language Toggle ─────────────────────────── */
+        .lang-toggle {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem 0.75rem;
+          border-radius: 8px;
+          background: transparent;
+          border: 1px solid rgba(255, 255, 255, 0.06);
           color: #a7b8b0;
-        }
-
-        .progress-bar {
-          height: 6px;
-          background: rgba(255, 255, 255, 0.08);
-          border-radius: 3px;
-          overflow: hidden;
+          font-size: 0.8rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          margin-bottom: 0.25rem;
           width: 100%;
         }
-
-        .progress-fill {
-          height: 100%;
-          background: #34d399;
-          border-radius: 3px;
+        .lang-toggle:hover {
+          background: rgba(255, 255, 255, 0.05);
+          color: #f0fdf4;
+        }
+        .lang-flag {
+          margin-left: auto;
+          font-size: 1rem;
+        }
         }
 
         .upgrade-btn {

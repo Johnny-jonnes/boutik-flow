@@ -52,6 +52,8 @@ def _build_token_response(user: User) -> TokenResponse:
     token_data = {
         "sub": str(user.id),
         "tenant_id": str(user.tenant_id),
+        "tenant_name": user.tenant.name if user.tenant else "Ma Boutique",
+        "tenant_plan": user.tenant.plan.value if user.tenant and hasattr(user.tenant.plan, "value") else (user.tenant.plan if user.tenant else "freemium"),
         "email": user.email,
         "role": user.role.value if hasattr(user.role, "value") else user.role,
     }
@@ -271,9 +273,40 @@ def forgot_password(
         ).first()
 
         if user:
-            token = create_password_reset_token(str(user.id))
-            reset_link = f"{settings.FRONTEND_URL}/reset-password?token={token}"
-            send_password_reset_email(user.email, reset_link, tenant.name)
+            # Si Supabase est configuré, on utilise Supabase Auth pour envoyer un vrai e-mail gratuitement
+            if settings.SUPABASE_URL and settings.SUPABASE_SERVICE_KEY:
+                try:
+                    from supabase import create_client
+                    import secrets
+                    supabase_admin = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
+                    
+                    # Garantir que l'utilisateur existe dans Supabase Auth
+                    try:
+                        supabase_admin.auth.admin.create_user({
+                            "email": user.email,
+                            "password": secrets.token_urlsafe(16),
+                            "email_confirm": True
+                        })
+                    except Exception:
+                        pass # Ignore s'il existe déjà
+                    
+                    # Demander la réinitialisation d'e-mail via Supabase Auth
+                    supabase_admin.auth.reset_password_for_email(
+                        user.email,
+                        options={"redirect_to": f"{settings.FRONTEND_URL}/reset-password"}
+                    )
+                    logger.info("Lien de réinitialisation envoyé par Supabase pour %s", user.email)
+                except Exception as e:
+                    logger.error("Échec de l'envoi via Supabase, repli sur le SMTP local: %s", str(e))
+                    token = create_password_reset_token(str(user.id))
+                    reset_link = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+                    send_password_reset_email(user.email, reset_link, tenant.name)
+            else:
+                # Utiliser le SMTP classique configuré
+                token = create_password_reset_token(str(user.id))
+                reset_link = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+                send_password_reset_email(user.email, reset_link, tenant.name)
+            
             logger.info(
                 "Demande de réinitialisation de mot de passe pour %s (tenant=%s)",
                 user.email, tenant.slug,
@@ -293,18 +326,43 @@ def reset_password(
     payload: ResetPasswordRequest,
     db: Annotated[Session, Depends(get_db)],
 ) -> ResetPasswordResponse:
-    """Valide le token de réinitialisation (courte durée de vie) et met à jour le mot de passe."""
-    token_payload = decode_token(payload.token)
+    """Valide le token de réinitialisation (interne ou Supabase) et met à jour le mot de passe."""
+    user_email = None
 
-    if token_payload.get("type") != "password_reset":
+    # 1. Tenter de décoder comme un token JWT interne de réinitialisation
+    try:
+        token_payload = decode_token(payload.token)
+        if token_payload.get("type") == "password_reset":
+            user_id = token_payload.get("sub")
+            user = db.query(User).filter(
+                and_(User.id == uuid.UUID(user_id), User.deleted_at.is_(None))
+            ).first()
+            if user:
+                user_email = user.email
+    except Exception:
+        pass
+
+    # 2. Si non valide, tenter de vérifier comme un token d'accès Supabase
+    if not user_email and settings.SUPABASE_URL and settings.SUPABASE_ANON_KEY:
+        try:
+            from supabase import create_client
+            # Utiliser la clé anonyme pour valider l'access_token de l'utilisateur
+            supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
+            auth_resp = supabase.auth.get_user(payload.token)
+            if auth_resp and auth_resp.user:
+                user_email = auth_resp.user.email
+        except Exception as e:
+            logger.error("Échec de la validation du token Supabase : %s", str(e))
+
+    if not user_email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Lien de réinitialisation invalide",
+            detail="Lien de réinitialisation invalide ou expiré",
         )
 
-    user_id = token_payload.get("sub")
+    # Récupérer l'utilisateur correspondant dans notre base locale
     user = db.query(User).filter(
-        and_(User.id == uuid.UUID(user_id), User.deleted_at.is_(None))
+        and_(User.email == user_email, User.deleted_at.is_(None))
     ).first()
 
     if not user or not user.is_active:

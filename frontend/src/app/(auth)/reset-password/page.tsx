@@ -10,11 +10,27 @@ import { toast } from 'sonner';
 function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get('token') || '';
-
+  const queryToken = searchParams.get('token') || '';
+  
+  const [supabaseToken, setSupabaseToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [form, setForm] = useState({ password: '', confirmPassword: '' });
+
+  useState(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash;
+      if (hash) {
+        const params = new URLSearchParams(hash.substring(1));
+        const accessToken = params.get('access_token');
+        if (accessToken) {
+          setSupabaseToken(accessToken);
+        }
+      }
+    }
+  });
+
+  const token = queryToken || supabaseToken;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

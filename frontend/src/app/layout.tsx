@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { Toaster } from '@/components/ui/sonner';
+import { LanguageProvider } from '@/context/LanguageContext';
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -24,11 +25,13 @@ export default function RootLayout({
     // que next-themes injecte côté client sur <html>
     <html lang="fr" suppressHydrationWarning>
       <body>
-        <ThemeProvider>
-          {children}
-          {/* Toaster global — fonctionne avec les deux thèmes via next-themes */}
-          <Toaster richColors position="top-right" />
-        </ThemeProvider>
+        <LanguageProvider>
+          <ThemeProvider>
+            {children}
+            {/* Toaster global — fonctionne avec les deux thèmes via next-themes */}
+            <Toaster richColors position="top-right" />
+          </ThemeProvider>
+        </LanguageProvider>
       </body>
     </html>
   );
