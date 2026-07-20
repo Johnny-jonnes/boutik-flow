@@ -132,7 +132,7 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   THÈME CLAIR — Light tokens (WhatsApp-inspired)
+   THÈME CLAIR — Light tokens (Premium SaaS Slate/Emerald)
    Activé quand <html class="light"> (géré par next-themes)
    ═══════════════════════════════════════════════════════════════════════════ */
 .light {
@@ -148,13 +148,13 @@
   --color-brand-800: #065f46;
   --color-brand-900: #064e3b;
 
-  /* Surface — Light Slate (Clean SaaS look) */
-  --surface-0: #f8fafc;
+  /* Surface — Light Slate (Premium SaaS look) */
+  --surface-0: #f1f5f9;
   --surface-1: #ffffff;
-  --surface-2: #f1f5f9;
+  --surface-2: #f8fafc;
   --surface-3: #e2e8f0;
   --surface-4: #cbd5e1;
-  --surface-hover: rgba(16, 185, 129, 0.06);
+  --surface-hover: #f1f5f9;
 
   /* Text */
   --text-primary:   #0f172a;
@@ -162,10 +162,10 @@
   --text-muted:     #64748b;
   --text-disabled:  #94a3b8;
 
-  /* Border */
+  /* Border — Neutral Slate (pas de teinture émeraude pour un rendu pro) */
   --border-subtle:  #e2e8f0;
-  --border-default: rgba(16, 185, 129, 0.15);
-  --border-strong:  rgba(16, 185, 129, 0.30);
+  --border-default: #cbd5e1;
+  --border-strong:  #94a3b8;
 
   /* Status */
   --color-success: #22C55E;
