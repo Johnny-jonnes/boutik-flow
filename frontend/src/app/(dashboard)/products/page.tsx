@@ -12,6 +12,41 @@ function formatGNF(amount: number) {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' GNF';
 }
 
+const compressImage = (base64Str: string, maxWidth = 300, maxHeight = 300): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64Str;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.7)); // Compresse en JPEG 70%
+      } else {
+        resolve(base64Str);
+      }
+    };
+    img.onerror = () => resolve(base64Str);
+  });
+};
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -75,6 +110,7 @@ export default function ProductsPage() {
         is_available: addForm.is_available,
         sku: addForm.sku || undefined,
         barcode: addForm.barcode || undefined,
+        images: addImagePreview ? [addImagePreview] : [],
       });
       toast.success('Produit ajouté avec succès');
       setIsAddOpen(false);
@@ -101,7 +137,7 @@ export default function ProductsPage() {
       sku: product.sku || '',
       barcode: product.barcode || '',
     });
-    setEditImagePreview(null);
+    setEditImagePreview(product.images?.[0] || null);
   };
 
   const handleEdit = async (e: React.FormEvent) => {
@@ -118,6 +154,7 @@ export default function ProductsPage() {
         is_available: editForm.is_available,
         sku: editForm.sku || undefined,
         barcode: editForm.barcode || undefined,
+        images: editImagePreview ? [editImagePreview] : [],
       });
       toast.success('Produit modifié avec succès');
       setEditProduct(null);
@@ -145,17 +182,18 @@ export default function ProductsPage() {
     }
   };
 
-  // Helper local upload photo
+  // Helper local upload photo avec compression
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isEdit: boolean) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onloadend = () => {
+    reader.onloadend = async () => {
       const base64String = reader.result as string;
+      const compressed = await compressImage(base64String);
       if (isEdit) {
-        setEditImagePreview(base64String);
+        setEditImagePreview(compressed);
       } else {
-        setAddImagePreview(base64String);
+        setAddImagePreview(compressed);
       }
     };
     reader.readAsDataURL(file);
@@ -390,7 +428,11 @@ export default function ProductsPage() {
               <tr key={product.id} className={!product.is_available ? 'row-disabled' : ''}>
                 <td>
                   <div className="product-cell">
-                    <div className="product-img-placeholder"><ImageIcon size={20} /></div>
+                    {product.images && product.images[0] ? (
+                      <img src={product.images[0]} alt={product.name} className="product-list-img" />
+                    ) : (
+                      <div className="product-img-placeholder"><ImageIcon size={20} /></div>
+                    )}
                     <span className="product-name">{product.name}</span>
                   </div>
                 </td>
@@ -441,6 +483,11 @@ export default function ProductsPage() {
       <Modal isOpen={!!viewProduct} onClose={() => setViewProduct(null)} title="Détails du produit">
         {viewProduct && (
           <div className="detail-grid">
+            {viewProduct.images && viewProduct.images[0] && (
+              <div className="detail-image-wrap">
+                <img src={viewProduct.images[0]} alt={viewProduct.name} className="detail-product-img" />
+              </div>
+            )}
             <div className="detail-row"><span className="detail-label">Nom</span><span className="detail-value">{viewProduct.name}</span></div>
             <div className="detail-row"><span className="detail-label">SKU</span><span className="detail-value">{viewProduct.sku || '—'}</span></div>
             <div className="detail-row"><span className="detail-label">Code-barres</span><span className="detail-value">{viewProduct.barcode || '—'}</span></div>
@@ -520,6 +567,7 @@ export default function ProductsPage() {
 
         .product-cell { display: flex; align-items: center; gap: 0.75rem; }
         .product-img-placeholder { width: 40px; height: 40px; border-radius: 8px; background: var(--surface-3); display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid var(--border-default); color: var(--text-muted); }
+        .product-list-img { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border-default); flex-shrink: 0; }
         .product-name { font-weight: 600; }
         .product-price { font-weight: 600; color: var(--color-brand-400); font-family: var(--font-display); }
         .tag-pill { background: var(--surface-3); color: var(--text-secondary); padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; border: 1px solid var(--border-default); }
@@ -637,6 +685,9 @@ export default function ProductsPage() {
           flex-direction: column;
           gap: 0.5rem;
         }
+
+        .detail-image-wrap { width: 100%; display: flex; justify-content: center; margin-bottom: 1rem; }
+        .detail-product-img { max-width: 150px; max-height: 150px; border-radius: 12px; object-fit: cover; border: 1px solid var(--border-strong); }
 
         @keyframes pulse {
           0%, 100% { transform: scale(1); opacity: 1; }
