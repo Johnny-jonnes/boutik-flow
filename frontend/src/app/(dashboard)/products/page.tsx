@@ -343,16 +343,36 @@ export default function ProductsPage() {
         </div>
 
         <div className="form-group">
-          <label className="form-label">Nom du produit *</label>
-          <input type="text" className="input" required value={form.name}
-            onChange={e => setForm({ ...form, name: e.target.value })} />
+          <label className="form-label">{t('prod.name_label')}</label>
+          <input 
+            type="text" 
+            className="input" 
+            required 
+            value={form.name}
+            onChange={e => {
+              const newName = e.target.value;
+              // If SKU is empty or was auto-generated, keep SKU in sync with name
+              const autoSku = !form.sku || form.sku.startsWith('SKU-') ? generateClientSku(newName) : form.sku;
+              setForm({ ...form, name: newName, sku: autoSku });
+            }} 
+          />
         </div>
 
         <div className="form-row">
           <div className="form-group" style={{ flex: 1 }}>
-            <label className="form-label">SKU (généré si vide)</label>
-            <input type="text" className="input" placeholder="ex: SKU-ROBE-BLUE" value={form.sku}
-              onChange={e => setForm({ ...form, sku: e.target.value })} />
+            <label className="form-label">{t('prod.sku_label')}</label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input type="text" className="input" placeholder="ex: SKU-ROBE-BLUE" value={form.sku}
+                onChange={e => setForm({ ...form, sku: e.target.value })} style={{ flex: 1 }} />
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => setForm({ ...form, sku: generateClientSku(form.name || 'PROD') })}
+                title="Générer SKU"
+              >
+                ⚡ {t('common.add') === 'Add' ? 'Gen SKU' : 'Générer'}
+              </button>
+            </div>
           </div>
           <div className="form-group" style={{ flex: 1 }}>
             <label className="form-label">{t('prod.barcode_label')}</label>
@@ -416,12 +436,12 @@ export default function ProductsPage() {
     <div className="page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Catalogue Produits</h1>
-          <p className="page-subtitle">Gérez votre inventaire et vos prix.</p>
+          <h1 className="page-title">{t('prod.title')}</h1>
+          <p className="page-subtitle">{t('prod.subtitle')}</p>
         </div>
         <div className="header-actions">
           <button className="btn btn-primary" id="btn-add-product" onClick={() => setIsAddOpen(true)}>
-            <Plus size={16} /> Ajouter produit
+            <Plus size={16} /> {t('prod.add')}
           </button>
         </div>
       </div>
@@ -465,13 +485,13 @@ export default function ProductsPage() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Produit</th>
-              <th>Catégorie</th>
-              <th>Prix</th>
-              <th>Stock</th>
-              <th>SKU</th>
-              <th>Statut</th>
-              <th className="text-right">Actions</th>
+              <th>{t('prod.name')}</th>
+              <th>{t('prod.category')}</th>
+              <th>{t('prod.price')}</th>
+              <th>{t('prod.stock')}</th>
+              <th>{t('prod.sku')}</th>
+              <th>{t('prod.status')}</th>
+              <th className="text-right">{t('prod.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -487,18 +507,18 @@ export default function ProductsPage() {
                     <span className="product-name">{product.name}</span>
                   </div>
                 </td>
-                <td><span className="tag-pill">{product.category_rel?.name || 'Non classé'}</span></td>
+                <td><span className="tag-pill">{product.category_rel?.name || 'Uncategorized'}</span></td>
                 <td><span className="product-price">{formatGNF(product.price)}</span></td>
                 <td>
                   <span className={`stock-badge ${product.stock > 10 ? 'stock-high' : product.stock > 0 ? 'stock-low' : 'stock-out'}`}>
-                    {product.stock} en stock
+                    {product.stock} {t('prod.in_stock')}
                   </span>
                 </td>
                 <td><span className="sku-text">{product.sku || '—'}</span></td>
                 <td>
                   {product.is_available
-                    ? <span className="badge badge-success">Disponible</span>
-                    : <span className="badge badge-error">Indisponible</span>}
+                    ? <span className="badge badge-success">{t('prod.available')}</span>
+                    : <span className="badge badge-error">{t('prod.unavailable')}</span>}
                 </td>
                 <td className="text-right">
                   <div className="actions-flex">

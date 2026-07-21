@@ -6,8 +6,10 @@ import type { Segment } from '@/types';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function SegmentsPage() {
+  const { t } = useLanguage();
   const [segments, setSegments] = useState<Segment[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -158,13 +160,13 @@ export default function SegmentsPage() {
     <div className="page fade-in">
       <div className="page-header">
         <div className="page-header__info">
-          <h1 className="page-header__title">Segments CRM</h1>
-          <p className="page-header__desc">Gérez les segments de votre clientèle pour vos campagnes marketing ciblées.</p>
+          <h1 className="page-header__title">{t('seg.title')}</h1>
+          <p className="page-header__desc">{t('seg.subtitle')}</p>
         </div>
         <div className="page-header__actions">
           <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => setIsAddOpen(true)}>
             <Plus size={18} />
-            <span>Créer un segment</span>
+            <span>{t('seg.new')}</span>
           </button>
         </div>
       </div>
@@ -172,7 +174,7 @@ export default function SegmentsPage() {
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
         <div className="card">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-            <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 500 }}>Total Segments</span>
+            <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 500 }}>{t('seg.total')}</span>
             <div style={{ padding: '0.5rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px', color: '#10b981' }}>
               <Tags size={18} />
             </div>
@@ -188,7 +190,7 @@ export default function SegmentsPage() {
             <input 
               type="text" 
               className="input search-input" 
-              placeholder="Rechercher un segment..." 
+              placeholder={t('seg.search')} 
               style={{ paddingLeft: '2.5rem', width: '100%' }}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -203,11 +205,11 @@ export default function SegmentsPage() {
             <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                  <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Nom du segment</th>
-                  <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Description</th>
-                  <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Filtres appliqués</th>
-                  <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Membres</th>
-                  <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }} className="text-right">Actions</th>
+                  <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>{t('seg.name')}</th>
+                  <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>{t('seg.description')}</th>
+                  <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>{t('seg.filters')}</th>
+                  <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>{t('seg.members')}</th>
+                  <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }} className="text-right">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -228,7 +230,7 @@ export default function SegmentsPage() {
                     <td style={{ padding: '1rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)', fontWeight: 600 }}>
                         <Users size={16} style={{ color: 'var(--text-muted)' }} />
-                        <span>{segment.client_count} client(s)</span>
+                        <span>{segment.client_count} {t('common.clients')}</span>
                       </div>
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'right' }}>
@@ -246,7 +248,7 @@ export default function SegmentsPage() {
                 {filteredSegments.length === 0 && (
                   <tr>
                     <td colSpan={5} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-                      Aucun segment trouvé.
+                      {t('seg.no_segment')}
                     </td>
                   </tr>
                 )}
@@ -257,20 +259,20 @@ export default function SegmentsPage() {
       </div>
 
       {/* Modal Ajouter */}
-      <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Créer un segment">
+      <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title={t('seg.create')}>
         <form onSubmit={handleAdd} className="modal-form">
           <div className="form-group">
-            <label className="form-label">Nom du segment *</label>
+            <label className="form-label">{t('seg.name_label')}</label>
             <input type="text" className="input" required value={addForm.name} onChange={e => setAddForm({...addForm, name: e.target.value})} placeholder="ex: Clients VIP" />
           </div>
           <div className="form-group">
-            <label className="form-label">Description</label>
+            <label className="form-label">{t('seg.desc_label')}</label>
             <textarea className="input" rows={2} value={addForm.description} onChange={e => setAddForm({...addForm, description: e.target.value})} placeholder="ex: Clients ayant le statut VIP" />
           </div>
           <div className="form-group">
-            <label className="form-label">Statut ciblé</label>
+            <label className="form-label">{t('seg.status_label')}</label>
             <select className="input" value={addForm.status} onChange={e => setAddForm({...addForm, status: e.target.value})}>
-              <option value="">Tous les statuts</option>
+              <option value="">{t('seg.all_statuses')}</option>
               <option value="nouveau">Nouveau</option>
               <option value="actif">Actif</option>
               <option value="vip">VIP</option>
@@ -282,27 +284,27 @@ export default function SegmentsPage() {
             <input type="text" className="input" value={addForm.tagsStr} onChange={e => setAddForm({...addForm, tagsStr: e.target.value})} placeholder="ex: Bazin, Grossiste" />
           </div>
           <div className="modal-actions">
-            <button type="button" className="btn btn-ghost" onClick={() => setIsAddOpen(false)}>Annuler</button>
-            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>{isSubmitting ? 'Création...' : 'Créer'}</button>
+            <button type="button" className="btn btn-ghost" onClick={() => setIsAddOpen(false)}>{t('common.cancel')}</button>
+            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>{isSubmitting ? 'Création...' : t('common.add')}</button>
           </div>
         </form>
       </Modal>
 
       {/* Modal Modifier */}
-      <Modal isOpen={!!editSegment} onClose={() => setEditSegment(null)} title="Modifier le segment">
+      <Modal isOpen={!!editSegment} onClose={() => setEditSegment(null)} title={t('seg.edit')}>
         <form onSubmit={handleEdit} className="modal-form">
           <div className="form-group">
-            <label className="form-label">Nom du segment *</label>
+            <label className="form-label">{t('seg.name_label')}</label>
             <input type="text" className="input" required value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} />
           </div>
           <div className="form-group">
-            <label className="form-label">Description</label>
+            <label className="form-label">{t('seg.desc_label')}</label>
             <textarea className="input" rows={2} value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} />
           </div>
           <div className="form-group">
-            <label className="form-label">Statut ciblé</label>
+            <label className="form-label">{t('seg.status_label')}</label>
             <select className="input" value={editForm.status} onChange={e => setEditForm({...editForm, status: e.target.value})}>
-              <option value="">Tous les statuts</option>
+              <option value="">{t('seg.all_statuses')}</option>
               <option value="nouveau">Nouveau</option>
               <option value="actif">Actif</option>
               <option value="vip">VIP</option>
@@ -314,21 +316,21 @@ export default function SegmentsPage() {
             <input type="text" className="input" value={editForm.tagsStr} onChange={e => setEditForm({...editForm, tagsStr: e.target.value})} />
           </div>
           <div className="modal-actions">
-            <button type="button" className="btn btn-ghost" onClick={() => setEditSegment(null)}>Annuler</button>
-            <button type="submit" className="btn btn-primary" disabled={isEditing}>{isEditing ? 'Enregistrement...' : 'Enregistrer'}</button>
+            <button type="button" className="btn btn-ghost" onClick={() => setEditSegment(null)}>{t('common.cancel')}</button>
+            <button type="submit" className="btn btn-primary" disabled={isEditing}>{isEditing ? 'Enregistrement...' : t('common.save')}</button>
           </div>
         </form>
       </Modal>
 
       {/* Modal Supprimer */}
-      <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Confirmer la suppression">
+      <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title={t('seg.confirm_delete')}>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
           Êtes-vous sûr de vouloir supprimer le segment <strong>{deleteTarget?.name}</strong> ? Les clients associés ne seront pas supprimés.
         </p>
         <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={() => setDeleteTarget(null)}>Annuler</button>
+          <button className="btn btn-ghost" onClick={() => setDeleteTarget(null)}>{t('common.cancel')}</button>
           <button className="btn btn-danger" onClick={handleDelete} disabled={isDeleting}>
-            {isDeleting ? 'Suppression...' : 'Supprimer'}
+            {isDeleting ? 'Suppression...' : t('common.delete')}
           </button>
         </div>
       </Modal>

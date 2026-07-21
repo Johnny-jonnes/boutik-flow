@@ -7,8 +7,10 @@ import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
 import Link from 'next/link';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function CategoriesPage() {
+  const { t } = useLanguage();
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -120,11 +122,11 @@ export default function CategoriesPage() {
   ) => (
     <form onSubmit={onSubmit} className="modal-form">
       <div className="form-group">
-        <label className="form-label">Nom *</label>
+        <label className="form-label">{t('cat.name_label')}</label>
         <input type="text" className="input" required value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
       </div>
       <div className="form-group">
-        <label className="form-label">Description</label>
+        <label className="form-label">{t('cat.desc_label')}</label>
         <textarea className="input" rows={3} value={form.description} onChange={e => setForm({...form, description: e.target.value})} />
       </div>
       <div className="form-group">
@@ -132,7 +134,7 @@ export default function CategoriesPage() {
         <input type="url" className="input" placeholder="https://..." value={form.image_url} onChange={e => setForm({...form, image_url: e.target.value})} />
       </div>
       <div className="modal-actions">
-        <button type="button" className="btn btn-ghost" onClick={onCancel}>Annuler</button>
+        <button type="button" className="btn btn-ghost" onClick={onCancel}>{t('common.cancel')}</button>
         <button type="submit" className="btn btn-primary" disabled={loading}>{loading ? 'Chargement...' : submitLabel}</button>
       </div>
     </form>
@@ -142,13 +144,13 @@ export default function CategoriesPage() {
     <div className="page fade-in">
       <div className="page-header">
         <div className="page-header__info">
-          <h1 className="page-header__title">Catégories de Produits</h1>
-          <p className="page-header__desc">Organisez votre catalogue pour la clientèle locale et internationale.</p>
+          <h1 className="page-header__title">{t('cat.title')}</h1>
+          <p className="page-header__desc">{t('cat.subtitle')}</p>
         </div>
         <div className="page-header__actions">
           <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => setIsAddOpen(true)}>
             <Plus size={18} />
-            <span>Nouvelle catégorie</span>
+            <span>{t('cat.new')}</span>
           </button>
         </div>
       </div>
@@ -159,7 +161,7 @@ export default function CategoriesPage() {
           <input 
             type="text" 
             className="input search-input" 
-            placeholder="Rechercher une catégorie..." 
+            placeholder={t('cat.search')} 
             style={{ paddingLeft: '2.5rem', width: '100%' }}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -205,36 +207,36 @@ export default function CategoriesPage() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)', marginTop: 'auto' }}>
                 <Link href={`/products?category_id=${category.id}`} style={{ fontSize: '0.8rem', color: 'var(--color-brand-500)', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem', textDecoration: 'none' }}>
-                  Voir les produits →
+                  {t('cat.view_products')}
                 </Link>
               </div>
             </div>
           ))}
           {filteredCategories.length === 0 && (
             <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-              Aucune catégorie trouvée.
+              {t('cat.no_category')}
             </div>
           )}
         </div>
       )}
 
       {/* Modals */}
-      <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Nouvelle catégorie">
-        {renderForm(addForm, setAddForm, handleAdd, isSubmitting, 'Ajouter', () => setIsAddOpen(false))}
+      <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title={t('cat.new_category')}>
+        {renderForm(addForm, setAddForm, handleAdd, isSubmitting, t('common.add'), () => setIsAddOpen(false))}
       </Modal>
 
-      <Modal isOpen={!!editCategory} onClose={() => setEditCategory(null)} title="Modifier la catégorie">
-        {renderForm(editForm, setEditForm, handleEdit, isEditing, 'Enregistrer', () => setEditCategory(null))}
+      <Modal isOpen={!!editCategory} onClose={() => setEditCategory(null)} title={t('cat.edit')}>
+        {renderForm(editForm, setEditForm, handleEdit, isEditing, t('common.save'), () => setEditCategory(null))}
       </Modal>
 
-      <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Confirmer la suppression">
+      <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title={t('cat.confirm_delete')}>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
           Êtes-vous sûr de vouloir supprimer la catégorie <strong>{deleteTarget?.name}</strong> ? Les produits associés ne seront pas supprimés mais perdront cette catégorie.
         </p>
         <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={() => setDeleteTarget(null)}>Annuler</button>
+          <button className="btn btn-ghost" onClick={() => setDeleteTarget(null)}>{t('common.cancel')}</button>
           <button className="btn btn-danger" onClick={handleDelete} disabled={isDeleting}>
-            {isDeleting ? 'Suppression...' : 'Supprimer'}
+            {isDeleting ? 'Suppression...' : t('common.delete')}
           </button>
         </div>
       </Modal>

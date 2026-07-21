@@ -6,8 +6,10 @@ import type { Campaign, Segment } from '@/types';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function CampaignsPage() {
+  const { t } = useLanguage();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [segments, setSegments] = useState<Segment[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -128,13 +130,13 @@ export default function CampaignsPage() {
     <div className="page fade-in">
       <div className="page-header">
         <div className="page-header__info">
-          <h1 className="page-header__title">Campagnes Marketing</h1>
-          <p className="page-header__desc">Créez, ciblez et suivez vos campagnes de diffusion par WhatsApp, SMS et E-mail.</p>
+          <h1 className="page-header__title">{t('camp.title')}</h1>
+          <p className="page-header__desc">{t('camp.subtitle')}</p>
         </div>
         <div className="page-header__actions">
           <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => setIsAddOpen(true)}>
             <Plus size={18} />
-            <span>Nouvelle campagne</span>
+            <span>{t('camp.new')}</span>
           </button>
         </div>
       </div>
@@ -146,7 +148,7 @@ export default function CampaignsPage() {
             <input 
               type="text" 
               className="input search-input" 
-              placeholder="Rechercher une campagne..." 
+              placeholder={t('camp.search')} 
               style={{ paddingLeft: '2.5rem', width: '100%' }}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -161,11 +163,11 @@ export default function CampaignsPage() {
             <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                  <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Nom de la campagne</th>
-                  <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Canal</th>
-                  <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Statut</th>
-                  <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Date</th>
-                  <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }} className="text-right">Actions</th>
+                  <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>{t('camp.name')}</th>
+                  <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>{t('camp.channel')}</th>
+                  <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>{t('camp.status')}</th>
+                  <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>{t('camp.date')}</th>
+                  <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }} className="text-right">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -213,7 +215,7 @@ export default function CampaignsPage() {
                               ? '#ef4444'
                               : 'var(--text-secondary)',
                       }}>
-                        {campaign.status === 'envoyee' ? 'Envoyée' : campaign.status === 'programmee' ? 'Programmée' : campaign.status === 'echouee' ? 'Échouée' : 'Brouillon'}
+                        {campaign.status === 'envoyee' ? t('camp.sent') : campaign.status === 'programmee' ? t('camp.scheduled') : campaign.status === 'echouee' ? t('camp.failed') : t('camp.draft')}
                       </span>
                     </td>
                     <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
@@ -234,7 +236,7 @@ export default function CampaignsPage() {
                 {filteredCampaigns.length === 0 && (
                   <tr>
                     <td colSpan={5} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-                      Aucune campagne trouvée.
+                      {t('camp.no_campaign')}
                     </td>
                   </tr>
                 )}

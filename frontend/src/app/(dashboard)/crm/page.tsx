@@ -6,6 +6,7 @@ import type { Client, ClientStatus } from '@/types';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
+import { useLanguage } from '@/context/LanguageContext';
 
 const STATUS_COLORS: Record<string, string> = {
   nouveau: 'badge-info',
@@ -15,6 +16,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function CRMPage() {
+  const { t } = useLanguage();
   const [clients, setClients] = useState<Client[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -133,12 +135,12 @@ export default function CRMPage() {
     <div className="page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Clients (CRM)</h1>
-          <p className="page-subtitle">Gérez vos clients et leur historique d&apos;achat.</p>
+          <h1 className="page-title">{t('crm.title')}</h1>
+          <p className="page-subtitle">{t('crm.subtitle')}</p>
         </div>
         <div className="header-actions">
           <button className="btn btn-primary" id="btn-add-client" onClick={() => setIsAddOpen(true)}>
-            <UserPlus size={16} /> Nouveau client
+            <UserPlus size={16} /> {t('crm.new')}
           </button>
         </div>
       </div>
@@ -149,7 +151,7 @@ export default function CRMPage() {
           <input
             type="text"
             className="input search-input"
-            placeholder="Rechercher par nom ou numéro..."
+            placeholder={t('crm.search')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -160,12 +162,12 @@ export default function CRMPage() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Client</th>
-              <th>Téléphone</th>
-              <th>Statut</th>
-              <th>Tags</th>
-              <th>Dernière activité</th>
-              <th className="text-right">Actions</th>
+              <th>{t('crm.name')}</th>
+              <th>{t('crm.phone')}</th>
+              <th>{t('crm.status')}</th>
+              <th>{t('crm.tags')}</th>
+              <th>{t('crm.last_activity')}</th>
+              <th className="text-right">{t('prod.actions')}</th>
             </tr>
           </thead>
           <tbody>

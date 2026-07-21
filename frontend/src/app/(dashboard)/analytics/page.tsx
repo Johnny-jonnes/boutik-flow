@@ -20,12 +20,14 @@ import {
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import type { AnalyticsData } from '@/types';
+import { useLanguage } from '@/context/LanguageContext';
 
 function formatGNF(amount: number) {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' GNF';
 }
 
 export default function AnalyticsPage() {
+  const { t } = useLanguage();
   const { theme } = useTheme();
   const [period, setPeriod] = useState('7j');
   const [data, setData] = useState<AnalyticsData | null>(null);
@@ -69,7 +71,7 @@ export default function AnalyticsPage() {
       <div className="page flex items-center justify-center" style={{ minHeight: '60vh' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
           <div className="spinner" style={{ width: '40px', height: '40px', border: '3px solid rgba(16,185,129,0.1)', borderTopColor: '#10b981', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Chargement des analyses...</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{t('ana.loading')}</p>
         </div>
         <style jsx>{`
           @keyframes spin {
@@ -91,8 +93,8 @@ export default function AnalyticsPage() {
     <div className="page fade-in">
       <div className="page-header">
         <div className="page-header__info">
-          <h1 className="page-header__title">Analytique</h1>
-          <p className="page-header__desc">Performances de votre boutique à Conakry et au-delà.</p>
+          <h1 className="page-header__title">{t('ana.title')}</h1>
+          <p className="page-header__desc">{t('ana.subtitle')}</p>
         </div>
         <div className="page-header__actions">
           <div className="period-tabs">
@@ -109,7 +111,7 @@ export default function AnalyticsPage() {
       <div className="analytics-kpis">
         <div className="kpi-card">
           <div className="kpi-header">
-            <span className="kpi-label">Revenu Total</span>
+            <span className="kpi-label">{t('ana.revenue')}</span>
             <div className="kpi-icon kpi-icon--green"><TrendingUp size={18} /></div>
           </div>
           <div className="kpi-value">{Number(kpis.total_revenue).toLocaleString('fr-GN')} <span className="kpi-currency">GNF</span></div>
@@ -121,7 +123,7 @@ export default function AnalyticsPage() {
 
         <div className="kpi-card">
           <div className="kpi-header">
-            <span className="kpi-label">Commandes</span>
+            <span className="kpi-label">{t('ana.orders')}</span>
             <div className="kpi-icon kpi-icon--blue"><ShoppingBag size={18} /></div>
           </div>
           <div className="kpi-value">{kpis.total_orders}</div>
@@ -133,7 +135,7 @@ export default function AnalyticsPage() {
 
         <div className="kpi-card">
           <div className="kpi-header">
-            <span className="kpi-label">Panier Moyen</span>
+            <span className="kpi-label">{t('ana.avg_basket')}</span>
             <div className="kpi-icon kpi-icon--purple"><DollarSign size={18} /></div>
           </div>
           <div className="kpi-value">{Math.round(Number(kpis.average_order_value)).toLocaleString('fr-GN')} <span className="kpi-currency">GNF</span></div>
@@ -145,7 +147,7 @@ export default function AnalyticsPage() {
 
         <div className="kpi-card">
           <div className="kpi-header">
-            <span className="kpi-label">Taux de livraison</span>
+            <span className="kpi-label">{t('ana.delivery_rate')}</span>
             <div className="kpi-icon kpi-icon--orange"><Target size={18} /></div>
           </div>
           <div className="kpi-value">{kpis.conversion_rate.toFixed(1)}<span className="kpi-currency">%</span></div>
@@ -189,7 +191,7 @@ export default function AnalyticsPage() {
         </div>
 
         <div className="card analytics-chart-card">
-          <h3 className="chart-title">Commandes & Livraisons</h3>
+          <h3 className="chart-title">{t('ana.orders_chart')}</h3>
           <div className="chart-container">
             {orders_data.length === 0 ? (
               <div style={{ display: 'flex', height: '300px', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
@@ -212,8 +214,8 @@ export default function AnalyticsPage() {
           </div>
           {orders_data.length > 0 && (
             <div className="chart-legend">
-              <span className="legend-item"><span className="legend-dot" style={{ background: chartColors.areaOrders }} /> Commandes</span>
-              <span className="legend-item"><span className="legend-dot" style={{ background: chartColors.areaDelivered }} /> Livrées</span>
+              <span className="legend-item"><span className="legend-dot" style={{ background: chartColors.areaOrders }} /> {t('ana.orders')}</span>
+              <span className="legend-item"><span className="legend-dot" style={{ background: chartColors.areaDelivered }} /> {t('ana.delivered')}</span>
             </div>
           )}
         </div>
@@ -222,7 +224,7 @@ export default function AnalyticsPage() {
       {/* Bottom Row */}
       <div className="analytics-bottom">
         <div className="card analytics-chart-card">
-          <h3 className="chart-title">Top 5 Produits</h3>
+          <h3 className="chart-title">{t('ana.top_products')}</h3>
           <div className="top-products">
             {top_products.length === 0 ? (
               <div style={{ padding: '2rem 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
@@ -234,7 +236,7 @@ export default function AnalyticsPage() {
                   <div className="top-product-rank">#{i + 1}</div>
                   <div className="top-product-info">
                     <span className="top-product-name">{product.name}</span>
-                    <span className="top-product-sales">{product.ventes} vente{product.ventes > 1 ? 's' : ''}</span>
+                    <span className="top-product-sales">{product.ventes} {t('ana.sales')}</span>
                   </div>
                   <div className="top-product-revenue">{Number(product.revenue).toLocaleString('fr-GN')} GNF</div>
                 </div>
@@ -244,7 +246,7 @@ export default function AnalyticsPage() {
         </div>
 
         <div className="card analytics-chart-card">
-          <h3 className="chart-title">Répartition Clients</h3>
+          <h3 className="chart-title">{t('ana.client_segments')}</h3>
           <div className="chart-container">
             {client_segments.every(s => s.value === 0) ? (
               <div style={{ display: 'flex', height: '200px', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>

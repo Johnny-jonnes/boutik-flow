@@ -241,8 +241,8 @@ export default function OrdersPage() {
     <div className="page fade-in">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Commandes</h1>
-          <p className="page-subtitle">Gérez vos commandes via le tunnel de vente (Kanban).</p>
+          <h1 className="page-title">{t('ord.title')}</h1>
+          <p className="page-subtitle">{t('ord.subtitle')}</p>
         </div>
         <div className="header-actions">
           <div className="view-toggles">
@@ -254,10 +254,10 @@ export default function OrdersPage() {
             </button>
           </div>
           <button className="btn btn-ghost" onClick={handleExport}>
-            <Download size={16} /> Exporter
+            <Download size={16} /> {t('ord.export')}
           </button>
           <button className="btn btn-primary" onClick={() => setIsCreateOpen(true)}>
-            <Plus size={16} /> Nouvelle commande
+            <Plus size={16} /> {t('ord.new')}
           </button>
         </div>
       </div>

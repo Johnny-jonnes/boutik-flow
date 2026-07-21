@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Sparkles, MessageSquare, Users, Send, Copy, ExternalLink, Plus, Trash2, CheckCircle } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
+import { useLanguage } from '@/context/LanguageContext';
 
 const QUICK_TEMPLATES = [
   {
@@ -29,6 +30,7 @@ const QUICK_TEMPLATES = [
 ];
 
 export default function WhatsAppPage() {
+  const { t } = useLanguage();
   const [clients, setClients] = useState<any[]>([]);
   const [segments, setSegments] = useState<any[]>([]);
   const [selectedContacts, setSelectedContacts] = useState<any[]>([]);
@@ -162,10 +164,10 @@ export default function WhatsAppPage() {
       <div className="page-header">
         <div className="page-header__info">
           <h1 className="page-header__title">
-            <span style={{ marginRight: '0.5rem' }}>💬</span> WhatsApp Direct
+            <span style={{ marginRight: '0.5rem' }}>💬</span> {t('wa.title')}
           </h1>
           <p className="page-header__desc">
-            Rédigez vos messages et ouvrez WhatsApp directement — sans API, sans configuration.
+            {t('wa.subtitle')}
           </p>
         </div>
         {sentCount > 0 && (
@@ -179,9 +181,9 @@ export default function WhatsAppPage() {
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
         {[
-          { id: 'compose', label: '✏️ Composer', icon: MessageSquare },
-          { id: 'templates', label: '📋 Modèles rapides', icon: Sparkles },
-          { id: 'bulk', label: '👥 Envoi groupé', icon: Users },
+          { id: 'compose', label: `✏️ ${t('wa.tab_compose')}`, icon: MessageSquare },
+          { id: 'templates', label: `📋 ${t('wa.tab_templates')}`, icon: Sparkles },
+          { id: 'bulk', label: `👥 ${t('wa.tab_bulk')}`, icon: Users },
         ].map(tab => (
           <button
             key={tab.id}
@@ -208,10 +210,10 @@ export default function WhatsAppPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
           {/* Panneau gauche : Rédaction */}
           <div className="card">
-            <h3 style={{ marginBottom: '1.25rem', fontSize: '1rem', fontWeight: 700 }}>Rédiger le message</h3>
+            <h3 style={{ marginBottom: '1.25rem', fontSize: '1rem', fontWeight: 700 }}>{t('wa.write_message')}</h3>
 
             <div className="form-group">
-              <label className="form-label">Numéro de téléphone</label>
+              <label className="form-label">{t('wa.phone')}</label>
               <input
                 type="tel"
                 className="input"
@@ -225,7 +227,7 @@ export default function WhatsAppPage() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Message</label>
+              <label className="form-label">{t('wa.message')}</label>
               <textarea
                 className="input"
                 placeholder="Bonjour {nom}, nous avons une offre spéciale pour vous..."
@@ -246,7 +248,7 @@ export default function WhatsAppPage() {
                 style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem' }}
               >
                 <ExternalLink size={16} />
-                Ouvrir WhatsApp
+                {t('wa.open_whatsapp')}
               </button>
               <button
                 className="btn btn-ghost"
@@ -261,7 +263,7 @@ export default function WhatsAppPage() {
             {/* Aperçu du message */}
             {message.trim() && (
               <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--surface-0)', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Aperçu du message</p>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('wa.preview')}</p>
                 <div style={{ background: '#dcf8c6', color: '#1a1a1a', borderRadius: '12px', borderTopRightRadius: '4px', padding: '0.75rem 1rem', fontSize: '0.9rem', lineHeight: 1.6, maxWidth: '85%', marginLeft: 'auto', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                   {message.replace(/{nom}/g, 'Client').replace(/{boutique}/g, boutiqueName)}
                   <div style={{ fontSize: '0.7rem', color: '#5f6368', textAlign: 'right', marginTop: '4px' }}>
@@ -274,11 +276,11 @@ export default function WhatsAppPage() {
 
           {/* Panneau droit : Clients récents */}
           <div className="card">
-            <h3 style={{ marginBottom: '1rem', fontSize: '1rem', fontWeight: 700 }}>Envoyer à un client</h3>
+            <h3 style={{ marginBottom: '1rem', fontSize: '1rem', fontWeight: 700 }}>{t('wa.send_to_client')}</h3>
             <input
               type="text"
               className="input"
-              placeholder="Rechercher un client..."
+              placeholder={t('wa.search_client')}
               value={searchClients}
               onChange={e => setSearchClients(e.target.value)}
               style={{ marginBottom: '1rem' }}
@@ -300,7 +302,7 @@ export default function WhatsAppPage() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{client.name}</div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{client.phone || client.telephone || 'Pas de numéro'}</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{client.phone || client.telephone || t('wa.no_phone')}</div>
                   </div>
                   <button
                     onClick={() => handleSendToContact(client)}
@@ -314,13 +316,13 @@ export default function WhatsAppPage() {
                       whiteSpace: 'nowrap', flexShrink: 0,
                     }}
                   >
-                    <Send size={13} /> Envoyer
+                    <Send size={13} /> {t('wa.send')}
                   </button>
                 </div>
               ))}
               {filteredClients.length === 0 && (
                 <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 0', fontSize: '0.875rem' }}>
-                  Aucun client trouvé.<br />Ajoutez des clients depuis le module CRM.
+                  {t('wa.no_client')}
                 </p>
               )}
             </div>
@@ -344,7 +346,7 @@ export default function WhatsAppPage() {
                 onClick={() => { applyTemplate(template); setActiveTab('compose'); }}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
               >
-                <Copy size={15} /> Utiliser ce modèle
+                <Copy size={15} /> {t('wa.use_template')}
               </button>
             </div>
           ))}
@@ -357,7 +359,7 @@ export default function WhatsAppPage() {
           {/* Sélection contacts */}
           <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Sélectionner des contacts</h3>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>{t('wa.select_contacts')}</h3>
               <span style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 600 }}>
                 {selectedContacts.length} sélectionné{selectedContacts.length > 1 ? 's' : ''}
               </span>
@@ -405,7 +407,7 @@ export default function WhatsAppPage() {
                     <div style={{ width: '10px', height: '10px', borderRadius: '50%', border: '2px solid', borderColor: isSelected ? '#10b981' : 'var(--border-default)', background: isSelected ? '#10b981' : 'transparent', flexShrink: 0, transition: 'all 0.15s' }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{client.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{client.phone || client.telephone || 'Pas de numéro'}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{client.phone || client.telephone || t('wa.no_phone')}</div>
                     </div>
                   </div>
                 );
@@ -445,7 +447,7 @@ export default function WhatsAppPage() {
                           onClick={() => handleSendToContact(contact)}
                           style={{ padding: '0.3rem 0.6rem', background: 'var(--color-brand-500)', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
                         >
-                          <ExternalLink size={12} /> Envoyer
+                          <ExternalLink size={12} /> {t('wa.send')}
                         </button>
                         <button
                           onClick={() => toggleContact(contact)}
