@@ -236,6 +236,10 @@ export default function RegisterPage() {
                     />
                   </div>
 
+                  <div className="terms-agreement-note" style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: '1.5', margin: '0.75rem 0' }}>
+                    En créant un compte, vous acceptez nos <Link href="/terms" target="_blank" style={{ color: '#10b981', textDecoration: 'underline' }}>Conditions d'Utilisation</Link> et autorisez BoutikFlow / TrillionX à veiller sur la protection de vos données.
+                  </div>
+
                   <div className="register-actions">
                     <button
                       type="button"
