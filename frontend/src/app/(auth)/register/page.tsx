@@ -36,18 +36,18 @@ export default function RegisterPage() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await api.register({
+      const res = await api.register({
         ...form,
         phone: form.phone || undefined,
       });
       setIsSuccess(true);
+      toast.success(res.message || 'Demande de création de boutique envoyée !');
     } catch (err) {
-      // Si le backend est en train de démarrer (Render cold start)
       const msg = err instanceof Error ? err.message : '';
-      if (msg.includes('en cours') || msg.includes('connexion') || msg.toLowerCase().includes('network')) {
-        toast.error('Le serveur démarre, veuillez réessayer dans 30 secondes.');
+      if (msg.includes('en cours') || msg.toLowerCase().includes('network')) {
+        toast.error('Connexion au serveur en cours. Veuillez réessayez dans 30 secondes.');
       } else {
-        toast.error(msg || 'Erreur lors de la création');
+        toast.error(msg || 'Erreur lors de la création de la boutique');
       }
     } finally {
       setIsLoading(false);

@@ -113,12 +113,14 @@ def register(
             detail="Cet email est déjà utilisé pour cette boutique.",
         )
 
-    # Créer le tenant
+    # Créer le tenant en attente de validation
     tenant = Tenant(
         id=uuid.uuid4(),
         name=payload.boutique_name,
         slug=payload.boutique_slug,
         plan=PlanEnum.freemium,
+        status=TenantStatusEnum.pending,
+        is_active=False,
     )
     db.add(tenant)
     db.flush()  # Obtenir l'ID du tenant avant de créer le user
@@ -135,15 +137,36 @@ def register(
         is_active=True,
     )
     db.add(user)
+
+    # Créer une notification pour l'espace d'administration
+    admin_notif = AdminNotification(
+        id=uuid.uuid4(),
+        type=AdminNotificationTypeEnum.new_registration,
+        message=f"Nouvelle inscription : boutique '{tenant.name}' ({tenant.slug}) par {user.full_name or user.email}",
+        tenant_id=tenant.id,
+        is_read=False,
+    )
+    db.add(admin_notif)
+
     db.commit()
     db.refresh(user)
 
+    # Tenter l'envoi de l'email de notification à l'équipe admin
+    try:
+        send_admin_new_registration_notification(tenant.name, tenant.slug, user.email)
+    except Exception as e:
+        logger.warning("Erreur lors de l'envoi du mail de notification admin: %s", str(e))
+
     logger.info(
-        "Nouvelle boutique créée : %s (slug=%s, owner=%s)",
+        "Nouvelle demande de boutique enregistrée : %s (slug=%s, owner=%s)",
         tenant.name, tenant.slug, user.email,
     )
 
-    return _build_token_response(user)
+    return RegisterResponse(
+        message="Votre demande de création de boutique a bien été envoyée et est en cours de validation par notre équipe d'administration.",
+        boutique_slug=tenant.slug,
+        status="pending",
+    )
 
 
 # ──────────────────────────── POST /login ────────────────────────────
@@ -171,10 +194,22 @@ def login(
             detail="Identifiants incorrects",
         )
 
-    if not tenant.is_active:
+    if tenant.status == TenantStatusEnum.pending or not tenant.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Cette boutique a été désactivée. Contactez le support.",
+            detail="Votre demande de création de boutique est en attente de validation par l'administration. Vous recevrez l'accès dès son activation.",
+        )
+
+    if tenant.status == TenantStatusEnum.blocked:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cette boutique a été suspendue par l'administration. Contactez le support.",
+        )
+
+    if tenant.status == TenantStatusEnum.rejected:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Votre demande de création de boutique n'a pas été retenue par l'administration.",
         )
 
     # Trouver l'utilisateur dans ce tenant

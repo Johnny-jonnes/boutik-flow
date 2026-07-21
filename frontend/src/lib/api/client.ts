@@ -267,13 +267,11 @@ export const api = {
     return res;
   },
 
-  async register(data: RegisterRequest): Promise<AuthResponse> {
-    const res = await request<AuthResponse>('/auth/register', {
+  async register(data: RegisterRequest): Promise<{ message: string; boutique_slug: string; status: string }> {
+    return request<{ message: string; boutique_slug: string; status: string }>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    setTokens(res.access_token, res.refresh_token);
-    return res;
   },
 
   logout(): void {
