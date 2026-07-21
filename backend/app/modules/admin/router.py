@@ -23,6 +23,12 @@ from sqlalchemy import and_, func, or_
 from app.core.database import get_db
 from app.core.security import hash_password
 from app.core.deps import require_admin, CurrentUser
+from app.core.mailer import (
+    send_account_approved_email,
+    send_account_rejected_email,
+    send_account_blocked_email,
+    send_account_unblocked_email,
+)
 from app.modules.auth.models import (
     Tenant, User, AdminNotification,
     PlanEnum, RoleEnum, TenantStatusEnum,
@@ -259,6 +265,19 @@ def update_tenant_status(
 
     db.commit()
     db.refresh(tenant)
+
+    # Envoyer l'email de notification au propriétaire de la boutique
+    owner = _get_tenant_owner(tenant, db)
+    if owner and owner.email:
+        try:
+            if new_status == TenantStatusEnum.active:
+                send_account_approved_email(owner.email, tenant.name)
+            elif new_status == TenantStatusEnum.rejected:
+                send_account_rejected_email(owner.email, tenant.name, payload.note)
+            elif new_status == TenantStatusEnum.blocked:
+                send_account_blocked_email(owner.email, tenant.name, payload.note)
+        except Exception as e:
+            logger.warning("Impossible d'envoyer l'email de notification statut à %s : %s", owner.email, str(e))
 
     logger.info(
         "Admin %s a changé le statut de %s : %s → %s. Note: %s",
