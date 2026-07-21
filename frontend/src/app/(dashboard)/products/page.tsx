@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Search, ImageIcon, Pencil, Trash2, Eye, Plus, Sparkles, Download, Printer } from 'lucide-react';
+import { Search, ImageIcon, Pencil, Trash2, Eye, Plus, Sparkles, Download, Printer, Camera } from 'lucide-react';
 import type { Product } from '@/types';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
+import { BarcodeScannerModal } from '@/components/ui/BarcodeScannerModal';
+import { useLanguage } from '@/context/LanguageContext';
 import type { Category } from '@/types';
 
 function formatGNF(amount: number) {
@@ -48,10 +50,13 @@ const compressImage = (base64Str: string, maxWidth = 300, maxHeight = 300): Prom
 };
 
 export default function ProductsPage() {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [activeScanField, setActiveScanField] = useState<'search' | 'add' | 'edit'>('search');
 
   // Add modal
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -350,9 +355,19 @@ export default function ProductsPage() {
               onChange={e => setForm({ ...form, sku: e.target.value })} />
           </div>
           <div className="form-group" style={{ flex: 1 }}>
-            <label className="form-label">Code-barres (facultatif)</label>
-            <input type="text" className="input" placeholder="ex: 3012345678901" value={form.barcode}
-              onChange={e => setForm({ ...form, barcode: e.target.value })} />
+            <label className="form-label">{t('prod.barcode_label')}</label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input type="text" className="input" placeholder="ex: 3012345678901" value={form.barcode}
+                onChange={e => setForm({ ...form, barcode: e.target.value })} style={{ flex: 1 }} />
+              <button 
+                type="button" 
+                className="btn btn-secondary btn-icon"
+                onClick={() => { setActiveScanField(isEdit ? 'edit' : 'add'); setIsScannerOpen(true); }}
+                title={t('prod.scan_camera')}
+              >
+                <Camera size={16} />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -411,13 +426,40 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      <div className="filters card">
-        <div className="search-box">
+      <div className="filters card" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        <div className="search-box" style={{ flex: 1 }}>
           <span className="search-icon"><Search size={18} /></span>
-          <input type="text" className="input search-input" placeholder="Rechercher par nom, SKU ou code-barres..."
+          <input type="text" className="input search-input" placeholder={t('prod.search')}
             value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
         </div>
+        <button 
+          className="btn btn-secondary" 
+          onClick={() => { setActiveScanField('search'); setIsScannerOpen(true); }}
+          title={t('prod.scan_camera')}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+        >
+          <Camera size={18} />
+          <span>{t('prod.scan_camera')}</span>
+        </button>
       </div>
+
+      <BarcodeScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        title={t('prod.scan_camera')}
+        onScanSuccess={(decodedText) => {
+          if (activeScanField === 'search') {
+            setSearchQuery(decodedText);
+            toast.success(`Code scanné: ${decodedText}`);
+          } else if (activeScanField === 'add') {
+            setAddForm(prev => ({ ...prev, barcode: decodedText }));
+            toast.success(`Code-barres assigné: ${decodedText}`);
+          } else if (activeScanField === 'edit') {
+            setEditForm(prev => ({ ...prev, barcode: decodedText }));
+            toast.success(`Code-barres assigné: ${decodedText}`);
+          }
+        }}
+      />
 
       <div className="table-container card">
         <table className="data-table">

@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Download, FileText, Eye, Pencil, Plus, LayoutGrid, List, Check, XCircle, ArrowRight, Trash2, ScanBarcode } from 'lucide-react';
+import { Download, FileText, Eye, Pencil, Plus, LayoutGrid, List, Check, XCircle, ArrowRight, Trash2, ScanBarcode, Camera } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import type { Order, Client, Product, OrderStatus } from '@/types';
 import { Modal } from '@/components/ui/Modal';
+import { BarcodeScannerModal } from '@/components/ui/BarcodeScannerModal';
+import { useLanguage } from '@/context/LanguageContext';
 
 const STATUS_CONFIG: Record<string, { label: string; cls: string; id: string }> = {
   pending: { label: 'En attente', cls: 'badge-warning', id: 'pending' },
@@ -28,9 +30,11 @@ function formatDate(isoString: string) {
 }
 
 export default function OrdersPage() {
+  const { t } = useLanguage();
   const [orders, setOrders] = useState<Order[]>([]);
   const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
   const [isLoading, setIsLoading] = useState(true);
+  const [isCameraScanOpen, setIsCameraScanOpen] = useState(false);
 
   // Data
   const [clients, setClients] = useState<Client[]>([]);
@@ -373,20 +377,68 @@ export default function OrdersPage() {
           <div className="form-section-title">Articles</div>
 
           {/* Scanner barcode / SKU */}
-          <form onSubmit={handleScannerSubmit} className="scanner-row">
-            <div className="scanner-input-wrap">
-              <ScanBarcode size={16} className="scanner-icon" />
-              <input
-                type="text"
-                className="input scanner-input"
-                placeholder="Scanner un code-barres ou taper un SKU..."
-                value={scannerInput}
-                onChange={e => setScannerInput(e.target.value)}
-                autoFocus
-              />
-            </div>
-            <button type="submit" className="btn btn-secondary btn-sm">Ajouter</button>
-          </form>
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <form onSubmit={handleScannerSubmit} className="scanner-row" style={{ flex: 1, margin: 0 }}>
+              <div className="scanner-input-wrap">
+                <ScanBarcode size={16} className="scanner-icon" />
+                <input
+                  type="text"
+                  className="input scanner-input"
+                  placeholder={t('ord.scan_placeholder')}
+                  value={scannerInput}
+                  onChange={e => setScannerInput(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <button type="submit" className="btn btn-secondary btn-sm">{t('common.add')}</button>
+            </form>
+            <button 
+              type="button" 
+              className="btn btn-secondary btn-sm" 
+              onClick={() => setIsCameraScanOpen(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap' }}
+              title={t('prod.scan_camera')}
+            >
+              <Camera size={16} />
+              <span>Caméra</span>
+            </button>
+          </div>
+
+          <BarcodeScannerModal
+            isOpen={isCameraScanOpen}
+            onClose={() => setIsCameraScanOpen(false)}
+            title={t('prod.scan_camera')}
+            onScanSuccess={(code) => {
+              setScannerInput(code);
+              // Trigger search with scanned code
+              const matched = products.find(
+                p => (p.barcode && p.barcode === code) || (p.sku && p.sku.toLowerCase() === code.toLowerCase())
+              );
+              if (matched && matched.is_available && matched.stock > 0) {
+                const existingIndex = createForm.items.findIndex(i => i.product_id === matched.id);
+                if (existingIndex >= 0) {
+                  const newItems = [...createForm.items];
+                  newItems[existingIndex] = { ...newItems[existingIndex], quantity: newItems[existingIndex].quantity + 1 };
+                  setCreateForm(prev => ({ ...prev, items: newItems }));
+                } else {
+                  const emptyIndex = createForm.items.findIndex(i => !i.product_id);
+                  if (emptyIndex >= 0) {
+                    const newItems = [...createForm.items];
+                    newItems[emptyIndex] = { product_id: matched.id, quantity: 1 };
+                    setCreateForm(prev => ({ ...prev, items: newItems }));
+                  } else {
+                    setCreateForm(prev => ({ ...prev, items: [...prev.items, { product_id: matched.id, quantity: 1 }] }));
+                  }
+                }
+                toast.success(`${matched.name} ajouté au panier`);
+                setScannerInput('');
+              } else if (!matched) {
+                toast.error(`Aucun produit trouvé pour "${code}"`);
+              } else {
+                toast.error(`${matched.name} est indisponible ou en rupture.`);
+              }
+            }}
+          />
           <div className="items-list">
             {createForm.items.map((item, index) => (
               <div key={index} className="item-row">

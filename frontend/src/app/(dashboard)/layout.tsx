@@ -178,13 +178,50 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Navigation */}
         <nav className="sidebar__nav">
           {[
-            ...NAV_CATEGORIES,
+            {
+              titleKey: 'nav.dashboard',
+              title: 'Tableau de Bord',
+              icon: LayoutDashboard,
+              items: [
+                { href: '/dashboard', icon: LayoutDashboard, labelKey: 'nav.dashboard', label: 'Vue d\'ensemble', id: 'nav-dashboard' },
+                { href: '/analytics', icon: BarChart3, labelKey: 'nav.analytics', label: 'Analytique', id: 'nav-analytics' },
+              ]
+            },
+            {
+              titleKey: 'nav.crm',
+              title: 'CRM',
+              icon: Users,
+              items: [
+                { href: '/crm', icon: Users, labelKey: 'nav.crm', label: 'Clients', id: 'nav-crm' },
+                { href: '/segments', icon: Tags, labelKey: 'nav.segments', label: 'Segments', id: 'nav-segments' },
+              ]
+            },
+            {
+              titleKey: 'nav.products',
+              title: 'Ventes',
+              icon: ShoppingBag,
+              items: [
+                { href: '/products', icon: Package, labelKey: 'nav.products', label: 'Produits', id: 'nav-products' },
+                { href: '/categories', icon: FolderTree, labelKey: 'nav.categories', label: 'Catégories', id: 'nav-categories' },
+                { href: '/orders', icon: ShoppingBag, labelKey: 'nav.orders', label: 'Commandes', id: 'nav-orders' },
+              ]
+            },
+            {
+              titleKey: 'nav.campaigns',
+              title: 'Marketing',
+              icon: Megaphone,
+              items: [
+                { href: '/whatsapp', icon: MessageSquare, labelKey: 'nav.whatsapp', label: 'WhatsApp', id: 'nav-whatsapp' },
+                { href: '/campaigns', icon: Megaphone, labelKey: 'nav.campaigns', label: 'Campagnes', id: 'nav-campaigns' },
+              ]
+            },
             ...(userInfo.role && userInfo.role.toLowerCase() === 'admin' ? [{
+              titleKey: 'nav.admin',
               title: 'Administration',
               icon: Shield,
               items: [
-                { href: '/admin', icon: LayoutDashboard, label: 'Vue d\'ensemble', id: 'nav-admin-dashboard' },
-                { href: '/admin/tenants', icon: Store, label: 'Gestion Boutiques', id: 'nav-admin-tenants' },
+                { href: '/admin', icon: LayoutDashboard, labelKey: 'nav.dashboard', label: 'Vue d\'ensemble', id: 'nav-admin-dashboard' },
+                { href: '/admin/tenants', icon: Store, labelKey: 'nav.tenants', label: 'Gestion Boutiques', id: 'nav-admin-tenants' },
               ]
             }] : [])
           ].map((category) => {
@@ -198,7 +235,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 >
                   <div className="nav-section-title-left">
                     <CategoryIcon size={16} />
-                    <span>{category.title}</span>
+                    <span>{t(category.titleKey)}</span>
                   </div>
                   {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 </button>
@@ -216,7 +253,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           {active && <span className="nav-indicator" />}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
                             <ItemIcon size={16} className="nav-icon" />
-                            <span className="nav-text">{item.label}</span>
+                            <span className="nav-text">{t(item.labelKey)}</span>
                           </div>
                           {item.id === 'nav-whatsapp' && <span className="wa-dot" />}
                         </Link>

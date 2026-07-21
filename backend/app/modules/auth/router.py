@@ -153,7 +153,7 @@ def register(
 
     # Tenter l'envoi de l'email de notification à l'équipe admin
     try:
-        send_admin_new_registration_notification(tenant.name, tenant.slug, user.email)
+        send_admin_new_registration_notification(tenant.name, tenant.slug, user.email, user.full_name)
     except Exception as e:
         logger.warning("Erreur lors de l'envoi du mail de notification admin: %s", str(e))
 
