@@ -283,7 +283,7 @@ export default function RegisterPage() {
               ))}
             </div>
             <div className="benefits-trust">
-              <p>🔒 Données sécurisées · 🇬🇳 Conçu pour l&apos;Afrique · 📱 100% Mobile</p>
+              <p>Données sécurisées · Conçu pour l&apos;Afrique · 100% Mobile</p>
             </div>
           </div>
         </div>

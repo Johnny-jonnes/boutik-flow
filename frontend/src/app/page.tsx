@@ -490,8 +490,10 @@ export default function HomePage() {
             <Link href="/login">Espace Client</Link>
           </div>
           <div className="footer-links-col">
-            <h4>Support</h4>
-            <a href="mailto:support@boutikflow.app">Contact</a>
+            <h4>Support & Contact</h4>
+            <a href="mailto:trillionnx@gmail.com">trillionnx@gmail.com</a>
+            <a href="tel:+224627171397">+224 627 17 13 97</a>
+            <a href="tel:+224610935524">+224 610 93 55 24</a>
             <Link href="#faq">Centre d'aide</Link>
           </div>
           <div className="footer-links-col">
