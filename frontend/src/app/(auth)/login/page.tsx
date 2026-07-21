@@ -28,7 +28,12 @@ export default function LoginPage() {
         router.push('/dashboard');
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erreur de connexion');
+      const msg = err instanceof Error ? err.message : 'Erreur de connexion';
+      if (msg.includes('en cours') || msg.toLowerCase().includes('network') || msg.includes('connexion')) {
+        toast.error('Le serveur démarre, veuillez réessayer dans 30 secondes.');
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -139,10 +144,10 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Plan freemium badge */}
+        {/* Trust badges - no prices */}
         <div className="auth-badge">
-          <span className="badge badge-success flex items-center gap-1"><Check size={14} /> Dès 50 000 GNF/mois</span>
-          <span className="badge badge-neutral">Pas de carte bancaire requise</span>
+          <span className="badge badge-success flex items-center gap-1"><Check size={14} /> Sans engagement</span>
+          <span className="badge badge-neutral">🇬🇳 Conçu pour les commerces africains</span>
         </div>
       </div>
 

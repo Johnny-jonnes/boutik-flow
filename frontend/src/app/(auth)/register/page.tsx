@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Rocket } from 'lucide-react';
+import { Rocket, CheckCircle2, Shield, Zap, Users, BarChart3 } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 
 export default function RegisterPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
   const [form, setForm] = useState({
     boutique_name: '',
@@ -39,10 +40,15 @@ export default function RegisterPage() {
         ...form,
         phone: form.phone || undefined,
       });
-      toast.success('Boutique créée avec succès !');
-      router.push('/dashboard');
+      setIsSuccess(true);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erreur lors de la création');
+      // Si le backend est en train de démarrer (Render cold start)
+      const msg = err instanceof Error ? err.message : '';
+      if (msg.includes('en cours') || msg.includes('connexion') || msg.toLowerCase().includes('network')) {
+        toast.error('Le serveur démarre, veuillez réessayer dans 30 secondes.');
+      } else {
+        toast.error(msg || 'Erreur lors de la création');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -50,16 +56,20 @@ export default function RegisterPage() {
 
   const plans = [
     {
-      name: 'Freemium',
-      price: '50 000 GNF/mois',
-      features: ['1 utilisateur', '50 clients max', 'Catalogue limité', 'Réponses auto simples'],
-      recommended: false,
+      icon: <Zap size={18} />,
+      label: 'Assistant WhatsApp 24h/24',
     },
     {
-      name: 'Starter',
-      price: '800 000 GNF/mois',
-      features: ['Clients illimités', 'Automatisation avancée', 'Assistant virtuel intégré', 'Support prioritaire'],
-      recommended: true,
+      icon: <Users size={18} />,
+      label: 'CRM clients complet',
+    },
+    {
+      icon: <BarChart3 size={18} />,
+      label: 'Tableau de bord en temps réel',
+    },
+    {
+      icon: <Shield size={18} />,
+      label: 'Données sécurisées et isolées',
     },
   ];
 
@@ -86,6 +96,36 @@ export default function RegisterPage() {
           <span className="auth-logo-text">BoutikFlow</span>
         </div>
 
+        {isSuccess ? (
+          /* Success Screen */
+          <div className="auth-card glass success-card">
+            <div className="success-icon">
+              <CheckCircle2 size={48} />
+            </div>
+            <h1 className="auth-title">Demande envoyée !</h1>
+            <p className="auth-subtitle" style={{ textAlign: 'center', lineHeight: '1.7' }}>
+              Votre boutique <strong>{form.boutique_name}</strong> a bien été créée.<br />
+              Notre équipe va valider votre compte et vous contacter très prochainement.
+            </p>
+            <div className="success-steps">
+              <div className="success-step">
+                <span className="success-step-num">1</span>
+                <span>Demande reçue et enregistrée ✓</span>
+              </div>
+              <div className="success-step">
+                <span className="success-step-num">2</span>
+                <span>Validation par notre équipe (sous 24h)</span>
+              </div>
+              <div className="success-step">
+                <span className="success-step-num">3</span>
+                <span>Accès à votre tableau de bord</span>
+              </div>
+            </div>
+            <Link href="/login" className="btn btn-primary auth-submit" style={{ textAlign: 'center', display: 'flex', justifyContent: 'center' }}>
+              Accéder à la connexion
+            </Link>
+          </div>
+        ) : (
         <div className="register-layout">
           {/* Form */}
           <div className="auth-card glass">
@@ -228,25 +268,26 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {/* Plans rapide aperçu */}
+          {/* Benefits sidebar - no prices */}
           <div className="plans-preview">
-            {plans.map(plan => (
-              <div key={plan.name} className={`plan-card glass ${plan.recommended ? 'plan-recommended' : ''}`}>
-                {plan.recommended && <div className="plan-badge">Recommandé</div>}
-                <div className="plan-name">{plan.name}</div>
-                <div className="plan-price">{plan.price}</div>
-                <ul className="plan-features">
-                  {plan.features.map(f => (
-                    <li key={f} className="plan-feature">
-                      <span className="plan-check">✓</span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+            <div className="benefits-header">
+              <h3>Ce que vous obtenez</h3>
+              <p>Tout ce dont votre boutique a besoin pour grandir.</p>
+            </div>
+            <div className="benefits-list">
+              {plans.map((p, i) => (
+                <div key={i} className="benefit-item">
+                  <div className="benefit-icon">{p.icon}</div>
+                  <span>{p.label}</span>
+                </div>
+              ))}
+            </div>
+            <div className="benefits-trust">
+              <p>🔒 Données sécurisées · 🇬🇳 Conçu pour l&apos;Afrique · 📱 100% Mobile</p>
+            </div>
           </div>
         </div>
+        )}
       </div>
 
       <style jsx>{`
@@ -418,61 +459,103 @@ export default function RegisterPage() {
           font-weight: 600;
           text-decoration: none;
         }
+        /* Benefits Sidebar */
         .plans-preview {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+          justify-content: center;
+        }
+        .benefits-header h3 {
+          font-family: var(--font-display);
+          font-size: 1.15rem;
+          font-weight: 700;
+          margin-bottom: 0.375rem;
+          color: var(--text-primary);
+        }
+        .benefits-header p {
+          font-size: 0.85rem;
+          color: var(--text-secondary);
+          line-height: 1.5;
+        }
+        .benefits-list {
           display: flex;
           flex-direction: column;
           gap: 1rem;
         }
-        .plan-card {
-          border-radius: var(--radius-lg);
-          padding: 1.25rem;
-          position: relative;
-          overflow: hidden;
-        }
-        .plan-recommended {
-          border-color: var(--border-default) !important;
-          box-shadow: var(--shadow-brand);
-        }
-        .plan-badge {
-          position: absolute;
-          top: 0.75rem;
-          right: 0.75rem;
-          font-size: 0.7rem;
-          font-weight: 700;
-          background: var(--color-brand-600);
-          color: white;
-          padding: 0.2rem 0.5rem;
-          border-radius: 100px;
-        }
-        .plan-name {
-          font-family: var(--font-display);
-          font-weight: 700;
-          font-size: 1rem;
-          margin-bottom: 0.25rem;
-        }
-        .plan-price {
-          font-size: 0.85rem;
-          color: var(--color-brand-400);
-          font-weight: 600;
-          margin-bottom: 1rem;
-        }
-        .plan-features {
-          list-style: none;
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-        .plan-feature {
+        .benefit-item {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
-          font-size: 0.8rem;
+          gap: 0.875rem;
+          padding: 0.875rem 1rem;
+          background: rgba(255, 255, 255, 0.01);
+          border: 1px solid var(--border-subtle);
+          border-radius: 10px;
+          font-size: 0.875rem;
           color: var(--text-secondary);
+          transition: all 0.2s ease;
         }
-        .plan-check {
-          color: var(--color-brand-500);
-          font-weight: 700;
+        .benefit-item:hover {
+          border-color: rgba(52, 211, 153, 0.25);
+          color: var(--text-primary);
+        }
+        .benefit-icon {
+          color: var(--color-brand-400);
+          flex-shrink: 0;
+        }
+        .benefits-trust {
           font-size: 0.75rem;
+          color: var(--text-disabled);
+          text-align: center;
+          line-height: 1.5;
+          padding: 0.5rem;
+        }
+
+        /* Success Screen */
+        .success-card {
+          max-width: 480px;
+          width: 100%;
+          text-align: center;
+          padding: 2.5rem;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 1.25rem;
+        }
+        .success-icon {
+          color: var(--color-brand-400);
+          animation: fadeIn 0.6s ease forwards;
+        }
+        .success-steps {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+          width: 100%;
+          text-align: left;
+        }
+        .success-step {
+          display: flex;
+          align-items: center;
+          gap: 0.875rem;
+          font-size: 0.875rem;
+          color: var(--text-secondary);
+          padding: 0.625rem 0.875rem;
+          background: rgba(255, 255, 255, 0.01);
+          border: 1px solid var(--border-subtle);
+          border-radius: 8px;
+        }
+        .success-step-num {
+          width: 24px;
+          height: 24px;
+          background: var(--color-brand-600);
+          color: white;
+          border-radius: 50%;
+          font-size: 0.75rem;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
         }
       `}</style>
     </div>

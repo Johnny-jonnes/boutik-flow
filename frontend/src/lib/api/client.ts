@@ -131,7 +131,7 @@ async function request<T>(
   try {
     res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
   } catch {
-    throw new ApiError('Impossible de contacter le serveur. Vérifiez votre connexion.', 0);
+    throw new ApiError('Connexion au serveur en cours... Veuillez réessayez dans quelques secondes.', 0);
   }
 
   // Tentative de rafraîchissement automatique en cas de 401
