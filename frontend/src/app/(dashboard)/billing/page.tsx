@@ -102,26 +102,44 @@ export default function BillingPage() {
       {selectedPlan && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
-            <h3 className={styles.modalTitle}>{t('bill.orange_money')}</h3>
-            <form onSubmit={handleCheckout}>
-              <div className={styles.inputGroup}>
-                <label>{t('bill.phone')}</label>
-                <input 
-                  type="tel" 
-                  placeholder="Ex: 620 00 00 00" 
-                  value={phoneNumber}
-                  onChange={e => setPhoneNumber(e.target.value)}
-                  required
-                />
-              </div>
-              <button type="submit" className={styles.payButton} disabled={loading}>
-                {loading ? '...' : t('bill.pay')}
-              </button>
-              <button type="button" className={styles.cancelButton} onClick={() => setSelectedPlan(null)}>
-                {t('bill.cancel')}
-              </button>
-              {message && <div className={styles.message}>{message}</div>}
-            </form>
+            {message ? (
+              <>
+                <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>✅</div>
+                  <h3 className={styles.modalTitle} style={{ marginBottom: '0.5rem' }}>Demande envoyée !</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.6' }}>{message}</p>
+                </div>
+                <button type="button" className={styles.cancelButton} onClick={() => { setSelectedPlan(null); setMessage(''); }}>
+                  Fermer
+                </button>
+              </>
+            ) : (
+              <>
+                <h3 className={styles.modalTitle}>Demander le passage en version PRO</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: '1.6', marginBottom: '1rem' }}>
+                  Pour activer la version <strong>{selectedPlan?.toUpperCase()}</strong>, indiquez votre numéro de téléphone. 
+                  L'équipe BoutikFlow va vous contacter pour finaliser le changement.
+                </p>
+                <form onSubmit={handleCheckout}>
+                  <div className={styles.inputGroup}>
+                    <label>Votre numéro de téléphone</label>
+                    <input 
+                      type="tel" 
+                      placeholder="Ex: 627 17 13 97" 
+                      value={phoneNumber}
+                      onChange={e => setPhoneNumber(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <button type="submit" className={styles.payButton} disabled={loading}>
+                    {loading ? 'Envoi en cours...' : 'Envoyer la demande'}
+                  </button>
+                  <button type="button" className={styles.cancelButton} onClick={() => setSelectedPlan(null)}>
+                    Annuler
+                  </button>
+                </form>
+              </>
+            )}
           </div>
         </div>
       )}
