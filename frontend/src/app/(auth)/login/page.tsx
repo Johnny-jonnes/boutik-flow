@@ -144,11 +144,12 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Trust badges - no prices */}
+        {/* Trust badges - no prices, no emojis */}
         <div className="auth-badge">
-          <span className="badge badge-success flex items-center gap-1"><Check size={14} /> Sans engagement</span>
-          <span className="badge badge-neutral">🇬🇳 Conçu pour les commerces africains</span>
+          <span className="badge badge-success flex items-center gap-1">Sans engagement</span>
+          <span className="badge badge-neutral">Concu pour les commerces africains</span>
         </div>
+        <p className="trillionx-tag">Propulsé par <strong>TrillionX</strong></p>
       </div>
 
       <style jsx>{`
@@ -339,6 +340,17 @@ export default function LoginPage() {
           gap: 0.5rem;
           flex-wrap: wrap;
           justify-content: center;
+        }
+        .trillionx-tag {
+          font-size: 0.75rem;
+          color: var(--text-disabled);
+          text-align: center;
+          margin-top: 0.25rem;
+          letter-spacing: 0.01em;
+        }
+        .trillionx-tag strong {
+          color: var(--text-muted);
+          font-weight: 600;
         }
       `}</style>
     </div>
