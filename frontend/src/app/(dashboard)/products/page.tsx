@@ -439,7 +439,49 @@ export default function ProductsPage() {
           <h1 className="page-title">{t('prod.title')}</h1>
           <p className="page-subtitle">{t('prod.subtitle')}</p>
         </div>
-        <div className="header-actions">
+        <div className="header-actions" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <button 
+            className="btn btn-secondary" 
+            onClick={() => window.print()}
+            title={t('common.print')}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+          >
+            <Printer size={16} />
+            <span>{t('common.print')}</span>
+          </button>
+
+          <button 
+            className="btn btn-secondary" 
+            onClick={() => {
+              const headers = ['Nom', 'Catégorie', 'Prix (GNF)', 'Stock', 'SKU', 'Code-barres', 'Statut'];
+              const csvRows = [headers.join(',')];
+              products.forEach(p => {
+                csvRows.push([
+                  `"${p.name.replace(/"/g, '""')}"`,
+                  `"${p.category_rel?.name || ''}"`,
+                  p.price,
+                  p.stock,
+                  `"${p.sku || ''}"`,
+                  `"${p.barcode || ''}"`,
+                  p.is_available ? 'Disponible' : 'Indisponible'
+                ].join(','));
+              });
+              const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.setAttribute('href', url);
+              link.setAttribute('download', `catalogue_produits_${new Date().toISOString().slice(0, 10)}.csv`);
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }}
+            title={t('common.download')}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+          >
+            <Download size={16} />
+            <span>{t('common.download')}</span>
+          </button>
+
           <button className="btn btn-primary" id="btn-add-product" onClick={() => setIsAddOpen(true)}>
             <Plus size={16} /> {t('prod.add')}
           </button>
@@ -766,6 +808,43 @@ export default function ProductsPage() {
         }
         .sparkle-icon {
           animation: pulse 1.5s infinite;
+        }
+
+        @media print {
+          body {
+            background: white !important;
+            color: black !important;
+          }
+          .sidebar, .mobile-bar, .header-actions, .filters, .modal, .btn, button, .text-right, th:last-child, td:last-child {
+            display: none !important;
+          }
+          .page {
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .page-title {
+            color: black !important;
+            font-size: 1.8rem !important;
+          }
+          .page-subtitle {
+            color: #4b5563 !important;
+            font-size: 0.9rem !important;
+          }
+          .data-table {
+            border: 1px solid #d1d5db !important;
+            width: 100% !important;
+          }
+          .data-table th {
+            background: #f3f4f6 !important;
+            color: black !important;
+            border-bottom: 2px solid #9ca3af !important;
+          }
+          .data-table td {
+            border-bottom: 1px solid #e5e7eb !important;
+            color: black !important;
+          }
+          .badge-success { background: #dcfce7 !important; color: #166534 !important; border: 1px solid #86efac !important; }
+          .badge-error { background: #fee2e2 !important; color: #991b1b !important; border: 1px solid #fca5a5 !important; }
         }
       `}</style>
     </div>

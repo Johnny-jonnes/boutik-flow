@@ -307,7 +307,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <button className="lang-toggle" onClick={() => setLanguage(language === 'fr' ? 'en' : 'fr')}>
             <Globe size={14} />
             <span>{language === 'fr' ? 'Français' : 'English'}</span>
-            <span className="lang-flag">{language === 'fr' ? '🇫🇷' : '🇬🇧'}</span>
           </button>
 
           <div className="footer-separator" />
@@ -766,45 +765,47 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         .profile-dropdown {
           position: absolute;
-          bottom: calc(100% + 4px);
+          bottom: calc(100% + 8px);
           left: 0; right: 0;
-          background: #112d24;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 10px;
-          padding: 0.25rem;
+          background: #0f172a;
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          border-radius: 12px;
+          padding: 0.35rem;
           display: flex;
           flex-direction: column;
-          gap: 2px;
-          box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
+          gap: 4px;
+          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
           z-index: 60;
         }
 
         .dropdown-item {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem;
-          border-radius: 6px;
-          font-size: 0.8rem;
-          color: #a7b8b0;
+          gap: 0.6rem;
+          padding: 0.65rem 0.8rem;
+          border-radius: 8px;
+          font-size: 0.85rem;
+          font-weight: 500;
+          color: #f8fafc;
           text-decoration: none;
           cursor: pointer;
           transition: all 0.15s ease;
           border: none;
-          background: transparent;
+          background: rgba(255, 255, 255, 0.05);
         }
 
         .dropdown-item:hover {
-          background: rgba(255, 255, 255, 0.05);
-          color: #f0fdf4;
+          background: rgba(16, 185, 129, 0.2);
+          color: #34d399;
         }
 
         .dropdown-item--logout {
-          color: #f87171;
+          color: #fca5a5;
+          background: rgba(239, 68, 68, 0.1);
         }
         .dropdown-item--logout:hover {
-          background: rgba(239, 68, 68, 0.08);
-          color: #ef4444;
+          background: rgba(239, 68, 68, 0.25);
+          color: #ffffff;
         }
 
         /* ─── Main Content ──────────────────────────── */

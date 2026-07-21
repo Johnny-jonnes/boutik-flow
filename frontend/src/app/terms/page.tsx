@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, ShieldCheck, Lock, CheckCircle2, FileText, Mail, Phone, Building } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, Lock, CheckCircle2, Mail, Phone, Building } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 
 export default function TermsPage() {
   const { language, setLanguage } = useLanguage();
+  const isFr = language === 'fr';
 
   return (
     <div className="terms-container">
@@ -13,21 +14,21 @@ export default function TermsPage() {
       <header className="terms-header">
         <div className="terms-header-inner">
           <Link href="/" className="logo-brand">
-            <div className="logo-icon">⚡</div>
+            <span className="logo-badge">BF</span>
             <span className="logo-text">BoutikFlow</span>
           </Link>
 
           <div className="terms-header-actions">
             <button 
               className="lang-btn" 
-              onClick={() => setLanguage(language === 'fr' ? 'en' : 'fr')}
+              onClick={() => setLanguage(isFr ? 'en' : 'fr')}
             >
-              🌐 {language === 'fr' ? 'English' : 'Français'}
+              {isFr ? 'English' : 'Français'}
             </button>
 
             <Link href="/login" className="back-link">
               <ArrowLeft size={16} />
-              <span>{language === 'fr' ? 'Retour à la connexion' : 'Back to Login'}</span>
+              <span>{isFr ? 'Retour à la connexion' : 'Back to Login'}</span>
             </Link>
           </div>
         </div>
@@ -39,33 +40,33 @@ export default function TermsPage() {
           {/* Badge & Title */}
           <div className="terms-badge">
             <ShieldCheck size={18} />
-            <span>{language === 'fr' ? 'Document Juridique Officiel' : 'Official Legal Document'}</span>
+            <span>{isFr ? 'Document Juridique Officiel' : 'Official Legal Document'}</span>
           </div>
 
           <h1 className="terms-title">
-            {language === 'fr' 
+            {isFr 
               ? "Conditions Générales d'Utilisation & Protection des Données" 
               : "Terms of Service & Data Protection Policy"}
           </h1>
           <p className="terms-subtitle">
-            {language === 'fr'
+            {isFr
               ? 'Dernière mise à jour : 21 Juillet 2026 · Propulsé par TrillionX'
               : 'Last updated: July 21, 2026 · Powered by TrillionX'}
           </p>
 
-          {/* Golden Rule Consent Alert */}
+          {/* Consent Alert Box */}
           <div className="consent-alert-box">
             <div className="alert-icon-wrap">
               <Lock size={24} />
             </div>
             <div className="alert-body">
               <h3>
-                {language === 'fr' 
-                  ? ' Consentement Explicite et Veille Active sur vos Données' 
-                  : ' Explicit Consent & Active Data Protection'}
+                {isFr 
+                  ? 'Consentement Explicite et Veille Active sur vos Données' 
+                  : 'Explicit Consent & Active Data Protection'}
               </h3>
               <p>
-                {language === 'fr'
+                {isFr
                   ? "En créant un compte, en vous connectant ou en utilisant l'application BoutikFlow, vous acceptez expressément et sans réserve l'intégralité des présentes Conditions Générales d'Utilisation. Par cette inscription, toute personne ou entité utilisatrice donne son accord ferme et explicite à ce que BoutikFlow et la société TrillionX veillent activement sur la sécurité, l'intégrité, la confidentialité et la sauvegarde de l'ensemble de ses données commerciales, produits, transactions et données clients."
                   : "By creating an account, logging in, or using the BoutikFlow application, you expressly and unreservedly accept all of these Terms of Service. Through this registration, any user or entity gives their firm and explicit consent to BoutikFlow and TrillionX actively safeguarding the security, integrity, confidentiality, and backup of all their business data, products, transactions, and customer records."}
               </p>
@@ -78,75 +79,84 @@ export default function TermsPage() {
           <div className="terms-articles">
             {/* Article 1 */}
             <section className="article-block">
-              <h2>Article 1 — Définitions et Objet du Service</h2>
+              <h2>{isFr ? 'Article 1 — Définitions et Objet du Service' : 'Article 1 — Definitions & Scope of Service'}</h2>
               <p>
-                La plateforme <strong>BoutikFlow</strong> est une solution logicielle en mode SaaS (Software as a Service) conçue et éditée par la société <strong>TrillionX</strong>. 
-                Elle offre aux commerçants, entreprises et indépendants une suite intégrée d'outils de gestion comprenant la gestion du catalogue produits, du stock, des commandes, de la relation client (CRM), de l'automatisation marketing et de la communication omnicanale via WhatsApp.
+                {isFr 
+                  ? "La plateforme BoutikFlow est une solution logicielle en mode SaaS (Software as a Service) conçue et éditée par la société TrillionX. Elle offre aux commerçants, entreprises et indépendants une suite intégrée d'outils de gestion comprenant la gestion du catalogue produits, du stock, des commandes, de la relation client (CRM), de l'automatisation marketing et de la communication via WhatsApp."
+                  : "The BoutikFlow platform is a Software as a Service (SaaS) solution developed and published by TrillionX. It provides merchants, businesses, and entrepreneurs with an integrated suite of management tools including product catalog management, inventory control, order tracking, CRM, marketing automation, and WhatsApp communication."}
               </p>
               <p>
-                Les présentes Conditions Générales d'Utilisation (CGU) encadrent l'accès et l'utilisation de l'ensemble des services web et mobiles fournis sous la marque BoutikFlow.
+                {isFr
+                  ? "Les présentes Conditions Générales d'Utilisation (CGU) encadrent l'accès et l'utilisation de l'ensemble des services web et mobiles fournis sous la marque BoutikFlow."
+                  : "These Terms of Service (ToS) govern access to and use of all web and mobile services provided under the BoutikFlow brand."}
               </p>
             </section>
 
             {/* Article 2 */}
             <section className="article-block">
-              <h2>Article 2 — Acceptation Obligatoire et Automatique</h2>
+              <h2>{isFr ? 'Article 2 — Acceptation Obligatoire et Automatique' : 'Article 2 — Mandatory & Automatic Acceptance'}</h2>
               <p>
-                L'accès aux services de BoutikFlow est soumis au respect strict des présentes CGU. 
-                La création d'un compte sur le portail <code>boutikflow.app</code> ou toute utilisation continue des fonctionnalités du tableau de bord vaut acceptation intégrale, immédiate et irrévocable de l'ensemble des clauses énoncées dans ce document.
+                {isFr
+                  ? "L'accès aux services de BoutikFlow est soumis au respect strict des présentes CGU. La création d'un compte ou toute utilisation continue des fonctionnalités du tableau de bord vaut acceptation intégrale, immédiate et irrévocable de l'ensemble des clauses énoncées dans ce document."
+                  : "Access to BoutikFlow services is subject to strict compliance with these ToS. Account creation or continued use of dashboard features constitutes full, immediate, and irrevocable acceptance of all clauses set forth in this document."}
               </p>
               <p>
-                Si l'utilisateur n'accepte pas les présentes conditions, il doit s'abstenir immédiatement d'utiliser les services de la plateforme.
+                {isFr
+                  ? "Si l'utilisateur n'accepte pas les présentes conditions, il doit s'abstenir immédiatement d'utiliser les services de la plateforme."
+                  : "If the user does not accept these terms, they must immediately refrain from using the platform services."}
               </p>
             </section>
 
             {/* Article 3 */}
             <section className="article-block">
-              <h2>Article 3 — Inscription, Compte et Validation Administrative</h2>
+              <h2>{isFr ? 'Article 3 — Inscription, Compte et Validation Administrative' : 'Article 3 — Registration, Account & Administrative Verification'}</h2>
               <p>
-                Toute inscription sur la plateforme donne lieu à la création d'une instance boutique avec le statut <em>« En attente de validation » (Pending)</em>. 
-                Pour préserver la sécurité de la plateforme et lutter contre les utilisations frauduleuses, l'équipe d'administration de TrillionX procède à la vérification de chaque nouvelle demande de boutique.
+                {isFr
+                  ? "Toute inscription sur la plateforme donne lieu à la création d'une instance boutique avec le statut En attente de validation. Pour préserver la sécurité de la plateforme et lutter contre les utilisations frauduleuses, l'équipe d'administration de TrillionX procède à la vérification de chaque nouvelle demande."
+                  : "Every registration on the platform creates a store instance with Pending Validation status. To maintain platform security and prevent fraudulent usage, the TrillionX administration team reviews each new request."}
               </p>
               <ul>
-                <li>L'accès au tableau de bord n'est activé qu'après validation expresse de l'administrateur.</li>
-                <li>L'utilisateur est notifié par e-mail dès la validation ou en cas de demande d'informations complémentaires.</li>
-                <li>L'utilisateur est seul responsable de la confidentialité de ses identifiants de connexion et des actions accomplies sous son compte.</li>
+                <li>{isFr ? "L'accès au tableau de bord n'est activé qu'après validation expresse de l'administrateur." : "Dashboard access is activated only after express administrator approval."}</li>
+                <li>{isFr ? "L'utilisateur est notifié par e-mail dès la validation de son compte." : "Users are notified via email upon account activation."}</li>
+                <li>{isFr ? "L'utilisateur est seul responsable de la confidentialité de ses identifiants de connexion." : "Users are solely responsible for maintaining credentials confidentiality."}</li>
               </ul>
             </section>
 
             {/* Article 4 */}
             <section className="article-block highlight-section">
-              <h2>Article 4 — Veille Active, Sécurité et Confidentialité des Données</h2>
+              <h2>{isFr ? 'Article 4 — Veille Active, Sécurité et Confidentialité des Données' : 'Article 4 — Active Protection, Security & Data Privacy'}</h2>
               <p>
-                <strong>Engagement de Veille et de Protection :</strong> Conformément au consentement accordé lors de l'inscription, BoutikFlow et TrillionX mettent en œuvre tous les moyens technologiques, organisationnels et de chiffrement appropriés pour veiller jour et nuit sur les données transmises.
+                {isFr
+                  ? "Engagement de Veille et de Protection : Conformément au consentement accordé lors de l'inscription, BoutikFlow et TrillionX mettent en œuvre tous les moyens technologiques, organisationnels et de chiffrement appropriés pour veiller jour et nuit sur les données transmises."
+                  : "Active Protection Commitment: Pursuant to consent granted upon registration, BoutikFlow and TrillionX implement all appropriate technological, organizational, and encryption measures to safeguard transmitted data round-the-clock."}
               </p>
               <div className="features-grid">
                 <div className="feature-card">
                   <CheckCircle2 size={18} className="text-emerald" />
                   <div>
-                    <strong>Chiffrement & Isolation</strong>
-                    <p>Les données de chaque boutique sont strictement isolées au niveau base de données (Architecture Multi-Tenant).</p>
+                    <strong>{isFr ? 'Chiffrement & Isolation' : 'Encryption & Isolation'}</strong>
+                    <p>{isFr ? 'Les données de chaque boutique sont strictement isolées au niveau base de données.' : 'Each store data is strictly isolated at the database level.'}</p>
                   </div>
                 </div>
                 <div className="feature-card">
                   <CheckCircle2 size={18} className="text-emerald" />
                   <div>
-                    <strong>Sauvegardes Quotidiennes</strong>
-                    <p>Vos produits, commandes et historiques clients font l'objet de sauvegardes automatiques sécurisées.</p>
+                    <strong>{isFr ? 'Sauvegardes Quotidiennes' : 'Daily Backups'}</strong>
+                    <p>{isFr ? 'Vos produits, commandes et historiques clients font l\'objet de sauvegardes automatiques.' : 'Your products, orders, and customer logs undergo automated backups.'}</p>
                   </div>
                 </div>
                 <div className="feature-card">
                   <CheckCircle2 size={18} className="text-emerald" />
                   <div>
-                    <strong>Non-Revente des Données</strong>
-                    <p>TrillionX s'interdit formellement de vendre, louer ou céder vos données commerciales ou celles de vos clients à des tiers.</p>
+                    <strong>{isFr ? 'Non-Revente des Données' : 'No Data Resale'}</strong>
+                    <p>{isFr ? 'TrillionX s\'interdit formellement de vendre ou louer vos données commerciales.' : 'TrillionX strictly refrains from selling or renting your business data.'}</p>
                   </div>
                 </div>
                 <div className="feature-card">
                   <CheckCircle2 size={18} className="text-emerald" />
                   <div>
-                    <strong>Surveillance Anti-Intrusion</strong>
-                    <p>Des systèmes automatisés détectent et bloquent les tentatives d'accès suspectes ou non autorisées.</p>
+                    <strong>{isFr ? 'Surveillance Anti-Intrusion' : 'Intrusion Monitoring'}</strong>
+                    <p>{isFr ? 'Des systèmes automatisés détectent et bloquent les accès non autorisés.' : 'Automated systems detect and block unauthorized access attempts.'}</p>
                   </div>
                 </div>
               </div>
@@ -154,87 +164,89 @@ export default function TermsPage() {
 
             {/* Article 5 */}
             <section className="article-block">
-              <h2>Article 5 — Utilisation du Module WhatsApp et Gestion CRM</h2>
+              <h2>{isFr ? 'Article 5 — Utilisation du Module WhatsApp et Gestion CRM' : 'Article 5 — WhatsApp Module Usage & CRM Management'}</h2>
               <p>
-                BoutikFlow met à disposition des marchands des outils d'interaction rapide WhatsApp Direct et d'envoi de messages ciblés. 
-                L'utilisateur s'engage à utiliser ces outils dans le respect des réglementations sur les communications électroniques et le consentement préalable des acheteurs :
+                {isFr
+                  ? "BoutikFlow met à disposition des marchands des outils d'interaction rapide WhatsApp et d'envoi de messages ciblés. L'utilisateur s'engage à utiliser ces outils dans le respect des réglementations sur les communications électroniques et le consentement préalable des acheteurs."
+                  : "BoutikFlow provides merchants with WhatsApp interaction tools and targeted messaging. Users commit to using these tools in compliance with electronic communications regulations and prior customer consent."}
               </p>
               <ul>
-                <li>Interdiction absolue d'envoyer des messages spams, trompeurs ou à caractère abusif.</li>
-                <li>Respect strict des conditions d'utilisation imposées par WhatsApp / Meta Cloud API.</li>
-                <li>L'utilisateur demeure seul responsable du contenu des messages envoyés à ses clients finaux.</li>
+                <li>{isFr ? "Interdiction absolue d'envoyer des messages spams ou trompeurs." : "Strict prohibition of spam or deceptive messaging."}</li>
+                <li>{isFr ? "Respect des conditions d'utilisation imposées par WhatsApp." : "Compliance with WhatsApp terms of service."}</li>
+                <li>{isFr ? "L'utilisateur demeure seul responsable du contenu des messages envoyés." : "Users remain solely responsible for sent message content."}</li>
               </ul>
             </section>
 
             {/* Article 6 */}
             <section className="article-block">
-              <h2>Article 6 — Formules d'Abonnement et Mises à Niveau (Upgrade PRO)</h2>
+              <h2>{isFr ? 'Article 6 — Formules d\'Abonnement et Mises à Niveau (Upgrade PRO)' : 'Article 6 — Subscription Plans & Pro Upgrades'}</h2>
               <p>
-                BoutikFlow propose une formule d'entrée de gamme <strong>Freemium</strong> ainsi que des formules avancées (Mensuelle et À vie). 
-                La demande de passage en version PRO s'effectue via le bouton dédié dans l'application :
-              </p>
-              <p>
-                Toute demande d'upgrade déclenche l'envoi d'une notification directe à l'équipe commerciale TrillionX. Le changement de forfait est finalisé et activé par l'administrateur après confirmation des modalités de règlement.
+                {isFr
+                  ? "BoutikFlow propose une formule d'entrée de gamme Freemium ainsi que des formules avancées. La demande de passage en version PRO s'effectue via le bouton dédié dans l'application et transmet une notification directe à l'administration."
+                  : "BoutikFlow offers a Freemium entry plan along with advanced plans. Upgrading to the Pro version is initiated via the dedicated button in the app, sending a direct notification to administration."}
               </p>
             </section>
 
             {/* Article 7 */}
             <section className="article-block">
-              <h2>Article 7 — Propriété Intellectuelle</h2>
+              <h2>{isFr ? 'Article 7 — Propriété Intellectuelle' : 'Article 7 — Intellectual Property'}</h2>
               <p>
-                L'ensemble des éléments de la plateforme BoutikFlow (code source, interfaces graphiques, logos, algorithmes d'IA, marques, bases de données) est la propriété exclusive de <strong>TrillionX</strong>.
-              </p>
-              <p>
-                En revanche, le commerçant conserve la propriété intégrale de ses contenus commerciaux : photos de produits, descriptions, marques déposées et fichier clients importé ou généré sur son instance.
+                {isFr
+                  ? "L'ensemble des éléments de la plateforme BoutikFlow (code source, interfaces graphiques, logos, algorithmes, marques) est la propriété exclusive de TrillionX. Le commerçant conserve la propriété intégrale de ses contenus commerciaux."
+                  : "All elements of the BoutikFlow platform (source code, graphical interfaces, logos, algorithms, trademarks) remain the exclusive property of TrillionX. Merchants retain full ownership of their commercial content."}
               </p>
             </section>
 
             {/* Article 8 */}
             <section className="article-block">
-              <h2>Article 8 — Responsabilités et Interdictions</h2>
+              <h2>{isFr ? 'Article 8 — Responsabilités et Interdictions' : 'Article 8 — Responsibilities & Restrictions'}</h2>
               <p>
-                L'utilisateur s'interdit formellement d'utiliser BoutikFlow pour promouvoir, commercialiser ou distribuer des produits ou services illicites, contrefaits, ou contraires aux lois en vigueur en République de Guinée et à l'international.
-              </p>
-              <p>
-                TrillionX se réserve le droit de suspendre ou fermer sans préavis tout compte associé à des activités frauduleuses, des comportements suspects ou des tentatives de contournement de la sécurité de la plateforme.
+                {isFr
+                  ? "L'utilisateur s'interdit formellement d'utiliser BoutikFlow pour distribuer des produits ou services illicites, contrefaits, ou contraires aux lois en vigueur. TrillionX se réserve le droit de suspendre sans préavis tout compte associé à des activités frauduleuses."
+                  : "Users are strictly prohibited from using BoutikFlow to distribute illegal or counterfeit products. TrillionX reserves the right to suspend without prior notice any account associated with fraudulent activities."}
               </p>
             </section>
 
             {/* Article 9 */}
             <section className="article-block">
-              <h2>Article 9 — Disponibilité et Maintenance du Service</h2>
+              <h2>{isFr ? 'Article 9 — Disponibilité et Maintenance du Service' : 'Article 9 — Service Availability & Maintenance'}</h2>
               <p>
-                TrillionX s'efforce de maintenir un taux d'accessibilité des services de 99,9%. Cependant, des interruptions temporaires peuvent survenir pour des opérations de maintenance préventive, des mises à jour de sécurité ou des contraintes liées aux infrastructures d'hébergement cloud (démarrage du serveur backend Render en cold-start).
+                {isFr
+                  ? "TrillionX s'efforce de maintenir un taux d'accessibilité élevé. Des interruptions temporaires peuvent survenir pour des opérations de maintenance préventive ou de sécurité."
+                  : "TrillionX strives to maintain high availability. Temporary interruptions may occur for preventive maintenance or security upgrades."}
               </p>
             </section>
 
             {/* Article 10 */}
             <section className="article-block">
-              <h2>Article 10 — Résiliation et Récupération des Données</h2>
+              <h2>{isFr ? 'Article 10 — Résiliation et Récupération des Données' : 'Article 10 — Termination & Data Retrieval'}</h2>
               <p>
-                L'utilisateur peut demander la suppression de son compte et de sa boutique à tout moment en contactant le support TrillionX. 
-                Sur simple demande écrite du propriétaire légitime, une exportation de l'ensemble de ses données (produits, clients, commandes) lui sera fournie au format CSV/JSON avant la clôture définitive.
+                {isFr
+                  ? "L'utilisateur peut demander la clôture de son compte à tout moment. Sur demande écrite du propriétaire légitime, une exportation complète des données (produits, clients, commandes) lui sera fournie."
+                  : "Users may request account closure at any time. Upon written request from the legitimate owner, a full data export (products, customers, orders) will be provided."}
               </p>
             </section>
 
             {/* Article 11 */}
             <section className="article-block">
-              <h2>Article 11 — Modifications des CGU</h2>
+              <h2>{isFr ? 'Article 11 — Modifications des CGU' : 'Article 11 — Terms Modifications'}</h2>
               <p>
-                TrillionX se réserve le droit de modifier les présentes Conditions Générales à tout moment afin d'intégrer les nouvelles fonctionnalités de l'application ou l'évolution des lois. Les utilisateurs seront informés de toute modification majeure par e-mail ou notification dans leur tableau de bord.
+                {isFr
+                  ? "TrillionX se réserve le droit de modifier les présentes Conditions Générales. Les utilisateurs seront informés de toute mise à jour majeure."
+                  : "TrillionX reserves the right to modify these Terms. Users will be informed of any major updates."}
               </p>
             </section>
 
             {/* Article 12 */}
             <section className="article-block contact-block">
-              <h2>Article 12 — Contact & Support TrillionX</h2>
-              <p>Pour toute question concernant les présentes Conditions Générales ou pour exercer vos droits sur vos données, notre équipe est à votre disposition :</p>
+              <h2>{isFr ? 'Article 12 — Contact & Support TrillionX' : 'Article 12 — Contact & Support TrillionX'}</h2>
+              <p>{isFr ? 'Pour toute question concernant les présentes Conditions Générales ou pour exercer vos droits :' : 'For any questions regarding these Terms or to exercise your rights:'}</p>
               
               <div className="contact-cards">
                 <div className="contact-item">
                   <Mail size={18} className="text-emerald" />
                   <div>
-                    <span className="contact-label">Email Support & Juridique</span>
+                    <span className="contact-label">{isFr ? 'Email Support & Juridique' : 'Legal & Support Email'}</span>
                     <a href="mailto:trillionnx@gmail.com" className="contact-val">trillionnx@gmail.com</a>
                   </div>
                 </div>
@@ -242,7 +254,7 @@ export default function TermsPage() {
                 <div className="contact-item">
                   <Phone size={18} className="text-emerald" />
                   <div>
-                    <span className="contact-label">Téléphones Directs</span>
+                    <span className="contact-label">{isFr ? 'Téléphones Directs' : 'Direct Phone Numbers'}</span>
                     <span className="contact-val">+224 627 17 13 97 / 610 93 55 24</span>
                   </div>
                 </div>
@@ -250,7 +262,7 @@ export default function TermsPage() {
                 <div className="contact-item">
                   <Building size={18} className="text-emerald" />
                   <div>
-                    <span className="contact-label">Propulsé par</span>
+                    <span className="contact-label">{isFr ? 'Propulsé par' : 'Powered by'}</span>
                     <span className="contact-val">TrillionX Tech Solution</span>
                   </div>
                 </div>
@@ -262,7 +274,7 @@ export default function TermsPage() {
 
       {/* Footer */}
       <footer className="terms-footer">
-        <p>© 2026 BoutikFlow · Propulsé par TrillionX. Tous droits réservés.</p>
+        <p>© 2026 BoutikFlow · {isFr ? 'Propulsé par TrillionX. Tous droits réservés.' : 'Powered by TrillionX. All rights reserved.'}</p>
       </footer>
 
       <style jsx>{`
@@ -298,7 +310,7 @@ export default function TermsPage() {
           text-decoration: none;
         }
 
-        .logo-icon {
+        .logo-badge {
           width: 34px;
           height: 34px;
           border-radius: 8px;
@@ -307,7 +319,8 @@ export default function TermsPage() {
           align-items: center;
           justify-content: center;
           color: white;
-          font-weight: bold;
+          font-weight: 800;
+          font-size: 0.9rem;
         }
 
         .logo-text {
@@ -326,10 +339,11 @@ export default function TermsPage() {
           background: rgba(255, 255, 255, 0.06);
           border: 1px solid rgba(255, 255, 255, 0.12);
           color: #d1d5db;
-          padding: 0.4rem 0.8rem;
+          padding: 0.4rem 0.88rem;
           border-radius: 8px;
           cursor: pointer;
           font-size: 0.85rem;
+          font-weight: 600;
           transition: all 0.2s;
         }
 
@@ -529,7 +543,6 @@ export default function TermsPage() {
           color: #6b7280;
           text-transform: uppercase;
           letter-spacing: 0.05em;
-
         }
 
         .contact-val {
