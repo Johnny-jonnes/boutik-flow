@@ -185,6 +185,7 @@ def create_order(
             db.add(counter_client)
             db.flush()
 
+        client = counter_client
         target_client_id = counter_client.id
 
     # Créer l'entité Order de base

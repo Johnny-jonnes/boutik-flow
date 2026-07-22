@@ -482,7 +482,19 @@ def list_team(
     users = db.query(User).filter(
         and_(User.tenant_id == current_user.tenant_id, User.deleted_at.is_(None))
     ).all()
-    return users
+    return [
+        TeamMemberResponse(
+            id=u.id,
+            tenant_id=u.tenant_id,
+            email=u.email,
+            full_name=u.full_name,
+            phone=u.phone,
+            role=u.role.value if hasattr(u.role, "value") else str(u.role),
+            is_active=u.is_active,
+            created_at=u.created_at,
+        )
+        for u in users
+    ]
 
 
 @router.post(

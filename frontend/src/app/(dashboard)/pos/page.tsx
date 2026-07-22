@@ -340,22 +340,19 @@ export default function POSPage() {
           color: var(--text-muted);
           font-size: 0.875rem;
         }
-        
-        .pos-grid {
+              .pos-grid {
           display: grid;
-          grid-template-columns: 1fr;
+          grid-template-columns: 1fr 380px;
           gap: 1.5rem;
-          flex: 1;
-          min-height: 0;
+          align-items: start;
         }
-        
-        @media (min-width: 768px) {
+
+        @media (max-width: 1023px) {
           .pos-grid {
-            grid-template-columns: 2fr 1fr;
+            grid-template-columns: 1fr;
           }
         }
         
-        /* Products Panel */
         .products-panel {
           display: flex;
           flex-direction: column;
@@ -364,97 +361,10 @@ export default function POSPage() {
           border-radius: 12px;
           border: 1px solid var(--border-subtle);
           padding: 1.25rem;
-          height: 100%;
           min-height: 500px;
         }
-        
-        .search-bar {
-          position: relative;
-          display: flex;
-          align-items: center;
-        }
-        
-        .search-icon {
-          position: absolute;
-          left: 1rem;
-          color: var(--text-muted);
-        }
-        
-        .search-input {
-          width: 100%;
-          padding: 0.75rem 1rem 0.75rem 3rem;
-          background: var(--surface-0);
-          border: 1px solid var(--border-subtle);
-          border-radius: 8px;
-          color: var(--text-primary);
-          font-size: 0.95rem;
-          transition: border-color 0.2s;
-        }
-        
-        .search-input:focus {
-          outline: none;
-          border-color: var(--color-brand-500);
-        }
-        
-        .products-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-          gap: 1rem;
-          overflow-y: auto;
-          flex: 1;
-          align-content: start;
-        }
-        
-        .product-card {
-          background: var(--surface-0);
-          border: 1px solid var(--border-subtle);
-          border-radius: 10px;
-          padding: 1rem;
-          cursor: pointer;
-          transition: all 0.2s;
-          display: flex;
-          flex-direction: column;
-        }
-        
-        .product-card:hover:not(.product-card--disabled) {
-          border-color: var(--color-brand-500);
-          transform: translateY(-2px);
-        }
-        
-        .product-card--disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-        
-        .product-info {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-        
-        .product-name {
-          font-size: 0.95rem;
-          font-weight: 600;
-          color: var(--text-primary);
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-        
-        .product-price {
-          font-weight: 700;
-          color: var(--color-brand-500);
-        }
-        
-        .product-stock {
-          font-size: 0.75rem;
-        }
-        
-        .text-red { color: #ef4444; }
-        .text-green { color: #10b981; }
-        
-        /* Cart Panel */
+
+        /* Cart Panel Sticky & Compact */
         .cart-panel {
           display: flex;
           flex-direction: column;
@@ -462,20 +372,32 @@ export default function POSPage() {
           border-radius: 12px;
           border: 1px solid var(--border-subtle);
           overflow: hidden;
-          height: 100%;
+          position: sticky;
+          top: 1rem;
+          max-height: calc(100vh - 5rem);
         }
         
+        .cart-items {
+          max-height: 240px;
+          overflow-y: auto;
+          padding: 1rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
         @media (max-width: 767px) {
           .cart-panel {
             position: sticky;
             bottom: 0;
-            max-height: 50vh;
+            top: auto;
+            max-height: 45vh;
             z-index: 20;
             box-shadow: 0 -8px 24px rgba(0,0,0,0.3);
             border-top: 2px solid var(--color-brand-500);
           }
           .cart-items {
-            max-height: 180px;
+            max-height: 140px;
             overflow-y: auto;
           }
         }
