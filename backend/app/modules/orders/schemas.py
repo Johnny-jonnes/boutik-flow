@@ -28,6 +28,17 @@ class OrderUpdateStatus(BaseModel):
     note: str | None = Field(None, description="Raison du changement de statut (optionnel)")
 
 
+class OrderReturnItemRequest(BaseModel):
+    product_id: uuid.UUID
+    quantity: int = Field(..., gt=0)
+
+
+class OrderReturnRequest(BaseModel):
+    items: list[OrderReturnItemRequest] = Field(..., min_length=1)
+    reason: str = Field(..., min_length=2, max_length=500)
+    restock_inventory: bool = Field(True, description="Réintégrer les articles retournés en stock")
+
+
 class OrderItemResponse(BaseModel):
     """Ligne de commande retournée."""
     id: uuid.UUID

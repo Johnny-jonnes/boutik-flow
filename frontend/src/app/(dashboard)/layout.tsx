@@ -27,11 +27,14 @@ import {
   UserCog,
   Settings,
   CreditCard,
-  LogOut
+  LogOut,
+  Wallet,
+  ClipboardList
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useLanguage } from '@/context/LanguageContext';
+import { ScrollToTop } from '@/components/ScrollToTop';
 
 const NAV_CATEGORIES = [
   {
@@ -74,6 +77,8 @@ const NAV_CATEGORIES = [
     icon: Settings,
     items: [
       { href: '/team', icon: UserCog, label: 'Équipe', id: 'nav-team' },
+      { href: '/finance', icon: Wallet, label: 'Finance', id: 'nav-finance' },
+      { href: '/audit', icon: ClipboardList, label: 'Audit', id: 'nav-audit' },
     ]
   }
 ];
@@ -237,6 +242,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               icon: Settings,
               items: [
                 { href: '/team', icon: UserCog, labelKey: 'nav.team', label: 'Équipe', id: 'nav-team' },
+                { href: '/finance', icon: Wallet, labelKey: 'nav.finance', label: 'Finance', id: 'nav-finance' },
+                { href: '/audit', icon: ClipboardList, labelKey: 'nav.audit', label: 'Audit', id: 'nav-audit' },
               ]
             },
             ...(userInfo.role && userInfo.role.toLowerCase() === 'admin' ? [{
@@ -320,10 +327,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {/* Dropdown Menu */}
             {isProfileDropdownOpen && (
               <div className="profile-dropdown">
-                <Link href="/billing" className="dropdown-item" onClick={() => setIsProfileDropdownOpen(false)}>
-                  <CreditCard size={14} />
-                  <span>{t('sidebar.billing')}</span>
-                </Link>
                 <div className="dropdown-item dropdown-item--logout" onClick={handleLogout}>
                   <LogOut size={14} />
                   <span>{t('sidebar.logout')}</span>
@@ -337,6 +340,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Content */}
       <main className="main">
         <div className="main__inner">{children}</div>
+        <ScrollToTop />
       </main>
 
       <style jsx>{`

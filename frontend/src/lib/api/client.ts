@@ -43,6 +43,11 @@ import type {
   SupplierUpdate,
   TeamMember,
   InviteUserRequest,
+  AuditLog,
+  FinancialTransaction,
+  FinanceSummary,
+  TransactionListResponse,
+  TransactionCreatePayload,
 } from '@/types';
 
 // ─── Configuration ──────────────────────────────────────────────────────────
@@ -423,6 +428,13 @@ export const api = {
     return request(`/orders/${orderId}/status`, { method: 'PATCH', body: JSON.stringify(payload) });
   },
 
+  returnOrderItems(orderId: string, items: { product_id: string; quantity: number }[], reason: string, restockInventory = true): Promise<any> {
+    return request(`/orders/${orderId}/return`, {
+      method: 'POST',
+      body: JSON.stringify({ items, reason, restock_inventory: restockInventory }),
+    });
+  },
+
   // ── Billing ───────────────────────────────────────────────────────────
   getSubscription(): Promise<SubscriptionInfo> {
     return request('/billing/subscription');
@@ -546,6 +558,39 @@ export const api = {
   updateTeamMemberRole: (userId: string, role: string) => request<TeamMember>(`/auth/team/${userId}/role`, { method: 'PUT', body: JSON.stringify({ role }) }),
   updateTeamMemberStatus: (userId: string, isActive: boolean) => request<TeamMember>(`/auth/team/${userId}/status`, { method: 'PUT', body: JSON.stringify({ is_active: isActive }) }),
   deleteTeamMember: (userId: string) => request<void>(`/auth/team/${userId}`, { method: 'DELETE' }),
+
+  // ─── Audit Log ────────────────────────────────────────────────────────
+  async getAuditLogs(page = 1, perPage = 50, action?: string, userEmail?: string) {
+    const raw = await request<{ items: AuditLog[]; total: number; page: number; per_page: number }>(
+      `/audit${buildQuery({ page, per_page: perPage, action, user_email: userEmail })}`
+    );
+    return withPages(raw);
+  },
+
+  // ─── Finance & Trésorerie ────────────────────────────────────────────
+  async getFinanceTransactions(
+    page = 1,
+    perPage = 50,
+    type?: string,
+    category?: string,
+    period?: string
+  ): Promise<TransactionListResponse> {
+    const raw = await request<{
+      items: FinancialTransaction[];
+      total: number;
+      page: number;
+      per_page: number;
+      summary: FinanceSummary;
+    }>(`/finance${buildQuery({ page, per_page: perPage, type, category, period })}`);
+    return {
+      ...withPages(raw),
+      summary: raw.summary,
+    };
+  },
+
+  createFinanceTransaction(data: TransactionCreatePayload): Promise<FinancialTransaction> {
+    return request('/finance', { method: 'POST', body: JSON.stringify(data) });
+  },
 };
 
 export type { CampaignChannel };

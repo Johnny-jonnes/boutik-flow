@@ -9,6 +9,7 @@ Règles appliquées :
 import uuid
 import logging
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -24,7 +25,10 @@ from app.modules.orders.schemas import (
     OrderUpdateStatus,
     OrderResponse,
     OrderListResponse,
+    OrderReturnRequest,
 )
+from app.modules.finance.models import FinancialTransaction, TransactionTypeEnum, TransactionCategoryEnum
+from app.modules.audit.router import log_action
 
 logger = logging.getLogger(__name__)
 
@@ -329,3 +333,102 @@ def update_order_status(
     
     logger.info("Statut commande mis à jour : %s (%s -> %s)", order.id, old_status, new_status_enum)
     return OrderResponse.model_validate(order)
+
+
+# ──────────────────────────── POST /orders/{id}/return ────────────────────────────
+
+@router.post(
+    "/{order_id}/return",
+    response_model=dict,
+    summary="Enregistrer un retour produit / remboursement",
+)
+def return_order_items(
+    order_id: uuid.UUID,
+    payload: OrderReturnRequest,
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    order = db.query(Order).filter(
+        and_(
+            Order.id == order_id,
+            Order.tenant_id == current_user.tenant_id,
+            Order.deleted_at.is_(None),
+        )
+    ).first()
+
+    if not order:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Commande introuvable")
+
+    refund_amount = Decimal(0)
+    returned_details = []
+
+    for item in payload.items:
+        order_item = db.query(OrderItem).filter(
+            and_(
+                OrderItem.order_id == order.id,
+                OrderItem.product_id == item.product_id,
+            )
+        ).first()
+
+        if not order_item:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Produit {item.product_id} non trouvé dans cette commande")
+
+        if item.quantity > order_item.quantity:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La quantité retournée dépasse la quantité achetée")
+
+        product = db.query(Product).filter(Product.id == item.product_id).first()
+        if product:
+            item_refund = Decimal(str(order_item.unit_price)) * Decimal(item.quantity)
+            refund_amount += item_refund
+            returned_details.append(f"{item.quantity}x {product.name} ({item_refund} GNF)")
+
+            if payload.restock_inventory:
+                old_stock = product.stock
+                product.stock += item.quantity
+                inventory_log = InventoryLog(
+                    id=uuid.uuid4(),
+                    tenant_id=current_user.tenant_id,
+                    product_id=product.id,
+                    change_type="product_return",
+                    old_value=str(old_stock),
+                    new_value=str(product.stock),
+                    changed_by=current_user.user_id,
+                )
+                db.add(inventory_log)
+
+    # Créer la transaction financière de remboursement (dépense)
+    if refund_amount > 0:
+        fin_trans = FinancialTransaction(
+            id=uuid.uuid4(),
+            tenant_id=current_user.tenant_id,
+            type=TransactionTypeEnum.expense,
+            category=TransactionCategoryEnum.refund,
+            amount=refund_amount,
+            description=f"Remboursement Retour N°{str(order.id)[:8]} : {payload.reason}",
+            payment_method="cash",
+            reference=str(order.id),
+            user_id=current_user.user_id,
+        )
+        db.add(fin_trans)
+
+    # Logger l'action d'audit
+    log_action(
+        db=db,
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.user_id,
+        user_email=current_user.email,
+        action="return_order_items",
+        target_entity="order",
+        target_id=str(order.id),
+        details=f"Retour sur commande {str(order.id)[:8]}: {', '.join(returned_details)}. Motif: {payload.reason}. Remboursé: {refund_amount} GNF",
+    )
+
+    db.commit()
+
+    return {
+        "message": "Retour enregistré avec succès",
+        "order_id": str(order.id),
+        "refund_amount": float(refund_amount),
+        "restocked": payload.restock_inventory,
+        "details": ", ".join(returned_details),
+    }

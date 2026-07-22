@@ -426,3 +426,73 @@ export interface InviteUserRequest {
   phone?: string;
   role: TeamRole;
 }
+
+// ─── Audit Log ────────────────────────────────────────────────────────────
+
+export interface AuditLog {
+  id: string;
+  tenant_id: string;
+  user_id: string | null;
+  user_email: string | null;
+  action: string;
+  target_entity: string | null;
+  target_id: string | null;
+  details: string | null;
+  created_at: string;
+}
+
+// ─── Finance & Trésorerie ───────────────────────────────────────────────────
+
+export type TransactionType = 'income' | 'expense';
+
+export type TransactionCategory =
+  | 'sale'
+  | 'other_income'
+  | 'supplier_purchase'
+  | 'salary'
+  | 'rent'
+  | 'utilities'
+  | 'refund'
+  | 'other_expense';
+
+export type PaymentMethod = 'cash' | 'orange_money' | 'card' | 'transfer';
+
+export interface FinancialTransaction {
+  id: string;
+  tenant_id: string;
+  type: TransactionType;
+  category: TransactionCategory | string;
+  amount: number;
+  description: string;
+  payment_method: PaymentMethod | string;
+  reference: string | null;
+  user_id: string | null;
+  created_at: string;
+}
+
+export interface FinanceSummary {
+  total_income: number;
+  total_expense: number;
+  net_balance: number;
+  transactions_count: number;
+}
+
+export interface TransactionListResponse {
+  items: FinancialTransaction[];
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
+  summary: FinanceSummary;
+}
+
+export interface TransactionCreatePayload {
+  type: TransactionType;
+  category: string;
+  amount: number;
+  description: string;
+  payment_method: string;
+  reference?: string;
+}
+
+

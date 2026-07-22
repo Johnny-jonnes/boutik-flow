@@ -20,6 +20,8 @@ from app.modules.ai.router import router as ai_router
 from app.modules.marketing.router import router as marketing_router
 from app.modules.admin.router import router as admin_router
 from app.modules.suppliers.router import router as suppliers_router
+from app.modules.audit.router import router as audit_router
+from app.modules.finance.router import router as finance_router
 
 app = FastAPI(
     title="BoutikFlow API",
@@ -59,6 +61,8 @@ app.include_router(ai_router, prefix=API_PREFIX)
 app.include_router(marketing_router, prefix=API_PREFIX)
 app.include_router(admin_router, prefix=API_PREFIX)
 app.include_router(suppliers_router, prefix=API_PREFIX)
+app.include_router(audit_router, prefix=API_PREFIX)
+app.include_router(finance_router, prefix=API_PREFIX)
 
 
 # ─── Health Check ───────────────────────────────────────────────────────────
@@ -72,6 +76,18 @@ async def health_check():
         "version": settings.APP_VERSION,
         "environment": settings.ENVIRONMENT,
     }
+
+
+# ─── Auto-création des tables au démarrage ──────────────────────────────────
+
+@app.on_event("startup")
+def on_startup():
+    """Crée les tables manquantes au démarrage (audit_logs, financial_transactions, etc.)."""
+    from app.core.database import engine, Base
+    # Import all models so they are registered with Base
+    from app.modules.audit.models import AuditLog  # noqa: F401
+    from app.modules.finance.models import FinancialTransaction  # noqa: F401
+    Base.metadata.create_all(bind=engine)
 
 
 # ─── Démarrage ──────────────────────────────────────────────────────────────

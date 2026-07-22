@@ -7,6 +7,7 @@ import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
 import { BarcodeScannerModal } from '@/components/ui/BarcodeScannerModal';
+import { SKUPrintModal } from '@/components/ui/SKUPrintModal';
 import { useLanguage } from '@/context/LanguageContext';
 import type { Category } from '@/types';
 import { compressImage } from '@/lib/utils/imageCompressor';
@@ -35,6 +36,7 @@ export default function ProductsPage() {
 
   // View modal
   const [viewProduct, setViewProduct] = useState<Product | null>(null);
+  const [skuPrintProduct, setSkuPrintProduct] = useState<Product | null>(null);
 
   // Edit modal
   const [editProduct, setEditProduct] = useState<Product | null>(null);
@@ -532,6 +534,9 @@ export default function ProductsPage() {
                 </td>
                 <td className="text-right">
                   <div className="actions-flex">
+                    <button className="btn btn-ghost btn-icon" title="Imprimer / Télécharger Étiquette SKU" onClick={() => setSkuPrintProduct(product)}>
+                      <Printer size={16} />
+                    </button>
                     <button className="btn btn-ghost btn-icon" title="Voir" onClick={() => setViewProduct(product)}>
                       <Eye size={16} />
                     </button>
@@ -815,6 +820,14 @@ export default function ProductsPage() {
           .badge-error { background: #fee2e2 !important; color: #991b1b !important; border: 1px solid #fca5a5 !important; }
         }
       `}</style>
+
+      {skuPrintProduct && (
+        <SKUPrintModal
+          isOpen={!!skuPrintProduct}
+          onClose={() => setSkuPrintProduct(null)}
+          product={skuPrintProduct}
+        />
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Download, FileText, Eye, Pencil, Plus, LayoutGrid, List, Check, XCircle, ArrowRight, Trash2, ScanBarcode, Camera, Printer } from 'lucide-react';
+import { Download, FileText, Eye, Pencil, Plus, LayoutGrid, List, Check, XCircle, ArrowRight, Trash2, ScanBarcode, Camera, Printer, RotateCcw } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import type { Order, Client, Product, OrderStatus } from '@/types';
@@ -63,8 +63,22 @@ export default function OrdersPage() {
   // Receipt modal
   const [receiptOrder, setReceiptOrder] = useState<Order | null>(null);
 
+  // Return product modal
+  const [returnOrder, setReturnOrder] = useState<Order | null>(null);
+  const [returnItems, setReturnItems] = useState<{ product_id: string; quantity: number }[]>([]);
+  const [returnReason, setReturnReason] = useState('');
+  const [restockInventory, setRestockInventory] = useState(true);
+  const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
+
   // Scanner state for barcode/SKU quick add
   const [scannerInput, setScannerInput] = useState('');
+
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage, setPerPage] = useState(25);
 
   const fetchOrders = async () => {
     try {
@@ -194,6 +208,31 @@ export default function OrdersPage() {
     }
   };
 
+  const openReturnModal = (order: Order) => {
+    setReturnOrder(order);
+    setReturnItems(order.items?.map(i => ({ product_id: i.product_id, quantity: 0 })) || []);
+    setReturnReason('');
+    setRestockInventory(true);
+  };
+
+  const handleSubmitReturn = async () => {
+    if (!returnOrder) return;
+    const itemsToReturn = returnItems.filter(i => i.quantity > 0);
+    if (itemsToReturn.length === 0) { toast.error('Sélectionnez au moins un article à retourner'); return; }
+    if (!returnReason.trim()) { toast.error('Veuillez indiquer le motif du retour'); return; }
+    setIsSubmittingReturn(true);
+    try {
+      await api.returnOrderItems(returnOrder.id, itemsToReturn, returnReason, restockInventory);
+      toast.success('Retour enregistré avec succès');
+      setReturnOrder(null);
+      fetchOrders();
+    } catch (err: any) {
+      toast.error(err.message || 'Erreur lors du retour');
+    } finally {
+      setIsSubmittingReturn(false);
+    }
+  };
+
   // Kanban Drag & Drop
   const handleDragStart = (e: React.DragEvent, orderId: string) => {
     e.dataTransfer.setData('orderId', orderId);
@@ -241,6 +280,21 @@ export default function OrdersPage() {
   const getClientName = (clientId: string) => clients.find(c => c.id === clientId)?.name || `Client...`;
   const getProductName = (productId: string) => products.find(p => p.id === productId)?.name || `Produit...`;
 
+  const filteredOrders = orders.filter(o => {
+    if (filterStatus !== 'all' && o.status !== filterStatus) return false;
+    if (filterDateFrom && new Date(o.created_at) < new Date(filterDateFrom)) return false;
+    if (filterDateTo && new Date(o.created_at) > new Date(filterDateTo + 'T23:59:59')) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const clientName = getClientName(o.client_id).toLowerCase();
+      return o.id.toLowerCase().includes(q) || clientName.includes(q);
+    }
+    return true;
+  });
+  const totalFiltered = filteredOrders.length;
+  const totalPages = Math.ceil(totalFiltered / perPage);
+  const paginatedOrders = filteredOrders.slice((currentPage - 1) * perPage, currentPage * perPage);
+
   return (
     <div className="page fade-in">
       <div className="page-header">
@@ -260,10 +314,25 @@ export default function OrdersPage() {
           <button className="btn btn-ghost" onClick={handleExport}>
             <Download size={16} /> {t('ord.export')}
           </button>
-          <button className="btn btn-primary" onClick={() => setIsCreateOpen(true)}>
+        <button className="btn btn-primary" onClick={() => setIsCreateOpen(true)}>
             <Plus size={16} /> {t('ord.new')}
           </button>
         </div>
+      </div>
+
+      <div className="filters-bar card" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', padding: '1rem', margin: '0 0 1rem 0' }}>
+        <input type="date" className="input" style={{ width: '160px' }} value={filterDateFrom} onChange={e => { setFilterDateFrom(e.target.value); setCurrentPage(1); }} />
+        <span style={{ color: 'var(--text-muted)' }}>à</span>
+        <input type="date" className="input" style={{ width: '160px' }} value={filterDateTo} onChange={e => { setFilterDateTo(e.target.value); setCurrentPage(1); }} />
+        <select className="input" style={{ width: '160px' }} value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1); }}>
+          <option value="all">Tous les statuts</option>
+          <option value="pending">En attente</option>
+          <option value="confirmed">Confirmée</option>
+          <option value="delivered">Livrée</option>
+          <option value="cancelled">Annulée</option>
+        </select>
+        <input type="text" className="input" style={{ flex: 1, minWidth: '180px' }} placeholder="Rechercher par N° ou client..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} />
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{totalFiltered} résultat(s)</span>
       </div>
 
       {isLoading ? (
@@ -271,7 +340,7 @@ export default function OrdersPage() {
       ) : viewMode === 'kanban' ? (
         <div className="kanban-board">
           {COLUMNS.map(statusId => {
-            const columnOrders = orders.filter(o => o.status === statusId);
+            const columnOrders = filteredOrders.filter(o => o.status === statusId);
             const config = STATUS_CONFIG[statusId];
             return (
               <div 
@@ -336,7 +405,7 @@ export default function OrdersPage() {
               </tr>
             </thead>
             <tbody>
-              {orders.map(order => (
+              {paginatedOrders.map(order => (
                 <tr key={order.id}>
                   <td>
                     <span className="order-id">#{order.id.slice(0, 8)}</span>
@@ -371,12 +440,34 @@ export default function OrdersPage() {
                           <ArrowRight size={16} />
                         </button>
                       )}
+                      <button className="btn btn-ghost btn-icon" title="Retour" onClick={() => openReturnModal(order)}>
+                        <RotateCcw size={16} />
+                      </button>
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {viewMode === 'table' && totalPages > 1 && (
+        <div className="pagination-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 0', gap: '1rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Par page :</span>
+            <select className="input" style={{ width: '80px' }} value={perPage} onChange={e => { setPerPage(Number(e.target.value)); setCurrentPage(1); }}>
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <button className="btn btn-ghost btn-sm" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>Précédent</button>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Page {currentPage} / {totalPages}</span>
+            <button className="btn btn-ghost btn-sm" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>Suivant</button>
+          </div>
         </div>
       )}
 
@@ -557,6 +648,71 @@ export default function OrdersPage() {
           order={receiptOrder}
           shopName="BoutikFlow"
         />
+      )}
+
+      {/* Modal Retour Produit */}
+      {returnOrder && (
+        <Modal isOpen={!!returnOrder} onClose={() => setReturnOrder(null)} title={`Retour - Commande #${returnOrder.id.slice(0, 8)}`}>
+          <div className="modal-form">
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.9rem' }}>Sélectionnez les articles à retourner et indiquez les quantités.</p>
+            {returnOrder.items?.map((item, idx) => {
+              const prodName = getProductName(item.product_id);
+              return (
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600 }}>{prodName}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Acheté : {item.quantity} × {formatGNF(item.unit_price)}</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Retour :</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={item.quantity}
+                      value={returnItems[idx]?.quantity || 0}
+                      onChange={e => {
+                        const val = Math.min(item.quantity, Math.max(0, parseInt(e.target.value) || 0));
+                        setReturnItems(prev => prev.map((ri, i) => i === idx ? { ...ri, quantity: val } : ri));
+                      }}
+                      className="input"
+                      style={{ width: '70px', textAlign: 'center' }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+            <div className="form-group" style={{ marginTop: '1rem' }}>
+              <label className="form-label">Motif du retour *</label>
+              <textarea className="input" rows={2} value={returnReason} onChange={e => setReturnReason(e.target.value)} placeholder="Ex: Produit défectueux, erreur de commande..." />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem' }}>
+              <input type="checkbox" id="restock-check" checked={restockInventory} onChange={e => setRestockInventory(e.target.checked)} />
+              <label htmlFor="restock-check" style={{ fontSize: '0.85rem' }}>Réintégrer les articles en stock</label>
+            </div>
+            {returnItems.filter(i => i.quantity > 0).length > 0 && (
+              <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--surface-2)', borderRadius: '8px' }}>
+                <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Récapitulatif du remboursement</div>
+                {returnItems.filter(i => i.quantity > 0).map((ri, idx) => {
+                  const origItem = returnOrder.items?.find(oi => oi.product_id === ri.product_id);
+                  if (!origItem) return null;
+                  return <div key={idx} style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{ri.quantity}× {getProductName(ri.product_id)} = {formatGNF(ri.quantity * origItem.unit_price)}</div>;
+                })}
+                <div style={{ fontWeight: 700, marginTop: '0.5rem', color: 'var(--color-brand-500)' }}>
+                  Total remboursement : {formatGNF(returnItems.reduce((acc, ri) => {
+                    const origItem = returnOrder.items?.find(oi => oi.product_id === ri.product_id);
+                    return acc + (origItem ? ri.quantity * origItem.unit_price : 0);
+                  }, 0))}
+                </div>
+              </div>
+            )}
+            <div className="modal-actions" style={{ marginTop: '1.5rem' }}>
+              <button type="button" className="btn btn-ghost" onClick={() => setReturnOrder(null)}>Annuler</button>
+              <button type="button" className="btn btn-primary" onClick={handleSubmitReturn} disabled={isSubmittingReturn}>
+                {isSubmittingReturn ? 'Traitement...' : 'Valider le retour'}
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       <style jsx>{`

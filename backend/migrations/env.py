@@ -18,6 +18,8 @@ from app.modules.auth.models import Tenant, User, AdminNotification
 from app.modules.crm.models import Client
 from app.modules.products.models import Product, InventoryLog, Order, OrderItem, OrderLog, WhatsAppMessage, AILog, Subscription
 from app.modules.marketing.models import Campaign
+from app.modules.audit.models import AuditLog
+from app.modules.finance.models import FinancialTransaction
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
