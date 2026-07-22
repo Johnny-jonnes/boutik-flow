@@ -16,8 +16,8 @@ class OrderItemCreate(BaseModel):
 
 
 class OrderCreate(BaseModel):
-    """Création d'une commande."""
-    client_id: uuid.UUID
+    """Création d'une commande (client_id optionnel pour la caisse rapide)."""
+    client_id: uuid.UUID | None = Field(None, description="ID du client (optionnel)")
     notes: str | None = Field(None, max_length=2000)
     items: list[OrderItemCreate] = Field(..., min_length=1, description="Au moins un produit requis")
 

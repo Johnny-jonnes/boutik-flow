@@ -9,23 +9,28 @@ import { useLanguage } from '@/context/LanguageContext';
 const QUICK_TEMPLATES = [
   {
     id: 't1',
-    name: '👋 Bienvenue',
-    text: 'Bonjour {nom} ! Bienvenue chez nous. Je suis {boutique}, ravi de vous aider. Que puis-je faire pour vous ?',
+    name: 'Accueil Client',
+    text: 'Bonjour {nom}, toute l\'équipe de {boutique} vous remercie de votre intérêt. Nous sommes à votre entière disposition pour vous accompagner et répondre à vos questions.',
   },
   {
     id: 't2',
-    name: '📦 Commande prête',
-    text: 'Bonjour {nom}, votre commande est prête ! Vous pouvez venir la récupérer ou nous contacter pour la livraison. Merci de votre confiance !',
+    name: 'Commande Disponibilité',
+    text: 'Bonjour {nom}, nous avons le plaisir de vous informer que votre commande auprès de {boutique} est finalisée et prête. Vous pouvez la récupérer à votre convenance ou nous solliciter pour organiser la livraison.',
   },
   {
     id: 't3',
-    name: '💰 Promotion',
-    text: 'Bonjour {nom} ! 🎉 Nous avons une offre spéciale pour vous. Contactez-nous vite, les stocks sont limités !',
+    name: 'Offre Privilège',
+    text: 'Bonjour {nom}, en tant que client privilégié de {boutique}, nous vous invitons à découvrir nos dernières nouveautés. Restant à votre écoute pour toute réservation.',
   },
   {
     id: 't4',
-    name: '🔄 Relance panier',
-    text: 'Bonjour {nom}, avez-vous eu le temps de réfléchir à votre achat ? N\'hésitez pas à revenir, nous sommes disponibles pour vous aider !',
+    name: 'Suivi de Commande',
+    text: 'Bonjour {nom}, nous faisons suite à votre visite et à votre sélection d\'articles chez {boutique}. Notre service client reste disponible si vous désirez finaliser votre achat.',
+  },
+  {
+    id: 't5',
+    name: 'Remerciement & Fidélité',
+    text: 'Bonjour {nom}, nous vous remercions sincèrement pour votre confiance envers {boutique}. Votre satisfaction étant notre priorité, n\'hésitez pas à nous faire part de vos retours.',
   },
 ];
 

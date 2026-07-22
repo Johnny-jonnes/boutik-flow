@@ -151,23 +151,48 @@ def create_order(
     3. Calcule le total (côté serveur).
     4. Décrémente les stocks et logue les changements.
     """
-    # Vérifier client
-    client = db.query(Client).filter(
-        and_(
-            Client.id == payload.client_id,
-            Client.tenant_id == current_user.tenant_id,
-            Client.deleted_at.is_(None),
-        )
-    ).first()
-    if not client:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client introuvable")
+    # Vérifier ou créer automatiquement un client comptoir si non fourni
+    target_client_id = payload.client_id
+
+    if target_client_id:
+        client = db.query(Client).filter(
+            and_(
+                Client.id == target_client_id,
+                Client.tenant_id == current_user.tenant_id,
+                Client.deleted_at.is_(None),
+            )
+        ).first()
+        if not client:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client introuvable")
+    else:
+        # Trouver ou créer le 'Client Comptoir' par défaut pour les ventes rapides
+        counter_client = db.query(Client).filter(
+            and_(
+                Client.tenant_id == current_user.tenant_id,
+                Client.name == "Client Comptoir",
+                Client.deleted_at.is_(None),
+            )
+        ).first()
+
+        if not counter_client:
+            counter_client = Client(
+                id=uuid.uuid4(),
+                tenant_id=current_user.tenant_id,
+                name="Client Comptoir",
+                phone="+22400000000",
+                notes="Client automatique pour les ventes anonymes de caisse",
+            )
+            db.add(counter_client)
+            db.flush()
+
+        target_client_id = counter_client.id
 
     # Créer l'entité Order de base
     order = Order(
         id=uuid.uuid4(),
         tenant_id=current_user.tenant_id,
-        client_id=payload.client_id,
-        status=OrderStatusEnum.pending,
+        client_id=target_client_id,
+        status=OrderStatusEnum.confirmed,
         total=0,
         notes=payload.notes,
     )

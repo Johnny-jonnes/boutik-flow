@@ -469,9 +469,14 @@ export default function POSPage() {
           .cart-panel {
             position: sticky;
             bottom: 0;
-            max-height: 60vh;
-            z-index: 10;
-            box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+            max-height: 50vh;
+            z-index: 20;
+            box-shadow: 0 -8px 24px rgba(0,0,0,0.3);
+            border-top: 2px solid var(--color-brand-500);
+          }
+          .cart-items {
+            max-height: 180px;
+            overflow-y: auto;
           }
         }
         
