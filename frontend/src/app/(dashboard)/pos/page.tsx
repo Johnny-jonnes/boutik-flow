@@ -16,6 +16,8 @@ interface CartItem extends Product {
 export default function POSPage() {
   const { language, t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
+  const [clients, setClients] = useState<{ id: string; name: string; phone?: string }[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [discount, setDiscount] = useState<number>(0);
@@ -28,7 +30,17 @@ export default function POSPage() {
 
   useEffect(() => {
     fetchProducts();
+    fetchClients();
   }, []);
+
+  const fetchClients = async () => {
+    try {
+      const res = await api.getClients(1, 100);
+      setClients(res.items || []);
+    } catch (e) {
+      console.error('Fetch clients error:', e);
+    }
+  };
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -122,6 +134,7 @@ export default function POSPage() {
       }));
       
       const order = await api.createOrder({
+        client_id: selectedClientId || undefined,
         items: orderItems,
         notes: `Mode de paiement: ${paymentMethod} | Remise: ${discount} GNF`
       });
@@ -136,6 +149,8 @@ export default function POSPage() {
         }
         return p;
       }));
+
+      const selectedClientObj = clients.find(c => c.id === selectedClientId);
       
       // Build receipt data matching ReceiptModal props
       setReceiptData({
@@ -148,7 +163,7 @@ export default function POSPage() {
           unit_price: item.price,
           product: { name: item.name }
         })),
-        client: null,
+        client: selectedClientObj ? { name: selectedClientObj.name, phone: selectedClientObj.phone || '' } : { name: language === 'fr' ? 'Client passant' : 'Walk-in customer', phone: '' },
         created_at: order.created_at || new Date().toISOString(),
         status: 'confirmed'
       });
@@ -157,8 +172,9 @@ export default function POSPage() {
       // Clear cart
       setCart([]);
       setDiscount(0);
-    } catch (error) {
-      toast.error(language === 'fr' ? 'Erreur lors de la validation' : 'Error validating sale');
+      setSelectedClientId('');
+    } catch (error: any) {
+      toast.error(error?.message || (language === 'fr' ? 'Erreur lors de la validation' : 'Error validating sale'));
     } finally {
       setIsProcessing(false);
     }
@@ -201,13 +217,30 @@ export default function POSPage() {
                     className={`product-card ${disabled ? 'product-card--disabled' : ''}`}
                     onClick={() => !disabled && addToCart(product)}
                   >
-                    <div className="product-info">
-                      <h3 className="product-name">{product.name}</h3>
-                      <div className="product-price">{product.price.toLocaleString('fr-FR')} GNF</div>
-                      <div className={`product-stock ${disabled ? 'text-red' : 'text-green'}`}>
+                    <div className="product-card-top">
+                      {product.images && product.images[0] ? (
+                        <img src={product.images[0]} alt={product.name} className="product-thumb" />
+                      ) : (
+                        <div className="product-thumb-placeholder"><ShoppingCart size={22} /></div>
+                      )}
+                      <div className={`stock-pill ${disabled ? 'stock-pill-out' : 'stock-pill-ok'}`}>
                         {product.stock} {t('prod.in_stock')}
                       </div>
                     </div>
+
+                    <div className="product-info">
+                      <h3 className="product-name">{product.name}</h3>
+                      {product.sku && <span className="product-sku">SKU: {product.sku}</span>}
+                      <div className="product-price">{product.price.toLocaleString('fr-FR')} GNF</div>
+                    </div>
+
+                    <button 
+                      className="btn-add-fast"
+                      disabled={disabled}
+                      onClick={(e) => { e.stopPropagation(); if (!disabled) addToCart(product); }}
+                    >
+                      <Plus size={15} /> {language === 'fr' ? 'Ajouter' : 'Add'}
+                    </button>
                   </div>
                 );
               })
@@ -220,6 +253,24 @@ export default function POSPage() {
           <div className="cart-header">
             <h2>{language === 'fr' ? 'Panier' : 'Cart'}</h2>
             <div className="cart-count">{cart.reduce((a, b) => a + b.cartQuantity, 0)}</div>
+          </div>
+
+          {/* Client Selector */}
+          <div className="client-selector-box" style={{ padding: '0.75rem 1rem 0.25rem 1rem' }}>
+            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>
+              {language === 'fr' ? 'Client :' : 'Customer:'}
+            </label>
+            <select
+              className="input"
+              style={{ width: '100%', padding: '0.4rem 0.6rem', fontSize: '0.85rem', background: 'var(--surface-0)' }}
+              value={selectedClientId}
+              onChange={(e) => setSelectedClientId(e.target.value)}
+            >
+              <option value="">{language === 'fr' ? '— Client passant (Comptoir) —' : '— Walk-in customer —'}</option>
+              {clients.map(c => (
+                <option key={c.id} value={c.id}>{c.name} {c.phone ? `(${c.phone})` : ''}</option>
+              ))}
+            </select>
           </div>
           
           <div className="cart-items">
@@ -362,6 +413,125 @@ export default function POSPage() {
           border: 1px solid var(--border-subtle);
           padding: 1.25rem;
           min-height: 500px;
+        }
+
+        .products-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+          gap: 1rem;
+        }
+
+        .product-card {
+          background: var(--surface-0);
+          border: 1px solid var(--border-subtle);
+          border-radius: 10px;
+          padding: 0.85rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+          cursor: pointer;
+          transition: all 0.2s;
+          position: relative;
+        }
+
+        .product-card:hover:not(.product-card--disabled) {
+          border-color: var(--color-brand-500);
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .product-card--disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
+        }
+
+        .product-card-top {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+        }
+
+        .product-thumb {
+          width: 48px;
+          height: 48px;
+          border-radius: 8px;
+          object-fit: cover;
+        }
+
+        .product-thumb-placeholder {
+          width: 44px;
+          height: 44px;
+          border-radius: 8px;
+          background: var(--surface-2);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--text-muted);
+        }
+
+        .stock-pill {
+          font-size: 0.7rem;
+          font-weight: 700;
+          padding: 0.15rem 0.45rem;
+          border-radius: 999px;
+        }
+
+        .stock-pill-ok {
+          background: rgba(16, 185, 129, 0.15);
+          color: #10b981;
+        }
+
+        .stock-pill-out {
+          background: rgba(239, 68, 68, 0.15);
+          color: #ef4444;
+        }
+
+        .product-info {
+          display: flex;
+          flex-direction: column;
+          gap: 0.2rem;
+          flex: 1;
+        }
+
+        .product-name {
+          font-size: 0.9rem;
+          font-weight: 700;
+          color: var(--text-primary);
+          line-height: 1.25;
+        }
+
+        .product-sku {
+          font-size: 0.72rem;
+          color: var(--text-muted);
+          font-family: monospace;
+        }
+
+        .product-price {
+          font-size: 0.95rem;
+          font-weight: 800;
+          color: var(--color-brand-500);
+          margin-top: 0.25rem;
+        }
+
+        .btn-add-fast {
+          margin-top: 0.25rem;
+          padding: 0.4rem;
+          border-radius: 6px;
+          border: none;
+          background: var(--color-brand-500);
+          color: white;
+          font-size: 0.8rem;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.3rem;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+
+        .btn-add-fast:hover:not(:disabled) {
+          filter: brightness(1.1);
         }
 
         /* Cart Panel Sticky & Compact */

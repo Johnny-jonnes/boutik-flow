@@ -169,7 +169,7 @@ export default function WhatsAppPage() {
       <div className="page-header">
         <div className="page-header__info">
           <h1 className="page-header__title">
-            <span style={{ marginRight: '0.5rem' }}>💬</span> {t('wa.title')}
+            {t('wa.title')}
           </h1>
           <p className="page-header__desc">
             {t('wa.subtitle')}
@@ -186,28 +186,35 @@ export default function WhatsAppPage() {
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
         {[
-          { id: 'compose', label: `✏️ ${t('wa.tab_compose')}`, icon: MessageSquare },
-          { id: 'templates', label: `📋 ${t('wa.tab_templates')}`, icon: Sparkles },
-          { id: 'bulk', label: `👥 ${t('wa.tab_bulk')}`, icon: Users },
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            style={{
-              padding: '0.6rem 1.2rem',
-              borderRadius: '10px',
-              border: activeTab === tab.id ? '1px solid rgba(16,185,129,0.4)' : '1px solid var(--border-subtle)',
-              background: activeTab === tab.id ? 'rgba(16,185,129,0.12)' : 'var(--surface-1)',
-              color: activeTab === tab.id ? '#10b981' : 'var(--text-secondary)',
-              fontWeight: activeTab === tab.id ? 700 : 500,
-              fontSize: '0.875rem',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
+          { id: 'compose', label: t('wa.tab_compose'), icon: MessageSquare },
+          { id: 'templates', label: t('wa.tab_templates'), icon: Sparkles },
+          { id: 'bulk', label: t('wa.tab_bulk'), icon: Users },
+        ].map(tab => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.6rem 1.2rem',
+                borderRadius: '10px',
+                border: activeTab === tab.id ? '1px solid rgba(16,185,129,0.4)' : '1px solid var(--border-subtle)',
+                background: activeTab === tab.id ? 'rgba(16,185,129,0.12)' : 'var(--surface-1)',
+                color: activeTab === tab.id ? '#10b981' : 'var(--text-secondary)',
+                fontWeight: activeTab === tab.id ? 700 : 500,
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              <Icon size={16} />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* TAB : Composer */}

@@ -286,6 +286,7 @@ export default function FinancePage() {
               { id: '30j', label: '30 jours' },
               { id: '90j', label: '90 jours' },
               { id: 'all', label: 'Tout' },
+              { id: 'custom', label: 'Personnalisé' },
             ].map((p) => (
               <button
                 key={p.id}

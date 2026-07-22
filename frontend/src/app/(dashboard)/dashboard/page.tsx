@@ -265,7 +265,7 @@ export default function DashboardPage() {
             {language === 'fr' ? "Voici l'activité globale et les statistiques de votre boutique" : "Here is your overall shop activity and performance"}
           </p>
         </div>
-        <div className="header-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        <div className="header-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <select 
             className="input" 
             value={periodFilter}
@@ -275,7 +275,30 @@ export default function DashboardPage() {
             <option value="7j">{language === 'fr' ? '7 derniers jours' : 'Last 7 days'}</option>
             <option value="30j">{language === 'fr' ? '30 derniers jours' : 'Last 30 days'}</option>
             <option value="90j">{language === 'fr' ? '90 derniers jours' : 'Last 90 days'}</option>
+            <option value="custom">{language === 'fr' ? 'Période personnalisée' : 'Custom range'}</option>
           </select>
+
+          {periodFilter === 'custom' && (
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <input
+                type="date"
+                className="input"
+                style={{ padding: '0.4rem 0.6rem', fontSize: '0.85rem' }}
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                placeholder="Début"
+              />
+              <span style={{ color: 'var(--text-muted)' }}>à</span>
+              <input
+                type="date"
+                className="input"
+                style={{ padding: '0.4rem 0.6rem', fontSize: '0.85rem' }}
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                placeholder="Fin"
+              />
+            </div>
+          )}
 
           <button id="btn-new-order" className="btn btn-primary" onClick={() => window.location.href = '/orders'}>
             + {language === 'fr' ? 'Nouvelle commande' : 'New Order'}

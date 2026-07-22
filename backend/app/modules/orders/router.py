@@ -269,8 +269,41 @@ def create_order(
         note="Commande créée",
     )
 
-    # Mettre à jour last_activity_at du client
-    client.last_activity_at = datetime.now(timezone.utc)
+    # Mettre à jour last_activity_at du client si présent
+    try:
+        if hasattr(client, "last_activity_at"):
+            client.last_activity_at = datetime.now(timezone.utc)
+    except Exception:
+        pass
+
+    # Enregistrer automatiquement la transaction financière d'entrée d'argent (Vente)
+    try:
+        fin_trans = FinancialTransaction(
+            id=uuid.uuid4(),
+            tenant_id=current_user.tenant_id,
+            type=TransactionTypeEnum.income,
+            category=TransactionCategoryEnum.sale,
+            amount=total_amount,
+            description=f"Vente Magasin N°{str(order.id)[:8]} ({client.name})",
+            payment_method="cash",
+            reference=str(order.id),
+            user_id=current_user.user_id,
+        )
+        db.add(fin_trans)
+    except Exception as e:
+        logger.warning(f"Erreur d'enregistrement financier automatique : {e}")
+
+    # Logger l'action d'audit de la vente
+    log_action(
+        db=db,
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.user_id,
+        user_email=current_user.email,
+        action="create_sale",
+        target_entity="order",
+        target_id=str(order.id),
+        details=f"Vente validée N°{str(order.id)[:8]} ({client.name}) pour {total_amount} GNF",
+    )
 
     db.commit()
     db.refresh(order)
