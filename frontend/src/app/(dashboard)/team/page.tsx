@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { UserPlus, Pencil, Trash2, Shield, AlertTriangle } from 'lucide-react';
+import { UserPlus, Pencil, Trash2, Shield, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
@@ -26,6 +26,7 @@ export default function TeamPage() {
   // Invite modal
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isInviting, setIsInviting] = useState(false);
+  const [showInvitePassword, setShowInvitePassword] = useState(false);
   const [inviteForm, setInviteForm] = useState({
     full_name: '', email: '', password: '', phone: '', role: 'staff' as TeamMember['role']
   });
@@ -42,9 +43,16 @@ export default function TeamPage() {
   const fetchMembers = async () => {
     try {
       const response = await api.getTeamMembers();
-      setMembers(Array.isArray(response) ? response : []);
+      if (Array.isArray(response)) {
+        setMembers(response);
+      } else if (response && Array.isArray((response as any).items)) {
+        setMembers((response as any).items);
+      } else {
+        setMembers([]);
+      }
     } catch (error) {
-      toast.error(t('team.error_fetch'));
+      console.error('Fetch team error:', error);
+      setMembers([]);
     } finally {
       setIsLoading(false);
     }
@@ -234,8 +242,35 @@ export default function TeamPage() {
           </div>
           <div className="form-group">
             <label className="form-label">{t('team.password')} *</label>
-            <input type="password" className="input" required minLength={6} value={inviteForm.password}
-              onChange={e => setInviteForm({ ...inviteForm, password: e.target.value })} />
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <input 
+                type={showInvitePassword ? 'text' : 'password'} 
+                className="input" 
+                required 
+                minLength={6} 
+                value={inviteForm.password}
+                onChange={e => setInviteForm({ ...inviteForm, password: e.target.value })} 
+                style={{ paddingRight: '2.5rem', width: '100%' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowInvitePassword(!showInvitePassword)}
+                style={{
+                  position: 'absolute',
+                  right: '0.75rem',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '0.25rem'
+                }}
+                title={showInvitePassword ? 'Masquer' : 'Afficher'}
+              >
+                {showInvitePassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
           <div className="form-group">
             <label className="form-label">{t('team.phone')}</label>

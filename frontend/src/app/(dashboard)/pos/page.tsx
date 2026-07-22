@@ -34,9 +34,16 @@ export default function POSPage() {
     setLoading(true);
     try {
       const data = await api.getProducts(1, 100);
-      setProducts(Array.isArray(data) ? data : (data.items || []));
+      if (Array.isArray(data)) {
+        setProducts(data);
+      } else if (data && Array.isArray(data.items)) {
+        setProducts(data.items);
+      } else {
+        setProducts([]);
+      }
     } catch (error) {
-      toast.error(language === 'fr' ? 'Échec du chargement des produits' : 'Failed to load products');
+      console.error('Fetch products error:', error);
+      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -70,7 +77,7 @@ export default function POSPage() {
       return prev.map(item => {
         if (item.id === id) {
           const newQty = item.cartQuantity + delta;
-          if (newQty <= 0) return item; // Handled by remove
+          if (newQty <= 0) return item;
           if (newQty > item.stock) {
             toast.error(language === 'fr' ? 'Stock insuffisant' : 'Insufficient stock');
             return item;
@@ -79,6 +86,22 @@ export default function POSPage() {
         }
         return item;
       }).filter(item => item.cartQuantity > 0);
+    });
+  };
+
+  const setDirectQuantity = (id: string, qty: number) => {
+    setCart(prev => {
+      return prev.map(item => {
+        if (item.id === id) {
+          if (qty <= 0) return { ...item, cartQuantity: 1 };
+          if (qty > item.stock) {
+            toast.error(language === 'fr' ? 'Stock insuffisant' : 'Insufficient stock');
+            return { ...item, cartQuantity: item.stock };
+          }
+          return { ...item, cartQuantity: qty };
+        }
+        return item;
+      });
     });
   };
 
@@ -213,10 +236,17 @@ export default function POSPage() {
                     <span className="item-price">{(item.price * item.cartQuantity).toLocaleString('fr-FR')} GNF</span>
                   </div>
                   <div className="item-controls">
-                    <button onClick={() => updateQuantity(item.id, -1)} className="qty-btn"><Minus size={16}/></button>
-                    <span className="qty-value">{item.cartQuantity}</span>
-                    <button onClick={() => updateQuantity(item.id, 1)} className="qty-btn"><Plus size={16}/></button>
-                    <button onClick={() => removeFromCart(item.id)} className="remove-btn"><Trash2 size={16}/></button>
+                    <button onClick={() => updateQuantity(item.id, -1)} className="qty-btn" title="Diminuer"><Minus size={16}/></button>
+                    <input 
+                      type="number" 
+                      className="qty-input" 
+                      value={item.cartQuantity} 
+                      min="1" 
+                      max={item.stock}
+                      onChange={(e) => setDirectQuantity(item.id, parseInt(e.target.value) || 1)}
+                    />
+                    <button onClick={() => updateQuantity(item.id, 1)} className="qty-btn" title="Augmenter"><Plus size={16}/></button>
+                    <button onClick={() => removeFromCart(item.id)} className="remove-btn" title="Supprimer"><Trash2 size={16}/></button>
                   </div>
                 </div>
               ))
@@ -550,11 +580,22 @@ export default function POSPage() {
           background: rgba(255,255,255,0.05);
         }
         
-        .qty-value {
-          font-weight: 600;
-          width: 1.5rem;
+        .qty-input {
+          width: 46px;
+          height: 28px;
           text-align: center;
+          font-weight: 600;
           font-size: 0.9rem;
+          background: var(--surface-0);
+          border: 1px solid var(--border-subtle);
+          border-radius: 6px;
+          color: var(--text-primary);
+          padding: 0 4px;
+        }
+        
+        .qty-input:focus {
+          outline: none;
+          border-color: var(--color-brand-500);
         }
         
         .remove-btn {

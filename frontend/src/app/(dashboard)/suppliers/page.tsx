@@ -56,9 +56,16 @@ export default function SuppliersPage() {
   const fetchSuppliers = async () => {
     try {
       const response = await api.getSuppliers(1, 100);
-      setSuppliers(response.items);
+      if (Array.isArray(response)) {
+        setSuppliers(response);
+      } else if (response && Array.isArray(response.items)) {
+        setSuppliers(response.items);
+      } else {
+        setSuppliers([]);
+      }
     } catch (error) {
-      toast.error('Erreur lors de la récupération des fournisseurs');
+      console.error('Fetch suppliers error:', error);
+      setSuppliers([]);
     } finally {
       setIsLoading(false);
     }
