@@ -48,7 +48,7 @@ import type {
 // ─── Configuration ──────────────────────────────────────────────────────────
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000/api/v1';
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'https://boutik-flow.onrender.com/api/v1';
 
 const ACCESS_TOKEN_KEY = 'boutikflow_access_token';
 const REFRESH_TOKEN_KEY = 'boutikflow_refresh_token';
