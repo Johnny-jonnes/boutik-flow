@@ -7,11 +7,10 @@ import {
   LayoutDashboard, 
   Users, 
   Package, 
-  ShoppingBag, 
+  ShoppingBag,
+  ShoppingCart,
   MessageSquare, 
-  Zap, 
-  LogOut, 
-  Menu, 
+  Menu,
   X, 
   Store, 
   ChevronDown, 
@@ -26,7 +25,9 @@ import {
   Globe,
   Truck,
   UserCog,
-  Settings
+  Settings,
+  CreditCard,
+  LogOut
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -55,6 +56,7 @@ const NAV_CATEGORIES = [
     items: [
       { href: '/products', icon: Package, label: 'Produits', id: 'nav-products' },
       { href: '/categories', icon: FolderTree, label: 'Catégories', id: 'nav-categories' },
+      { href: '/pos', icon: ShoppingCart, label: 'Caisse', id: 'nav-pos' },
       { href: '/suppliers', icon: Truck, label: 'Fournisseurs', id: 'nav-suppliers' },
       { href: '/orders', icon: ShoppingBag, label: 'Commandes', id: 'nav-orders' },
     ]
@@ -215,6 +217,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               items: [
                 { href: '/products', icon: Package, labelKey: 'nav.products', label: 'Produits', id: 'nav-products' },
                 { href: '/categories', icon: FolderTree, labelKey: 'nav.categories', label: 'Catégories', id: 'nav-categories' },
+                { href: '/pos', icon: ShoppingCart, labelKey: 'nav.pos', label: 'Caisse', id: 'nav-pos' },
                 { href: '/suppliers', icon: Truck, labelKey: 'nav.suppliers', label: 'Fournisseurs', id: 'nav-suppliers' },
                 { href: '/orders', icon: ShoppingBag, labelKey: 'nav.orders', label: 'Commandes', id: 'nav-orders' },
               ]
@@ -289,40 +292,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Persistent Bottom Section */}
         <div className="sidebar__footer">
-          {/* Premium Plan Status Block */}
-          <div className="plan-usage-block">
-            {userInfo.plan === 'pro' ? (
-              <>
-                <div className="plan-status-badge plan-status-badge--lifetime">
-                  <Zap size={14} />
-                  <span>{t('sidebar.lifetime')}</span>
-                </div>
-                <div className="plan-status-text">{t('sidebar.lifetimeActive')}</div>
-              </>
-            ) : userInfo.plan === 'starter' ? (
-              <>
-                <div className="plan-status-badge plan-status-badge--monthly">
-                  <Rocket size={14} />
-                  <span>{t('sidebar.monthly')}</span>
-                </div>
-                <Link href="/billing" className="upgrade-btn">
-                  <Zap size={14} />
-                  <span>{t('sidebar.upgradeLifetime')}</span>
-                </Link>
-              </>
-            ) : (
-              <>
-                <div className="plan-status-badge plan-status-badge--trial">
-                  <Store size={14} />
-                  <span>{t('sidebar.trial')}</span>
-                </div>
-                <Link href="/billing" className="upgrade-btn">
-                  <Rocket size={14} />
-                  <span>{t('sidebar.upgradePro')}</span>
-                </Link>
-              </>
-            )}
-          </div>
 
           {/* Language Selector */}
           <button className="lang-toggle" onClick={() => setLanguage(language === 'fr' ? 'en' : 'fr')}>
@@ -352,7 +321,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {isProfileDropdownOpen && (
               <div className="profile-dropdown">
                 <Link href="/billing" className="dropdown-item" onClick={() => setIsProfileDropdownOpen(false)}>
-                  <Zap size={14} />
+                  <CreditCard size={14} />
                   <span>{t('sidebar.billing')}</span>
                 </Link>
                 <div className="dropdown-item dropdown-item--logout" onClick={handleLogout}>

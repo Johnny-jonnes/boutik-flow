@@ -44,7 +44,7 @@ export default function TeamPage() {
       const response = await api.getTeamMembers();
       setMembers(Array.isArray(response) ? response : []);
     } catch (error) {
-      toast.error('Erreur lors de la récupération de l\'équipe');
+      toast.error(t('team.error_fetch'));
     } finally {
       setIsLoading(false);
     }
@@ -65,12 +65,12 @@ export default function TeamPage() {
         phone: inviteForm.phone || undefined,
         role: inviteForm.role
       });
-      toast.success('Membre invité avec succès');
+      toast.success(t('team.invite_success'));
       setIsInviteOpen(false);
       setInviteForm({ full_name: '', email: '', password: '', phone: '', role: 'staff' });
       fetchMembers();
     } catch (err: any) {
-      toast.error(err.message || 'Erreur lors de l\'invitation');
+      toast.error(err.message || t('team.error_invite'));
     } finally {
       setIsInviting(false);
     }
@@ -95,7 +95,7 @@ export default function TeamPage() {
   const handleToggleStatus = async (member: TeamMember) => {
     try {
       await api.updateTeamMemberStatus(member.id, !member.is_active);
-      toast.success('Statut mis à jour');
+      toast.success(t('team.status_updated'));
       fetchMembers();
     } catch (err: any) {
       toast.error(err.message || 'Erreur');
@@ -355,6 +355,21 @@ export default function TeamPage() {
         
         .warning-box { display: flex; gap: 1rem; align-items: flex-start; padding: 1rem; background: rgba(239, 68, 68, 0.1); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2); color: var(--text-primary); margin-bottom: 1.5rem; }
         .warning-icon { color: var(--color-error); flex-shrink: 0; }
+
+        @media (max-width: 768px) {
+          .data-table thead { display: none; }
+          .data-table tr { display: flex; flex-direction: column; border: 1px solid var(--border-subtle); border-radius: 8px; margin-bottom: 1rem; padding: 1rem; background: var(--surface-1); }
+          .data-table td { padding: 0.5rem 0; border: none; display: flex; flex-direction: column; gap: 0.5rem; }
+          .data-table td::before { font-weight: 600; font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; }
+          .data-table td:nth-child(1)::before { content: "Membre"; }
+          .data-table td:nth-child(2)::before { content: "Contact"; }
+          .data-table td:nth-child(3)::before { content: "Rôle"; }
+          .data-table td:nth-child(4)::before { content: "Statut"; }
+          .actions-flex { justify-content: flex-start; margin-top: 0.5rem; }
+          .text-right { text-align: left; }
+          .btn, .btn-icon { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+          :global(.modal-form) { width: 100%; }
+        }
       `}</style>
     </div>
   );

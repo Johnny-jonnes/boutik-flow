@@ -175,7 +175,7 @@ export interface Order {
 }
 
 export interface OrderCreate {
-  client_id: string;
+  client_id?: string;
   items: { product_id: string; quantity: number }[];
   notes?: string;
 }

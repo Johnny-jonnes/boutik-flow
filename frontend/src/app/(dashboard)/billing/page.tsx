@@ -11,7 +11,7 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [currentPlan, setCurrentPlan] = useState('freemium');
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   useEffect(() => {
     api.getSubscription().then(data => {
@@ -85,7 +85,7 @@ export default function BillingPage() {
             <div className={styles.planFeaturesTitle}>{t('bill.features')}</div>
             <ul className={styles.planFeatures}>
               {plan.features.map((feat, idx) => (
-                <li key={idx}>{feat.fr}</li>
+                <li key={idx}>{language === 'fr' ? feat.fr : feat.en}</li>
               ))}
             </ul>
             <button 
@@ -105,24 +105,23 @@ export default function BillingPage() {
             {message ? (
               <>
                 <div style={{ textAlign: 'center', padding: '1rem 0' }}>
-                  <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>✅</div>
-                  <h3 className={styles.modalTitle} style={{ marginBottom: '0.5rem' }}>Demande envoyée !</h3>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem', color: 'var(--color-brand-500)' }}>✓</div>
+                  <h3 className={styles.modalTitle} style={{ marginBottom: '0.5rem' }}>{t('bill.request_sent')}</h3>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.6' }}>{message}</p>
                 </div>
                 <button type="button" className={styles.cancelButton} onClick={() => { setSelectedPlan(null); setMessage(''); }}>
-                  Fermer
+                  {t('common.close')}
                 </button>
               </>
             ) : (
               <>
-                <h3 className={styles.modalTitle}>Demander le passage en version PRO</h3>
+                <h3 className={styles.modalTitle}>{t('bill.request_pro')}</h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: '1.6', marginBottom: '1rem' }}>
-                  Pour activer la version <strong>{selectedPlan?.toUpperCase()}</strong>, indiquez votre numéro de téléphone. 
-                  L'équipe BoutikFlow va vous contacter pour finaliser le changement.
+                  {t('bill.request_desc')}
                 </p>
                 <form onSubmit={handleCheckout}>
                   <div className={styles.inputGroup}>
-                    <label>Votre numéro de téléphone</label>
+                    <label>{t('bill.phone_label')}</label>
                     <input 
                       type="tel" 
                       placeholder="Ex: 627 17 13 97" 
@@ -132,10 +131,10 @@ export default function BillingPage() {
                     />
                   </div>
                   <button type="submit" className={styles.payButton} disabled={loading}>
-                    {loading ? 'Envoi en cours...' : 'Envoyer la demande'}
+                    {loading ? t('bill.sending') : t('bill.send_request')}
                   </button>
                   <button type="button" className={styles.cancelButton} onClick={() => setSelectedPlan(null)}>
-                    Annuler
+                    {t('common.cancel')}
                   </button>
                 </form>
               </>

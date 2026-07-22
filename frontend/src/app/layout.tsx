@@ -1,11 +1,11 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { Toaster } from '@/components/ui/sonner';
 import { LanguageProvider } from '@/context/LanguageContext';
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "BoutikFlow — CRM WhatsApp pour boutiques africaines",
+  title: "BoutikFlow \u2014 CRM WhatsApp pour boutiques africaines",
   description:
     "Gérez vos clients, automatisez vos ventes WhatsApp et développez votre boutique avec BoutikFlow. Le CRM intelligent conçu pour les commerçants guinéens.",
   keywords: ["CRM", "WhatsApp", "boutique", "Guinée", "ventes", "e-commerce", "automatisation"],
@@ -15,6 +15,23 @@ export const metadata: Metadata = {
     description: "CRM WhatsApp pour boutiques africaines",
     type: "website",
   },
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "BoutikFlow",
+  },
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: '#10b981',
 };
 
 export default function RootLayout({

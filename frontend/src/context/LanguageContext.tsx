@@ -63,6 +63,12 @@ const translations: Record<Language, Translations> = {
     'bill.pay': 'Payer maintenant',
     'bill.cancel': 'Annuler',
     'bill.success': 'Paiement initié avec succès !',
+    'bill.request_sent': 'Demande envoyée !',
+    'bill.request_pro': 'Demander le passage en version PRO',
+    'bill.request_desc': 'Pour activer la version, indiquez votre numéro de téléphone. L\'équipe BoutikFlow va vous contacter pour finaliser le changement.',
+    'bill.phone_label': 'Votre numéro de téléphone',
+    'bill.sending': 'Envoi en cours...',
+    'bill.send_request': 'Envoyer la demande',
 
     // Products
     'prod.title': 'Catalogue Produits',
@@ -296,6 +302,10 @@ const translations: Record<Language, Translations> = {
     'team.role_cashier': 'Caissier',
     'team.role_stock': 'Gestionnaire de stock',
     'team.role_staff': 'Employé',
+    'team.error_fetch': 'Erreur lors de la récupération de l\'équipe',
+    'team.invite_success': 'Membre invité avec succès',
+    'team.error_invite': 'Erreur lors de l\'invitation',
+    'team.status_updated': 'Statut mis à jour',
 
     // Suppliers
     'sup.title': 'Fournisseurs',
@@ -318,6 +328,7 @@ const translations: Record<Language, Translations> = {
     'sup.delete_msg': 'Êtes-vous sûr de vouloir supprimer ce fournisseur ?',
 
     // Navigation
+    'nav.pos': 'Caisse Rapide',
     'nav.suppliers': 'Fournisseurs',
     'nav.team': 'Équipe',
     'nav.management': 'Gestion',
@@ -397,6 +408,12 @@ const translations: Record<Language, Translations> = {
     'bill.pay': 'Pay Now',
     'bill.cancel': 'Cancel',
     'bill.success': 'Payment initiated successfully!',
+    'bill.request_sent': 'Request sent!',
+    'bill.request_pro': 'Request PRO upgrade',
+    'bill.request_desc': 'To activate the plan, enter your phone number. The BoutikFlow team will contact you to finalize the change.',
+    'bill.phone_label': 'Your phone number',
+    'bill.sending': 'Sending...',
+    'bill.send_request': 'Send request',
 
     // Products
     'prod.title': 'Product Catalog',
@@ -630,6 +647,10 @@ const translations: Record<Language, Translations> = {
     'team.role_cashier': 'Cashier',
     'team.role_stock': 'Stock Manager',
     'team.role_staff': 'Staff',
+    'team.error_fetch': 'Error loading team',
+    'team.invite_success': 'Member invited successfully',
+    'team.error_invite': 'Error inviting member',
+    'team.status_updated': 'Status updated',
 
     // Suppliers
     'sup.title': 'Suppliers',
@@ -652,6 +673,7 @@ const translations: Record<Language, Translations> = {
     'sup.delete_msg': 'Are you sure you want to delete this supplier?',
 
     // Navigation
+    'nav.pos': 'Quick Checkout',
     'nav.suppliers': 'Suppliers',
     'nav.team': 'Team',
     'nav.management': 'Management',
