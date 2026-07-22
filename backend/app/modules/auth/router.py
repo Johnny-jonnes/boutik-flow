@@ -26,7 +26,7 @@ from app.core.security import (
     create_password_reset_token,
     decode_token,
 )
-from app.core.deps import get_current_user, CurrentUser
+from app.core.deps import get_current_user, CurrentUser, require_owner_or_manager
 from app.modules.auth.models import Tenant, User, PlanEnum, RoleEnum, TenantStatusEnum, AdminNotification, AdminNotificationTypeEnum
 from app.modules.auth.schemas import (
     RegisterRequest,
@@ -40,6 +40,10 @@ from app.modules.auth.schemas import (
     ForgotPasswordResponse,
     ResetPasswordRequest,
     ResetPasswordResponse,
+    InviteUserRequest,
+    UpdateUserRoleRequest,
+    UpdateUserStatusRequest,
+    TeamMemberResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -462,3 +466,137 @@ def get_tenant(
         )
 
     return TenantResponse.model_validate(tenant)
+
+
+# ──────────────────────────── Team Management ────────────────────────────
+
+@router.get(
+    "/team",
+    response_model=list[TeamMemberResponse],
+    summary="Lister les membres de l'équipe",
+)
+def list_team(
+    current_user: Annotated[CurrentUser, Depends(require_owner_or_manager)],
+    db: Annotated[Session, Depends(get_db)],
+) -> list[TeamMemberResponse]:
+    users = db.query(User).filter(
+        and_(User.tenant_id == current_user.tenant_id, User.deleted_at.is_(None))
+    ).all()
+    return users
+
+
+@router.post(
+    "/team/invite",
+    response_model=TeamMemberResponse,
+    summary="Inviter un nouveau membre (création directe)",
+)
+def invite_team_member(
+    payload: InviteUserRequest,
+    current_user: Annotated[CurrentUser, Depends(require_owner_or_manager)],
+    db: Annotated[Session, Depends(get_db)],
+) -> TeamMemberResponse:
+    # check email unique in tenant
+    existing_user = db.query(User).filter(
+        and_(User.email == payload.email, User.tenant_id == current_user.tenant_id, User.deleted_at.is_(None))
+    ).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cet email est déjà utilisé pour cette boutique",
+        )
+    
+    new_user = User(
+        id=uuid.uuid4(),
+        tenant_id=current_user.tenant_id,
+        email=payload.email,
+        hashed_password=hash_password(payload.password),
+        full_name=payload.full_name,
+        phone=payload.phone,
+        role=payload.role,
+        is_active=True,
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+
+
+@router.put(
+    "/team/{user_id}/role",
+    response_model=TeamMemberResponse,
+    summary="Mettre à jour le rôle d'un membre",
+)
+def update_team_member_role(
+    user_id: uuid.UUID,
+    payload: UpdateUserRoleRequest,
+    current_user: Annotated[CurrentUser, Depends(require_owner_or_manager)],
+    db: Annotated[Session, Depends(get_db)],
+) -> TeamMemberResponse:
+    user = db.query(User).filter(
+        and_(User.id == user_id, User.tenant_id == current_user.tenant_id, User.deleted_at.is_(None))
+    ).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+    
+    if current_user.role != "owner" and user.role == "owner":
+        raise HTTPException(status_code=403, detail="Un manager ne peut pas modifier un owner")
+
+    user.role = payload.role
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.put(
+    "/team/{user_id}/status",
+    response_model=TeamMemberResponse,
+    summary="Activer ou désactiver un membre",
+)
+def update_team_member_status(
+    user_id: uuid.UUID,
+    payload: UpdateUserStatusRequest,
+    current_user: Annotated[CurrentUser, Depends(require_owner_or_manager)],
+    db: Annotated[Session, Depends(get_db)],
+) -> TeamMemberResponse:
+    user = db.query(User).filter(
+        and_(User.id == user_id, User.tenant_id == current_user.tenant_id, User.deleted_at.is_(None))
+    ).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+
+    if str(user.id) == str(current_user.user_id):
+        raise HTTPException(status_code=400, detail="Vous ne pouvez pas modifier votre propre statut")
+
+    if current_user.role != "owner" and user.role == "owner":
+        raise HTTPException(status_code=403, detail="Un manager ne peut pas modifier le statut d'un owner")
+
+    user.is_active = payload.is_active
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.delete(
+    "/team/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Supprimer un membre de l'équipe",
+)
+def delete_team_member(
+    user_id: uuid.UUID,
+    current_user: Annotated[CurrentUser, Depends(require_owner_or_manager)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    if current_user.role != "owner":
+        raise HTTPException(status_code=403, detail="Seul le owner peut supprimer des utilisateurs")
+
+    if str(user_id) == str(current_user.user_id):
+        raise HTTPException(status_code=400, detail="Vous ne pouvez pas vous supprimer vous-même")
+
+    user = db.query(User).filter(
+        and_(User.id == user_id, User.tenant_id == current_user.tenant_id, User.deleted_at.is_(None))
+    ).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+    
+    user.deleted_at = datetime.now(timezone.utc)
+    db.commit()

@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Download, FileText, Eye, Pencil, Plus, LayoutGrid, List, Check, XCircle, ArrowRight, Trash2, ScanBarcode, Camera } from 'lucide-react';
+import { Download, FileText, Eye, Pencil, Plus, LayoutGrid, List, Check, XCircle, ArrowRight, Trash2, ScanBarcode, Camera, Printer } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import type { Order, Client, Product, OrderStatus } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { BarcodeScannerModal } from '@/components/ui/BarcodeScannerModal';
+import { ReceiptModal } from '@/components/ui/ReceiptModal';
 import { useLanguage } from '@/context/LanguageContext';
 
 const STATUS_CONFIG: Record<string, { label: string; cls: string; id: string }> = {
@@ -58,6 +59,9 @@ export default function OrdersPage() {
   const [statusOrder, setStatusOrder] = useState<Order | null>(null);
   const [newStatus, setNewStatus] = useState('');
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+  // Receipt modal
+  const [receiptOrder, setReceiptOrder] = useState<Order | null>(null);
 
   // Scanner state for barcode/SKU quick add
   const [scannerInput, setScannerInput] = useState('');
@@ -294,7 +298,17 @@ export default function OrdersPage() {
                     >
                       <div className="kanban-card-header">
                         <span className="kanban-order-id">#{order.id.slice(0, 6)}</span>
-                        <span className="kanban-date">{formatDate(order.created_at).split(' ')[0]}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <span className="kanban-date">{formatDate(order.created_at).split(' ')[0]}</span>
+                          <button 
+                            className="btn btn-ghost btn-icon" 
+                            style={{ padding: '0.2rem', height: 'auto' }}
+                            onClick={(e) => { e.stopPropagation(); setReceiptOrder(order); }}
+                            title="Imprimer"
+                          >
+                            <Printer size={14} />
+                          </button>
+                        </div>
                       </div>
                       <div className="kanban-client">{getClientName(order.client_id)}</div>
                       <div className="kanban-amount">{formatGNF(Number(order.total))}</div>
@@ -348,6 +362,9 @@ export default function OrdersPage() {
                     <div className="actions-flex">
                       <button className="btn btn-ghost btn-icon" onClick={() => setViewOrder(order)}>
                         <Eye size={16} />
+                      </button>
+                      <button className="btn btn-ghost btn-icon" onClick={() => setReceiptOrder(order)}>
+                        <Printer size={16} />
                       </button>
                       {order.status !== 'cancelled' && (
                         <button className="btn btn-ghost btn-icon" onClick={() => openStatusModal(order)}>
@@ -532,6 +549,15 @@ export default function OrdersPage() {
           </div>
         )}
       </Modal>
+
+      {receiptOrder && (
+        <ReceiptModal
+          isOpen={!!receiptOrder}
+          onClose={() => setReceiptOrder(null)}
+          order={receiptOrder}
+          shopName="BoutikFlow"
+        />
+      )}
 
       <style jsx>{`
         .page { display: flex; flex-direction: column; gap: 1.5rem; }

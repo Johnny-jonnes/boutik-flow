@@ -38,6 +38,11 @@ import type {
   PaginatedAdminTenants,
   TenantStatus,
   TenantPlan,
+  Supplier,
+  SupplierCreate,
+  SupplierUpdate,
+  TeamMember,
+  InviteUserRequest,
 } from '@/types';
 
 // ─── Configuration ──────────────────────────────────────────────────────────
@@ -524,6 +529,23 @@ export const api = {
   markNotificationRead(id: string): Promise<void> {
     return request(`/admin/notifications/${id}/read`, { method: 'PATCH' });
   },
+
+  // ─── Suppliers ────────────────────────────────────────────────────────
+  getSuppliers: (page = 1, perPage = 50, search?: string) =>
+    request<{ items: Supplier[]; total: number; page: number; per_page: number }>(
+      `/suppliers?page=${page}&per_page=${perPage}${search ? `&search=${encodeURIComponent(search)}` : ''}`
+    ),
+  getSupplier: (id: string) => request<Supplier>(`/suppliers/${id}`),
+  createSupplier: (data: SupplierCreate) => request<Supplier>('/suppliers', { method: 'POST', body: JSON.stringify(data) }),
+  updateSupplier: (id: string, data: SupplierUpdate) => request<Supplier>(`/suppliers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteSupplier: (id: string) => request<void>(`/suppliers/${id}`, { method: 'DELETE' }),
+
+  // ─── Team Management ─────────────────────────────────────────────────
+  getTeamMembers: () => request<TeamMember[]>('/auth/team'),
+  inviteTeamMember: (data: InviteUserRequest) => request<TeamMember>('/auth/team/invite', { method: 'POST', body: JSON.stringify(data) }),
+  updateTeamMemberRole: (userId: string, role: string) => request<TeamMember>(`/auth/team/${userId}/role`, { method: 'PUT', body: JSON.stringify({ role }) }),
+  updateTeamMemberStatus: (userId: string, isActive: boolean) => request<TeamMember>(`/auth/team/${userId}/status`, { method: 'PUT', body: JSON.stringify({ is_active: isActive }) }),
+  deleteTeamMember: (userId: string) => request<void>(`/auth/team/${userId}`, { method: 'DELETE' }),
 };
 
 export type { CampaignChannel };

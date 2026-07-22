@@ -35,9 +35,12 @@ class AdminNotificationTypeEnum(str, enum.Enum):
 
 
 class RoleEnum(str, enum.Enum):
-    owner = "owner"       # Propriétaire boutique
-    staff = "staff"       # Employé boutique
-    admin = "admin"       # Admin BoutikFlow (super-admin)
+    owner = "owner"               # Propriétaire boutique
+    manager = "manager"           # Gérant boutique
+    cashier = "cashier"           # Vendeur / Caissier
+    stock_manager = "stock_manager" # Gestionnaire de stock
+    staff = "staff"               # Employé polyvalent
+    admin = "admin"               # Admin BoutikFlow (super-admin)
 
 
 class Tenant(Base):

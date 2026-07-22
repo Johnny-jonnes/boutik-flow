@@ -128,3 +128,51 @@ class TenantResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# ──────────────────────────── Team Management ────────────────────────────
+
+class InviteUserRequest(BaseModel):
+    """Invitation d'un membre dans la boutique."""
+    full_name: str = Field(..., min_length=2, max_length=255)
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=128)
+    phone: str | None = Field(None, max_length=20)
+    role: str = Field("staff", description="Role: owner, manager, cashier, stock_manager, staff")
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, v: str) -> str:
+        allowed = {"owner", "manager", "cashier", "stock_manager", "staff"}
+        if v not in allowed:
+            raise ValueError(f"Rôle invalide. Rôles autorisés : {', '.join(allowed)}")
+        return v
+
+
+class UpdateUserRoleRequest(BaseModel):
+    role: str = Field(...)
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, v: str) -> str:
+        allowed = {"owner", "manager", "cashier", "stock_manager", "staff"}
+        if v not in allowed:
+            raise ValueError(f"Rôle invalide. Rôles autorisés : {', '.join(allowed)}")
+        return v
+
+
+class UpdateUserStatusRequest(BaseModel):
+    is_active: bool
+
+
+class TeamMemberResponse(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    email: str
+    full_name: str | None
+    phone: str | None
+    role: str
+    is_active: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

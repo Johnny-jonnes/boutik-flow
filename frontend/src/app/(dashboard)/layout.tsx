@@ -23,7 +23,10 @@ import {
   FolderTree,
   Megaphone,
   Shield,
-  Globe
+  Globe,
+  Truck,
+  UserCog,
+  Settings
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -52,6 +55,7 @@ const NAV_CATEGORIES = [
     items: [
       { href: '/products', icon: Package, label: 'Produits', id: 'nav-products' },
       { href: '/categories', icon: FolderTree, label: 'Catégories', id: 'nav-categories' },
+      { href: '/suppliers', icon: Truck, label: 'Fournisseurs', id: 'nav-suppliers' },
       { href: '/orders', icon: ShoppingBag, label: 'Commandes', id: 'nav-orders' },
     ]
   },
@@ -61,6 +65,13 @@ const NAV_CATEGORIES = [
     items: [
       { href: '/whatsapp', icon: MessageSquare, label: 'WhatsApp', id: 'nav-whatsapp' },
       { href: '/campaigns', icon: Megaphone, label: 'Campagnes', id: 'nav-campaigns' },
+    ]
+  },
+  {
+    title: 'Gestion',
+    icon: Settings,
+    items: [
+      { href: '/team', icon: UserCog, label: 'Équipe', id: 'nav-team' },
     ]
   }
 ];
@@ -74,6 +85,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     'CRM': true,
     'Ventes': true,
     'Marketing': true,
+    'Gestion': true,
     'Administration': true
   });
   const [userInfo, setUserInfo] = useState({ boutiqueName: 'Ma Boutique', email: '', role: 'Admin', plan: 'freemium' });
@@ -203,6 +215,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               items: [
                 { href: '/products', icon: Package, labelKey: 'nav.products', label: 'Produits', id: 'nav-products' },
                 { href: '/categories', icon: FolderTree, labelKey: 'nav.categories', label: 'Catégories', id: 'nav-categories' },
+                { href: '/suppliers', icon: Truck, labelKey: 'nav.suppliers', label: 'Fournisseurs', id: 'nav-suppliers' },
                 { href: '/orders', icon: ShoppingBag, labelKey: 'nav.orders', label: 'Commandes', id: 'nav-orders' },
               ]
             },
@@ -213,6 +226,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               items: [
                 { href: '/whatsapp', icon: MessageSquare, labelKey: 'nav.whatsapp', label: 'WhatsApp', id: 'nav-whatsapp' },
                 { href: '/campaigns', icon: Megaphone, labelKey: 'nav.campaigns', label: 'Campagnes', id: 'nav-campaigns' },
+              ]
+            },
+            {
+              titleKey: 'nav.management',
+              title: 'Gestion',
+              icon: Settings,
+              items: [
+                { href: '/team', icon: UserCog, labelKey: 'nav.team', label: 'Équipe', id: 'nav-team' },
               ]
             },
             ...(userInfo.role && userInfo.role.toLowerCase() === 'admin' ? [{

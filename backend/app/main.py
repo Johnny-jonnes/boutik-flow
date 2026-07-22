@@ -19,6 +19,7 @@ from app.modules.whatsapp.router import router as whatsapp_router
 from app.modules.ai.router import router as ai_router
 from app.modules.marketing.router import router as marketing_router
 from app.modules.admin.router import router as admin_router
+from app.modules.suppliers.router import router as suppliers_router
 
 app = FastAPI(
     title="BoutikFlow API",
@@ -57,6 +58,7 @@ app.include_router(whatsapp_router, prefix=API_PREFIX)
 app.include_router(ai_router, prefix=API_PREFIX)
 app.include_router(marketing_router, prefix=API_PREFIX)
 app.include_router(admin_router, prefix=API_PREFIX)
+app.include_router(suppliers_router, prefix=API_PREFIX)
 
 
 # ─── Health Check ───────────────────────────────────────────────────────────

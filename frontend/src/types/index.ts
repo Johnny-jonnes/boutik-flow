@@ -371,3 +371,58 @@ export interface PaginatedAdminTenants {
   per_page: number;
   pages: number;
 }
+
+// ─── Suppliers ────────────────────────────────────────────────────────────
+
+export interface Supplier {
+  id: string;
+  tenant_id: string;
+  name: string;
+  company: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  city: string | null;
+  country: string | null;
+  contact_person: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SupplierCreate {
+  name: string;
+  company?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  contact_person?: string;
+  notes?: string;
+}
+
+export interface SupplierUpdate extends Partial<SupplierCreate> {}
+
+// ─── Team Management ─────────────────────────────────────────────────────
+
+export type TeamRole = 'owner' | 'manager' | 'cashier' | 'stock_manager' | 'staff';
+
+export interface TeamMember {
+  id: string;
+  tenant_id: string;
+  email: string;
+  full_name: string | null;
+  phone: string | null;
+  role: TeamRole;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface InviteUserRequest {
+  full_name: string;
+  email: string;
+  password: string;
+  phone?: string;
+  role: TeamRole;
+}

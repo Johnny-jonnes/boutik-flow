@@ -73,3 +73,15 @@ async def require_admin(
             detail="Accès réservé aux administrateurs",
         )
     return current_user
+
+
+async def require_owner_or_manager(
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+) -> CurrentUser:
+    """Exige le rôle owner ou manager (gestion d'équipe)."""
+    if current_user.role not in ("owner", "manager", "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Accès réservé aux propriétaires et gérants",
+        )
+    return current_user
