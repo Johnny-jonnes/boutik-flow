@@ -335,6 +335,21 @@ const translations: Record<Language, Translations> = {
     'nav.team': 'Équipe',
     'nav.management': 'Gestion',
 
+    // Finance
+    'fin.title': 'Finance & Trésorerie',
+    'fin.subtitle': 'Suivez les revenus, dépenses et le solde net de votre boutique.',
+    'fin.total_income': 'Total Revenus',
+    'fin.total_expense': 'Total Dépenses',
+    'fin.net_balance': 'Solde Net',
+    'fin.new_transaction': 'Nouvelle Transaction',
+
+    // Audit
+    'audit.title': 'Journal d\'Audit',
+    'audit.subtitle': 'Historique et traçabilité de toutes les actions de la boutique.',
+    'audit.action': 'Action',
+    'audit.user': 'Utilisateur',
+    'audit.details': 'Détails',
+
     // Receipt
     'receipt.title': 'Reçu de vente',
     'receipt.print': 'Imprimer',
@@ -681,6 +696,21 @@ const translations: Record<Language, Translations> = {
     'nav.suppliers': 'Suppliers',
     'nav.team': 'Team',
     'nav.management': 'Management',
+
+    // Finance
+    'fin.title': 'Finance & Cash Flow',
+    'fin.subtitle': 'Track income, expenses, and net balance of your shop.',
+    'fin.total_income': 'Total Income',
+    'fin.total_expense': 'Total Expenses',
+    'fin.net_balance': 'Net Balance',
+    'fin.new_transaction': 'New Transaction',
+
+    // Audit
+    'audit.title': 'Audit Log',
+    'audit.subtitle': 'Full history and audit trail of all shop activities.',
+    'audit.action': 'Action',
+    'audit.user': 'User',
+    'audit.details': 'Details',
 
     // Receipt
     'receipt.title': 'Sales Receipt',
