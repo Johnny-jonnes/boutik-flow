@@ -80,6 +80,8 @@ export default function FinancePage() {
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -106,13 +108,17 @@ export default function FinancePage() {
       const typeParam = selectedType !== 'all' ? selectedType : undefined;
       const categoryParam = selectedCategory !== 'all' ? selectedCategory : undefined;
       const periodParam = selectedPeriod !== 'all' ? selectedPeriod : 'all';
+      const startDateParam = selectedPeriod === 'custom' && filterDateFrom ? filterDateFrom : undefined;
+      const endDateParam = selectedPeriod === 'custom' && filterDateTo ? filterDateTo : undefined;
 
       const res = await api.getFinanceTransactions(
         page,
         perPage,
         typeParam,
         categoryParam,
-        periodParam
+        periodParam,
+        startDateParam,
+        endDateParam
       );
 
       setTransactions(res.items || []);
@@ -125,7 +131,7 @@ export default function FinancePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, perPage, selectedType, selectedCategory, selectedPeriod]);
+  }, [page, perPage, selectedType, selectedCategory, selectedPeriod, filterDateFrom, filterDateTo]);
 
   useEffect(() => {
     fetchTransactions();
@@ -340,6 +346,32 @@ export default function FinancePage() {
               ))}
             </select>
           </div>
+
+          {selectedPeriod === 'custom' && (
+            <div className="custom-date-filters" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: '0.5rem' }}>
+              <input
+                type="date"
+                className="input"
+                style={{ width: '140px', padding: '0.35rem 0.5rem', height: '38px', fontSize: '0.85rem', background: 'var(--surface-0)', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: 'var(--text-primary)' }}
+                value={filterDateFrom}
+                onChange={(e) => {
+                  setFilterDateFrom(e.target.value);
+                  setPage(1);
+                }}
+              />
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{language === 'fr' ? 'à' : 'to'}</span>
+              <input
+                type="date"
+                className="input"
+                style={{ width: '140px', padding: '0.35rem 0.5rem', height: '38px', fontSize: '0.85rem', background: 'var(--surface-0)', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: 'var(--text-primary)' }}
+                value={filterDateTo}
+                onChange={(e) => {
+                  setFilterDateTo(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+          )}
         </div>
 
         <div className="filters-right">

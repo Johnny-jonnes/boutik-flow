@@ -13,6 +13,8 @@ class DashboardKPIs(BaseModel):
     active_clients: int
     vip_clients: int
     pending_orders: int
+    total_expenses: Decimal = Decimal("0.00")
+    net_balance: Decimal = Decimal("0.00")
 
 
 class RevenueChartPoint(BaseModel):

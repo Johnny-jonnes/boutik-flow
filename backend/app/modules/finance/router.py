@@ -37,7 +37,9 @@ def list_transactions(
     per_page: int = Query(50, ge=1, le=200),
     type: str | None = Query(None),
     category: str | None = Query(None),
-    period: str | None = Query("30j"),  # 7j, 30j, 90j, all
+    period: str | None = Query("30j"),  # 7j, 30j, 90j, all, custom
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
 ) -> TransactionListResponse:
     query = db.query(FinancialTransaction).filter(FinancialTransaction.tenant_id == current_user.tenant_id)
 
@@ -46,7 +48,21 @@ def list_transactions(
     if category:
         query = query.filter(FinancialTransaction.category == category)
 
-    if period and period != "all":
+    if period == "custom" and (start_date or end_date):
+        if start_date:
+            try:
+                start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+                query = query.filter(FinancialTransaction.created_at >= start_dt)
+            except ValueError:
+                pass
+        if end_date:
+            try:
+                # Ajoute 1 jour pour inclure la date de fin complète
+                end_dt = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+                query = query.filter(FinancialTransaction.created_at < end_dt)
+            except ValueError:
+                pass
+    elif period and period != "all":
         days = 7 if period == "7j" else (90 if period == "90j" else 30)
         since = datetime.utcnow() - timedelta(days=days)
         query = query.filter(FinancialTransaction.created_at >= since)

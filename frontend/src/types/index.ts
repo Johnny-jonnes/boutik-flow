@@ -190,6 +190,8 @@ export interface DashboardKPIs {
   active_clients: number;
   vip_clients: number;
   pending_orders: number;
+  total_expenses?: number;
+  net_balance?: number;
 }
 
 export interface RevenueDataPoint {

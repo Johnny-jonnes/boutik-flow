@@ -573,7 +573,9 @@ export const api = {
     perPage = 50,
     type?: string,
     category?: string,
-    period?: string
+    period?: string,
+    startDate?: string,
+    endDate?: string
   ): Promise<TransactionListResponse> {
     const raw = await request<{
       items: FinancialTransaction[];
@@ -581,7 +583,7 @@ export const api = {
       page: number;
       per_page: number;
       summary: FinanceSummary;
-    }>(`/finance${buildQuery({ page, per_page: perPage, type, category, period })}`);
+    }>(`/finance${buildQuery({ page, per_page: perPage, type, category, period, start_date: startDate, end_date: endDate })}`);
     return {
       ...withPages(raw),
       summary: raw.summary,

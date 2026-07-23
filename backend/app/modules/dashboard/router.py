@@ -84,6 +84,17 @@ def get_kpis(
     active_clients = base_client_query.filter(Client.status == ClientStatusEnum.actif).count()
     vip_clients = base_client_query.filter(Client.status == ClientStatusEnum.vip).count()
 
+    # Calcul des dépenses totales (charges) à partir du module finance
+    from app.modules.finance.models import FinancialTransaction, TransactionTypeEnum
+    expenses_query = db.query(func.sum(FinancialTransaction.amount)).filter(
+        and_(
+            FinancialTransaction.tenant_id == current_user.tenant_id,
+            FinancialTransaction.type == TransactionTypeEnum.expense
+        )
+    ).scalar()
+    total_expenses = expenses_query or Decimal("0.00")
+    net_balance = total_revenue - total_expenses
+
     return DashboardKPIs(
         total_revenue=total_revenue,
         total_orders=total_orders,
@@ -91,6 +102,8 @@ def get_kpis(
         active_clients=active_clients,
         vip_clients=vip_clients,
         pending_orders=pending_orders,
+        total_expenses=total_expenses,
+        net_balance=net_balance,
     )
 
 

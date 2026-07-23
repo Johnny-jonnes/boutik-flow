@@ -162,6 +162,7 @@ export default function AuditPage() {
 
   // Detail Modal
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState<boolean>(false);
 
   const fetchAuditLogs = useCallback(async () => {
     setIsLoading(true);
@@ -432,65 +433,91 @@ export default function AuditPage() {
       {/* Log Detail Modal */}
       <Modal 
         isOpen={!!selectedLog} 
-        onClose={() => setSelectedLog(null)} 
-        title={language === 'fr' ? "Détails du journal d'audit" : 'Audit Log Details'}
+        onClose={() => { setSelectedLog(null); setShowTechnicalDetails(false); }} 
+        title={language === 'fr' ? "Détails de l'événement d'audit" : 'Audit Event Details'}
       >
         {selectedLog && (
-          <div className="modal-log-details">
-            <div className="detail-header-card">
-              <div className="detail-action-wrapper">
+          <div className="modal-log-details" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div className="detail-header-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'var(--surface-2)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
+              <div className="detail-action-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                 <span 
                   className="action-badge large" 
                   style={{ 
                     color: getActionInfo(selectedLog.action).color, 
                     backgroundColor: getActionInfo(selectedLog.action).bg,
-                    borderColor: `${getActionInfo(selectedLog.action).color}44`
+                    borderColor: `${getActionInfo(selectedLog.action).color}44`,
+                    fontWeight: 700,
+                    padding: '0.35rem 0.75rem',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem'
                   }}
                 >
                   {getActionInfo(selectedLog.action).label}
                 </span>
-                <span className="log-action-code">{selectedLog.action}</span>
               </div>
-              <div className="log-timestamp">
+              <div className="log-timestamp" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                 <Clock size={14} /> {formatDate(selectedLog.created_at)}
               </div>
             </div>
 
-            <div className="detail-rows">
-              <div className="detail-row">
-                <span className="detail-label">{language === 'fr' ? 'ID Événement' : 'Event ID'}</span>
-                <span className="detail-value mono">{selectedLog.id}</span>
+            <div className="detail-rows" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="detail-row" style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px dashed var(--border-subtle)' }}>
+                <span className="detail-label" style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{language === 'fr' ? 'Utilisateur / Auteur' : 'User / Author'}</span>
+                <span className="detail-value" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{selectedLog.user_email || (language === 'fr' ? 'Système' : 'System')}</span>
               </div>
-              <div className="detail-row">
-                <span className="detail-label">{language === 'fr' ? 'Utilisateur' : 'User'}</span>
-                <span className="detail-value">{selectedLog.user_email || (language === 'fr' ? 'Système' : 'System')}</span>
+              
+              <div className="detail-row" style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px dashed var(--border-subtle)' }}>
+                <span className="detail-label" style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{language === 'fr' ? 'Élément concerné' : 'Concerned element'}</span>
+                <span className="detail-value" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {(() => {
+                    const labels: Record<string, string> = {
+                      order: language === 'fr' ? 'Commande' : 'Order',
+                      product: language === 'fr' ? 'Produit' : 'Product',
+                      client: language === 'fr' ? 'Client' : 'Customer',
+                      supplier: language === 'fr' ? 'Fournisseur' : 'Supplier',
+                      tenant: language === 'fr' ? 'Boutique' : 'Shop',
+                      user: language === 'fr' ? 'Membre d\'équipe' : 'Team member',
+                      financial_transaction: language === 'fr' ? 'Transaction financière' : 'Financial transaction',
+                    };
+                    return (selectedLog.target_entity && labels[selectedLog.target_entity]) || selectedLog.target_entity || '—';
+                  })()}
+                </span>
               </div>
-              {selectedLog.user_id && (
-                <div className="detail-row">
-                  <span className="detail-label">{language === 'fr' ? 'ID Utilisateur' : 'User ID'}</span>
-                  <span className="detail-value mono">{selectedLog.user_id}</span>
-                </div>
-              )}
-              <div className="detail-row">
-                <span className="detail-label">{language === 'fr' ? 'Entité ciblée' : 'Target entity'}</span>
-                <span className="detail-value">{selectedLog.target_entity || '—'}</span>
-              </div>
-              {selectedLog.target_id && (
-                <div className="detail-row">
-                  <span className="detail-label">{language === 'fr' ? 'ID Cible' : 'Target ID'}</span>
-                  <span className="detail-value mono">{selectedLog.target_id}</span>
-                </div>
-              )}
-              <div className="detail-row full-width-row">
-                <span className="detail-label">{language === 'fr' ? 'Description / Détails' : 'Description / Details'}</span>
-                <div className="details-box">
+
+              <div className="detail-row full-width-row" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <span className="detail-label" style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>{language === 'fr' ? 'Description de l\'action' : 'Action Description'}</span>
+                <div className="details-box" style={{ background: 'var(--surface-1)', border: '1px solid var(--border-subtle)', padding: '1rem', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '0.95rem', lineHeight: '1.5' }}>
                   {selectedLog.details || (language === 'fr' ? 'Aucun détail supplémentaire renseigné.' : 'No additional details provided.')}
                 </div>
               </div>
             </div>
 
-            <div className="modal-actions">
-              <button className="btn btn-ghost" onClick={() => setSelectedLog(null)}>
+            {/* Collapsible Technical Details */}
+            <div style={{ marginTop: '0.5rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem' }}>
+              <button 
+                type="button" 
+                className="btn btn-ghost btn-sm" 
+                style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: '0.25rem 0.5rem' }} 
+                onClick={() => setShowTechnicalDetails(!showTechnicalDetails)}
+              >
+                {showTechnicalDetails 
+                  ? (language === 'fr' ? '▲ Masquer les infos de débogage' : '▲ Hide debugging info')
+                  : (language === 'fr' ? '▼ Afficher les infos de débogage (Développeur)' : '▼ Show debugging info (Developer)')
+                }
+              </button>
+
+              {showTechnicalDetails && (
+                <div className="technical-panel" style={{ marginTop: '0.5rem', padding: '0.75rem', background: 'var(--surface-3)', borderRadius: '8px', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', fontFamily: 'monospace', color: 'var(--text-muted)' }}>
+                  <div><strong>Event ID:</strong> {selectedLog.id}</div>
+                  <div><strong>Action Code:</strong> {selectedLog.action}</div>
+                  {selectedLog.user_id && <div><strong>User ID:</strong> {selectedLog.user_id}</div>}
+                  {selectedLog.target_id && <div><strong>Target ID:</strong> {selectedLog.target_id}</div>}
+                </div>
+              )}
+            </div>
+
+            <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <button className="btn btn-primary" onClick={() => { setSelectedLog(null); setShowTechnicalDetails(false); }}>
                 {language === 'fr' ? 'Fermer' : 'Close'}
               </button>
             </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CircleDollarSign, ShoppingBag, Users, Clock, Crown, CheckCircle, BarChart3, MessageCircle } from 'lucide-react';
+import { CircleDollarSign, ShoppingBag, Users, Clock, Crown, CheckCircle, BarChart3, MessageCircle, ArrowDownRight, Wallet } from 'lucide-react';
 import type { DashboardKPIs, Order, AnalyticsData } from '@/types';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
@@ -225,11 +225,27 @@ export default function DashboardPage() {
 
   const kpiCards = [
     {
-      title: t('dash.revenue'),
+      title: language === 'fr' ? 'Chiffre d\'Affaires' : 'Sales Revenue',
       value: kpis.total_revenue || 0,
-      change: '+12.4%',
+      change: language === 'fr' ? 'Revenu ventes' : 'Sales income',
       icon: <CircleDollarSign size={20} />,
       color: 'rgba(16, 185, 129, 0.15)',
+      isCurrency: true,
+    },
+    {
+      title: language === 'fr' ? 'Dépenses (Sorties)' : 'Expenses (Outflow)',
+      value: kpis.total_expenses || 0,
+      change: language === 'fr' ? 'Charges boutique' : 'Shop expenses',
+      icon: <ArrowDownRight size={20} />,
+      color: 'rgba(239, 68, 68, 0.15)',
+      isCurrency: true,
+    },
+    {
+      title: language === 'fr' ? 'Bénéfice Net (Solde)' : 'Net Profit (Balance)',
+      value: kpis.net_balance || 0,
+      change: language === 'fr' ? 'Solde net' : 'Net balance',
+      icon: <Wallet size={20} />,
+      color: 'rgba(59, 130, 246, 0.15)',
       isCurrency: true,
     },
     {
@@ -237,7 +253,7 @@ export default function DashboardPage() {
       value: kpis.total_orders || 0,
       change: '+8.1%',
       icon: <ShoppingBag size={20} />,
-      color: 'rgba(59, 130, 246, 0.15)',
+      color: 'rgba(139, 92, 246, 0.15)',
     },
     {
       title: t('dash.clients'),
@@ -251,7 +267,7 @@ export default function DashboardPage() {
       value: kpis.pending_orders || 0,
       change: language === 'fr' ? 'à traiter' : 'pending',
       icon: <Clock size={20} />,
-      color: 'rgba(239, 68, 68, 0.15)',
+      color: 'rgba(107, 114, 128, 0.15)',
     },
   ];
 
