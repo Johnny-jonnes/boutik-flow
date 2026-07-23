@@ -4,24 +4,35 @@ import { useEffect } from 'react';
 
 export function PWARegister() {
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-      const handleRegister = async () => {
-        try {
-          const reg = await navigator.serviceWorker.register('/sw.js');
-          console.log('PWA Service Worker registered with scope:', reg.scope);
-          // Force la mise à jour immédiate pour installer le sw.js sans interception
-          reg.update();
-        } catch (error) {
-          console.error('PWA Service Worker registration failed:', error);
-        }
-      };
+    if (typeof window !== 'undefined') {
+      // 1. Désenregistrer activement TOUS les Service Workers actifs pour réparer le cache mobile bloqué
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (const registration of registrations) {
+            registration.unregister().then((success) => {
+              if (success) {
+                console.log('Successfully unregistered active Service Worker to clear local cache.');
+                // Recharger la page pour s'assurer que les requêtes repassent immédiatement par le réseau natif
+                window.location.reload();
+              }
+            });
+          }
+        }).catch((err) => {
+          console.error('Error unregistering service worker:', err);
+        });
+      }
 
-      // Enregistre après le chargement de la page pour ne pas bloquer les performances
-      if (document.readyState === 'complete') {
-        handleRegister();
-      } else {
-        window.addEventListener('load', handleRegister);
-        return () => window.removeEventListener('load', handleRegister);
+      // 2. Vider tous les caches de stockage locaux (CacheStorage) pour purger les fichiers périmés
+      if ('caches' in window) {
+        caches.keys().then((cacheNames) => {
+          return Promise.all(
+            cacheNames.map((cacheName) => {
+              return caches.delete(cacheName);
+            })
+          );
+        }).catch((err) => {
+          console.error('Error clearing CacheStorage:', err);
+        });
       }
     }
   }, []);
