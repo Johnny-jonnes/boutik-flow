@@ -153,7 +153,7 @@ async function request<T>(
       }
     }
     clearTokens();
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && !window.location.pathname.includes('/login') && path !== '/auth/login') {
       window.location.href = '/login?expired=true';
     }
   }
