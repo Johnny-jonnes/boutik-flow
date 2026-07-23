@@ -145,12 +145,17 @@ async function request<T>(
   }
 
   // Tentative de rafraîchissement automatique en cas de 401
-  if (res.status === 401 && allowRetry && getRefreshToken()) {
-    const refreshed = await tryRefreshToken();
-    if (refreshed) {
-      return request<T>(path, options, false);
+  if (res.status === 401) {
+    if (allowRetry && getRefreshToken()) {
+      const refreshed = await tryRefreshToken();
+      if (refreshed) {
+        return request<T>(path, options, false);
+      }
     }
     clearTokens();
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login?expired=true';
+    }
   }
 
   if (res.status === 204) {

@@ -118,9 +118,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           role: payload.role || 'Admin',
           plan: payload.tenant_plan || 'freemium',
         });
+      } else {
+        // Rediriger vers le login si le token est manquant
+        window.location.href = '/login';
       }
     } catch {
-      setUserInfo({ boutiqueName: 'Ma Boutique', email: '', role: 'Admin', plan: 'freemium' });
+      window.location.href = '/login';
     }
   }, []);
 

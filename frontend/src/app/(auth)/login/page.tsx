@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
+  const [isExpired, setIsExpired] = useState(false);
   const [form, setForm] = useState({
     boutique_slug: '',
     email: '',
@@ -23,6 +24,9 @@ export default function LoginPage() {
       const params = new URLSearchParams(window.location.search);
       if (params.get('registered') === 'true') {
         setIsRegistered(true);
+      }
+      if (params.get('expired') === 'true') {
+        setIsExpired(true);
       }
       const slug = params.get('slug');
       if (slug) {
@@ -101,6 +105,28 @@ export default function LoginPage() {
               <div>
                 <strong style={{ display: 'block', marginBottom: '2px', fontWeight: 600 }}>Demande envoyée avec succès !</strong>
                 Votre boutique a été pré-enregistrée. Elle sera accessible dès qu&apos;elle aura été validée par l&apos;administrateur.
+              </div>
+            </div>
+          )}
+
+          {isExpired && (
+            <div style={{
+              background: 'rgba(245, 158, 11, 0.1)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              borderRadius: '8px',
+              padding: '0.75rem 1rem',
+              marginBottom: '1.25rem',
+              display: 'flex',
+              alignItems: 'start',
+              gap: '0.75rem',
+              color: '#f59e0b',
+              fontSize: '0.875rem',
+              lineHeight: '1.4'
+            }}>
+              <AlertCircle size={20} style={{ flexShrink: 0, marginTop: '2px', color: '#f59e0b' }} />
+              <div>
+                <strong style={{ display: 'block', marginBottom: '2px', fontWeight: 600 }}>Session expirée !</strong>
+                Votre session a expiré. Veuillez vous reconnecter pour accéder à votre espace.
               </div>
             </div>
           )}
