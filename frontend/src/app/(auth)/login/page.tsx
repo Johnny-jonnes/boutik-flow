@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Check, Eye, EyeOff } from 'lucide-react';
+import { Check, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { api, ApiError } from '@/lib/api/client';
 import { toast } from 'sonner';
 
@@ -11,11 +11,25 @@ export default function LoginPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isRegistered, setIsRegistered] = useState(false);
   const [form, setForm] = useState({
     boutique_slug: '',
     email: '',
     password: '',
   });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('registered') === 'true') {
+        setIsRegistered(true);
+      }
+      const slug = params.get('slug');
+      if (slug) {
+        setForm(f => ({ ...f, boutique_slug: slug }));
+      }
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,6 +82,28 @@ export default function LoginPage() {
             <h1 className="auth-title">Bon retour</h1>
             <p className="auth-subtitle">Connectez-vous à votre boutique</p>
           </div>
+
+          {isRegistered && (
+            <div style={{
+              background: 'rgba(16, 185, 129, 0.1)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              borderRadius: '8px',
+              padding: '0.75rem 1rem',
+              marginBottom: '1.25rem',
+              display: 'flex',
+              alignItems: 'start',
+              gap: '0.75rem',
+              color: '#10b981',
+              fontSize: '0.875rem',
+              lineHeight: '1.4'
+            }}>
+              <AlertCircle size={20} style={{ flexShrink: 0, marginTop: '2px', color: '#10b981' }} />
+              <div>
+                <strong style={{ display: 'block', marginBottom: '2px', fontWeight: 600 }}>Demande envoyée avec succès !</strong>
+                Votre boutique a été pré-enregistrée. Elle sera accessible dès qu&apos;elle aura été validée par l&apos;administrateur.
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="form-group">

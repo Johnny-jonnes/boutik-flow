@@ -40,8 +40,8 @@ export default function RegisterPage() {
         ...form,
         phone: form.phone || undefined,
       });
-      setIsSuccess(true);
       toast.success(res.message || 'Demande de création de boutique envoyée !');
+      router.push(`/login?registered=true&slug=${form.boutique_slug}`);
     } catch (err) {
       if (err instanceof ApiError && err.status === 0) {
         toast.error('Le serveur démarre, veuillez réessayer dans 30 secondes.');

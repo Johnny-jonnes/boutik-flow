@@ -11,7 +11,7 @@ import logging
 from typing import Annotated
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
@@ -79,17 +79,18 @@ def _build_token_response(user: User) -> TokenResponse:
 def register(
     payload: RegisterRequest,
     db: Annotated[Session, Depends(get_db)],
+    background_tasks: BackgroundTasks,
 ) -> RegisterResponse:
     """
     Inscription en une seule étape :
     1. Crée le tenant (boutique), statut "pending"
     2. Crée l'utilisateur owner
     3. Crée une notification admin + tente l'envoi d'un email à l'équipe
-
+ 
     Aucun paiement en ligne n'étant intégré, chaque boutique doit être
     validée manuellement depuis l'espace admin avant de pouvoir se
     connecter. Aucun token n'est émis à cette étape.
-
+ 
     Route publique (pas de JWT requis).
     """
     
@@ -100,9 +101,9 @@ def register(
     if existing_tenant:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Ce nom de boutique est déjà pris. Choisissez un autre identifiant.",
+            detail="Ce nom de boutique est déjà pris. Choose another ID.",
         )
-
+ 
     # Vérifier unicité email globalement (un email = un compte par boutique)
     existing_user = db.query(User).join(Tenant).filter(
         and_(
@@ -116,7 +117,7 @@ def register(
             status_code=status.HTTP_409_CONFLICT,
             detail="Cet email est déjà utilisé pour cette boutique.",
         )
-
+ 
     # Créer le tenant en attente de validation
     tenant = Tenant(
         id=uuid.uuid4(),
@@ -128,7 +129,7 @@ def register(
     )
     db.add(tenant)
     db.flush()  # Obtenir l'ID du tenant avant de créer le user
-
+ 
     # Créer le propriétaire
     user = User(
         id=uuid.uuid4(),
@@ -141,7 +142,7 @@ def register(
         is_active=True,
     )
     db.add(user)
-
+ 
     # Créer une notification pour l'espace d'administration
     admin_notif = AdminNotification(
         id=uuid.uuid4(),
@@ -151,21 +152,27 @@ def register(
         is_read=False,
     )
     db.add(admin_notif)
-
+ 
     db.commit()
     db.refresh(user)
-
-    # Tenter l'envoi de l'email de notification à l'équipe admin
+ 
+    # Tenter l'envoi de l'email de notification à l'équipe admin en arrière-plan (évite le blocage HTTP)
     try:
-        send_admin_new_registration_notification(tenant.name, tenant.slug, user.email, user.full_name)
+        background_tasks.add_task(
+            send_admin_new_registration_notification,
+            tenant.name,
+            tenant.slug,
+            user.email,
+            user.full_name
+        )
     except Exception as e:
-        logger.warning("Erreur lors de l'envoi du mail de notification admin: %s", str(e))
-
+        logger.warning("Erreur lors de l'enregistrement de la tâche d'email: %s", str(e))
+ 
     logger.info(
         "Nouvelle demande de boutique enregistrée : %s (slug=%s, owner=%s)",
         tenant.name, tenant.slug, user.email,
     )
-
+ 
     return RegisterResponse(
         message="Votre demande de création de boutique a bien été envoyée et est en cours de validation par notre équipe d'administration.",
         boutique_slug=tenant.slug,
