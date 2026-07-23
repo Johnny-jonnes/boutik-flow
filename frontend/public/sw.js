@@ -1,31 +1,26 @@
-// Service Worker pour BoutikFlow (PWA installable) - Version stable
+// Service Worker pour BoutikFlow (PWA installable) - Version ultra-stable sans interférence
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  // Purge complète de tous les anciens caches créés par les versions précédentes du Service Worker
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          console.log('Cleaning old PWA cache:', cacheName);
+          return caches.delete(cacheName);
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
 });
 
+// Écouteur d'événement fetch vide pour satisfaire les critères d'installabilité de Chrome/Safari/Edge.
+// Ne fait aucune interception (pas de event.respondWith) pour laisser le navigateur gérer 100%
+// des requêtes dynamiques Next.js, cookies, sessions et API de manière native sans erreur de chargement.
 self.addEventListener('fetch', (event) => {
-  // NE PAS intercepter les requêtes API, d'authentification ou les requêtes externes.
-  // Cela évite les erreurs "impossible de charger les données" à cause du service worker.
-  const url = event.request.url;
-  if (
-    url.includes('/api/') || 
-    url.includes('onrender.com') ||
-    url.includes('/auth/') ||
-    !url.startsWith(self.location.origin)
-  ) {
-    return; // Laisse le navigateur gérer nativement sans interférence
-  }
-
-  // Stratégie Réseau en premier pour les fichiers statiques de l'application (HTML/JS/CSS)
-  event.respondWith(
-    fetch(event.request).catch(() => {
-      // Laisse le navigateur retourner l'erreur ou cherche dans le cache si disponible
-      return caches.match(event.request);
-    })
-  );
+  // Laisser passer toutes les requêtes nativement
 });

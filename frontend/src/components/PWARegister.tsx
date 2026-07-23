@@ -9,6 +9,8 @@ export function PWARegister() {
         try {
           const reg = await navigator.serviceWorker.register('/sw.js');
           console.log('PWA Service Worker registered with scope:', reg.scope);
+          // Force la mise à jour immédiate pour installer le sw.js sans interception
+          reg.update();
         } catch (error) {
           console.error('PWA Service Worker registration failed:', error);
         }
