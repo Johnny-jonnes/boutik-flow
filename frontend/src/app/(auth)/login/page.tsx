@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Check, Eye, EyeOff } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { api, ApiError } from '@/lib/api/client';
 import { toast } from 'sonner';
 
 export default function LoginPage() {
@@ -29,10 +29,10 @@ export default function LoginPage() {
         router.push('/dashboard');
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Erreur de connexion';
-      if (msg.includes('en cours') || msg.toLowerCase().includes('network') || msg.includes('connexion')) {
+      if (err instanceof ApiError && err.status === 0) {
         toast.error('Le serveur démarre, veuillez réessayer dans 30 secondes.');
       } else {
+        const msg = err instanceof Error ? err.message : 'Erreur de connexion';
         toast.error(msg);
       }
     } finally {

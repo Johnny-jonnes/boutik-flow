@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Rocket, CheckCircle2, Shield, Zap, Users, BarChart3 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { api, ApiError } from '@/lib/api/client';
 import { toast } from 'sonner';
 
 export default function RegisterPage() {
@@ -43,11 +43,11 @@ export default function RegisterPage() {
       setIsSuccess(true);
       toast.success(res.message || 'Demande de création de boutique envoyée !');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '';
-      if (msg.includes('en cours') || msg.toLowerCase().includes('network')) {
-        toast.error('Connexion au serveur en cours. Veuillez réessayez dans 30 secondes.');
+      if (err instanceof ApiError && err.status === 0) {
+        toast.error('Le serveur démarre, veuillez réessayer dans 30 secondes.');
       } else {
-        toast.error(msg || 'Erreur lors de la création de la boutique');
+        const msg = err instanceof Error ? err.message : 'Erreur lors de la création';
+        toast.error(msg);
       }
     } finally {
       setIsLoading(false);
