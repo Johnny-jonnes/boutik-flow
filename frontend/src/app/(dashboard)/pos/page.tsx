@@ -134,11 +134,11 @@ export default function POSPage() {
       }));
       
       const order = await api.createOrder({
-        client_id: selectedClientId || undefined,
+        client_id: selectedClientId || null,
         status: 'delivered',
         items: orderItems,
         notes: `Mode de paiement: ${paymentMethod} | Remise: ${discount} GNF`
-      });
+      } as any);
       
       toast.success(language === 'fr' ? 'Vente validée avec succès' : 'Sale validated successfully');
       

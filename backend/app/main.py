@@ -82,9 +82,14 @@ async def health_check():
 
 @app.on_event("startup")
 def on_startup():
-    """Crée les tables manquantes au démarrage (audit_logs, financial_transactions, etc.)."""
+    """Crée les tables manquantes au démarrage."""
     from app.core.database import engine, Base
-    # Import all models so they are registered with Base
+    # Import ALL models so they are registered with Base.metadata
+    from app.modules.auth.models import Tenant, User, AdminNotification  # noqa: F401
+    from app.modules.crm.models import Client  # noqa: F401
+    from app.modules.products.models import Product, InventoryLog, Order, OrderItem, OrderLog, WhatsAppMessage, AILog, Subscription  # noqa: F401
+    from app.modules.marketing.models import Campaign  # noqa: F401
+    from app.modules.suppliers.models import Supplier  # noqa: F401
     from app.modules.audit.models import AuditLog  # noqa: F401
     from app.modules.finance.models import FinancialTransaction  # noqa: F401
     Base.metadata.create_all(bind=engine)
