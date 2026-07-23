@@ -36,8 +36,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   const { t, language } = useLanguage();
   const [format, setFormat] = useState<'thermal' | 'a4'>('thermal');
 
-  const formatGNF = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR').format(amount) + ' GNF';
+  const formatGNF = (amount: number, compact = false) => {
+    const num = new Intl.NumberFormat('fr-FR').format(amount);
+    return compact ? num : `${num} GNF`;
   };
 
   const formatDate = (isoString: string) => {
@@ -102,11 +103,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           <style>
             @page {
               size: ${format === 'thermal' ? '80mm auto' : 'A4'};
-              margin: ${format === 'thermal' ? '0' : '10mm 15mm'};
+              margin: 0;
             }
-            * {
-              box-sizing: border-box !important;
-            }
+            * { box-sizing: border-box !important; }
             body {
               background: #fff !important;
               color: #000 !important;
@@ -119,20 +118,36 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               border: none !important;
               background: #fff !important;
               color: #000 !important;
+              overflow: hidden !important;
             }
             .receipt-paper.thermal {
-              width: 74mm !important;
-              max-width: 74mm !important;
-              padding: 2mm 1mm !important;
+              width: 80mm !important;
+              max-width: 80mm !important;
+              min-width: 80mm !important;
+              padding: 3mm 2mm !important;
               font-family: 'Courier New', Courier, monospace !important;
-              font-size: 12px !important;
-              line-height: 1.3 !important;
+              font-size: 10pt !important;
+              line-height: 1.35 !important;
             }
             .receipt-paper.a4 {
-              width: 100% !important;
-              max-width: 100% !important;
+              width: 210mm !important;
+              max-width: 210mm !important;
+              padding: 10mm 15mm !important;
               font-family: system-ui, -apple-system, sans-serif !important;
             }
+            /* Thermal item list */
+            .thermal-items { width: 100%; }
+            .thermal-item { margin-bottom: 0.3rem; border-bottom: 1px dotted #d1d5db; padding-bottom: 0.25rem; }
+            .thermal-item-name { font-weight: 600; font-size: 0.92em; margin-bottom: 0.1rem; word-break: break-word; }
+            .thermal-item-detail { display: flex; justify-content: space-between; font-size: 0.88em; }
+            .thermal-item-detail span:last-child { font-weight: 700; white-space: nowrap; margin-left: 0.3rem; }
+            /* Totals */
+            .total-row { display: flex; justify-content: space-between; margin-bottom: 0.22rem; }
+            .total-row span:last-child { white-space: nowrap; }
+            .grand-total { font-weight: 800; }
+            .meta-row { display: flex; justify-content: space-between; margin-bottom: 0.18rem; gap: 0.4rem; }
+            .receipt-line-solid { border: none; border-bottom: 1px solid #111827; margin: 0.35rem 0; width: 100%; }
+            .receipt-line-dash { border: none; border-bottom: 1px dashed #9ca3af; margin: 0.35rem 0; width: 100%; }
           </style>
         </head>
         <body>
@@ -248,28 +263,46 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             <div className="receipt-line-dash" />
 
             {/* ===== Articles ===== */}
-            <div className="receipt-items">
-              <table className="items-table">
-                <thead>
-                  <tr>
-                    <th className="col-desc">Article</th>
-                    <th className="col-qty">Qté</th>
-                    <th className="col-price">P.U.</th>
-                    <th className="col-total">{language === 'fr' ? 'Total' : 'Total'}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {order.items?.map((item, index) => (
-                    <tr key={index}>
-                      <td className="col-desc">{item.product?.name || `Art. ${index + 1}`}</td>
-                      <td className="col-qty">{item.quantity}</td>
-                      <td className="col-price">{formatNumber(item.unit_price || 0)}</td>
-                      <td className="col-total">{formatNumber((item.unit_price || 0) * item.quantity)}</td>
+            {format === 'thermal' ? (
+              /* Layout thermique : 2 lignes par article pour éviter le débordement */
+              <div className="thermal-items">
+                {order.items?.map((item, index) => (
+                  <div key={index} className="thermal-item">
+                    <div className="thermal-item-name">
+                      {item.product?.name || `Art. ${index + 1}`}
+                    </div>
+                    <div className="thermal-item-detail">
+                      <span>{item.quantity} × {formatGNF(item.unit_price || 0, true)}</span>
+                      <span>= {formatGNF((item.unit_price || 0) * item.quantity, true)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* Layout A4 : tableau classique à 4 colonnes */
+              <div className="receipt-items">
+                <table className="items-table">
+                  <thead>
+                    <tr>
+                      <th className="col-desc">Article</th>
+                      <th className="col-qty">Qté</th>
+                      <th className="col-price">P.U. (GNF)</th>
+                      <th className="col-total">Total (GNF)</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {order.items?.map((item, index) => (
+                      <tr key={index}>
+                        <td className="col-desc">{item.product?.name || `Art. ${index + 1}`}</td>
+                        <td className="col-qty">{item.quantity}</td>
+                        <td className="col-price">{formatNumber(item.unit_price || 0)}</td>
+                        <td className="col-total">{formatNumber((item.unit_price || 0) * item.quantity)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
             {/* ===== Totaux ===== */}
             <div className="receipt-line-solid" />

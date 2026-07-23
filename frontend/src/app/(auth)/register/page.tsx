@@ -71,7 +71,7 @@ export default function RegisterPage() {
       router.push(`/login?registered=true&slug=${form.boutique_slug}`);
     } catch (err) {
       if (err instanceof ApiError && err.status === 0) {
-        toast.error('Le serveur démarre, veuillez réessayer dans 30 secondes.');
+        toast.error('Connexion impossible. Le serveur de production démarre (cela prend environ 50 secondes) ou votre connexion Internet est coupée. Veuillez réessayer dans quelques instants.');
       } else {
         const msg = err instanceof Error ? err.message : 'Erreur lors de la création';
         toast.error(msg);

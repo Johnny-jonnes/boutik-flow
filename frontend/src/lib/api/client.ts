@@ -52,8 +52,12 @@ import type {
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'https://boutik-flow.onrender.com/api/v1';
+let rawApiUrl = (typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_API_URL : '') || 'https://boutik-flow.onrender.com/api/v1';
+rawApiUrl = rawApiUrl.replace(/\/$/, '');
+if (!rawApiUrl.endsWith('/api/v1')) {
+  rawApiUrl = `${rawApiUrl}/api/v1`;
+}
+const API_BASE_URL = rawApiUrl;
 
 const ACCESS_TOKEN_KEY = 'boutikflow_access_token';
 const REFRESH_TOKEN_KEY = 'boutikflow_refresh_token';
