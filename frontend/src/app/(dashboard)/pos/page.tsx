@@ -133,12 +133,16 @@ export default function POSPage() {
         quantity: item.cartQuantity,
       }));
       
-      const order = await api.createOrder({
-        client_id: selectedClientId || null,
+      const payload: any = {
         status: 'delivered',
         items: orderItems,
         notes: `Mode de paiement: ${paymentMethod} | Remise: ${discount} GNF`
-      } as any);
+      };
+      if (selectedClientId) {
+        payload.client_id = selectedClientId;
+      }
+
+      const order = await api.createOrder(payload);
       
       toast.success(language === 'fr' ? 'Vente validée avec succès' : 'Sale validated successfully');
       

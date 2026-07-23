@@ -5,7 +5,7 @@ Validation des commandes et lignes de commande.
 import uuid
 from decimal import Decimal
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class OrderItemCreate(BaseModel):
@@ -17,10 +17,24 @@ class OrderItemCreate(BaseModel):
 
 class OrderCreate(BaseModel):
     """Création d'une commande (client_id optionnel pour la caisse rapide)."""
-    client_id: uuid.UUID | None = Field(None, description="ID du client (optionnel)")
+    client_id: uuid.UUID | str | None = Field(None, description="ID du client (optionnel)")
     status: str | None = Field(None, description="Statut initial: pending | confirmed | delivered")
     notes: str | None = Field(None, max_length=2000)
     items: list[OrderItemCreate] = Field(..., min_length=1, description="Au moins un produit requis")
+
+    @field_validator("client_id", mode="before")
+    @classmethod
+    def validate_client_id(cls, v):
+        if not v or v == "null" or v == "undefined":
+            return None
+        if isinstance(v, uuid.UUID):
+            return v
+        if isinstance(v, str):
+            try:
+                return uuid.UUID(v)
+            except ValueError:
+                return None
+        return None
 
 
 class OrderUpdateStatus(BaseModel):
