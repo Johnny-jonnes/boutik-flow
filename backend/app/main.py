@@ -78,6 +78,22 @@ async def health_check():
     }
 
 
+@app.get("/version", tags=["Health"])
+async def version_check():
+    """Retourne la version du backend déployé et les routes disponibles."""
+    return {
+        "commit": "2012445",
+        "build_date": "2026-07-23",
+        "routes": {
+            "finance": "/api/v1/finance",
+            "audit": "/api/v1/audit",
+            "suppliers": "/api/v1/suppliers",
+            "team": "/api/v1/auth/team",
+            "orders": "/api/v1/orders",
+        }
+    }
+
+
 # ─── Auto-création des tables au démarrage ──────────────────────────────────
 
 @app.on_event("startup")

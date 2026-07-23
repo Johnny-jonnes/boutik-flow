@@ -138,8 +138,23 @@ export default function POSPage() {
         items: orderItems,
         notes: `Mode de paiement: ${paymentMethod} | Remise: ${discount} GNF`
       };
-      if (selectedClientId) {
-        payload.client_id = selectedClientId;
+      
+      let finalClientId = selectedClientId;
+      if (!finalClientId) {
+        const comptoir = clients.find(c => 
+          c.name.toLowerCase().includes('comptoir') || 
+          c.name.toLowerCase().includes('passant') || 
+          c.name.toLowerCase().includes('passant')
+        );
+        if (comptoir) {
+          finalClientId = comptoir.id;
+        } else if (clients.length > 0) {
+          finalClientId = clients[0].id;
+        }
+      }
+
+      if (finalClientId) {
+        payload.client_id = finalClientId;
       }
 
       const order = await api.createOrder(payload);
