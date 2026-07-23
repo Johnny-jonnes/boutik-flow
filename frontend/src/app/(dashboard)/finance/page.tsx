@@ -28,40 +28,41 @@ function formatGNF(amount: number): string {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' GNF';
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  sale: 'Vente',
-  supplier_purchase: 'Achat fournisseur',
-  salary: 'Salaire / Rémunération',
-  rent: 'Loyer & Charges',
-  utilities: 'Factures (Eau/Élec/Net)',
-  refund: 'Remboursement',
-  other_income: 'Autre revenu',
-  other_expense: 'Autre dépense',
-};
-
-const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  cash: 'Espèces',
-  orange_money: 'Orange Money',
-  card: 'Carte bancaire',
-  transfer: 'Virement bancaire',
-};
-
-const INCOME_CATEGORIES: { value: TransactionCategory; label: string }[] = [
-  { value: 'sale', label: 'Vente' },
-  { value: 'other_income', label: 'Autre revenu' },
-];
-
-const EXPENSE_CATEGORIES: { value: TransactionCategory; label: string }[] = [
-  { value: 'supplier_purchase', label: 'Achat fournisseur' },
-  { value: 'salary', label: 'Salaire / Rémunération' },
-  { value: 'rent', label: 'Loyer & Charges' },
-  { value: 'utilities', label: 'Factures (Eau, Électricité, Internet)' },
-  { value: 'refund', label: 'Remboursement' },
-  { value: 'other_expense', label: 'Autre dépense' },
-];
 
 export default function FinancePage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+
+  const CATEGORY_LABELS: Record<string, string> = {
+    sale: language === 'fr' ? 'Vente' : 'Sale',
+    supplier_purchase: language === 'fr' ? 'Achat fournisseur' : 'Supplier purchase',
+    salary: language === 'fr' ? 'Salaire / Rémunération' : 'Salary / Remuneration',
+    rent: language === 'fr' ? 'Loyer & Charges' : 'Rent & Charges',
+    utilities: language === 'fr' ? 'Factures (Eau/Élec/Net)' : 'Bills (Water/Elec/Net)',
+    refund: language === 'fr' ? 'Remboursement' : 'Refund',
+    other_income: language === 'fr' ? 'Autre revenu' : 'Other income',
+    other_expense: language === 'fr' ? 'Autre dépense' : 'Other expense',
+  };
+
+  const PAYMENT_METHOD_LABELS: Record<string, string> = {
+    cash: language === 'fr' ? 'Espèces' : 'Cash',
+    orange_money: 'Orange Money',
+    card: language === 'fr' ? 'Carte bancaire' : 'Credit Card',
+    transfer: language === 'fr' ? 'Virement bancaire' : 'Bank Transfer',
+  };
+
+  const INCOME_CATEGORIES: { value: TransactionCategory; label: string }[] = [
+    { value: 'sale', label: language === 'fr' ? 'Vente' : 'Sale' },
+    { value: 'other_income', label: language === 'fr' ? 'Autre revenu' : 'Other income' },
+  ];
+
+  const EXPENSE_CATEGORIES: { value: TransactionCategory; label: string }[] = [
+    { value: 'supplier_purchase', label: language === 'fr' ? 'Achat fournisseur' : 'Supplier purchase' },
+    { value: 'salary', label: language === 'fr' ? 'Salaire / Rémunération' : 'Salary / Remuneration' },
+    { value: 'rent', label: language === 'fr' ? 'Loyer & Charges' : 'Rent & Charges' },
+    { value: 'utilities', label: language === 'fr' ? 'Factures (Eau, Électricité, Internet)' : 'Bills (Water, Electricity, Internet)' },
+    { value: 'refund', label: language === 'fr' ? 'Remboursement' : 'Refund' },
+    { value: 'other_expense', label: language === 'fr' ? 'Autre dépense' : 'Other expense' },
+  ];
 
   // Data states
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
@@ -178,14 +179,14 @@ export default function FinancePage() {
 
       toast.success(
         formData.type === 'income'
-          ? 'Entrée d\'argent enregistrée avec succès !'
-          : 'Dépense enregistrée avec succès !'
+          ? (language === 'fr' ? "Entrée d'argent enregistrée avec succès !" : "Income transaction recorded successfully!")
+          : (language === 'fr' ? "Dépense enregistrée avec succès !" : "Expense transaction recorded successfully!")
       );
       setIsModalOpen(false);
       fetchTransactions();
     } catch (err: any) {
       console.error('Create transaction error:', err);
-      toast.error(err?.message || 'Erreur lors de la création de la transaction');
+      toast.error(err?.message || (language === 'fr' ? 'Erreur lors de la création de la transaction' : 'Error creating transaction'));
     } finally {
       setIsSubmitting(false);
     }
@@ -207,14 +208,14 @@ export default function FinancePage() {
       {/* Page Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">{t('nav.finance') || 'Finance & Trésorerie'}</h1>
+          <h1 className="page-title">{t('fin.title') || 'Finance & Trésorerie'}</h1>
           <p className="page-subtitle">
-            Suivez vos entrées, dépenses et le solde net de votre boutique.
+            {t('fin.subtitle') || 'Suivez vos entrées, dépenses et le solde net de votre boutique.'}
           </p>
         </div>
         <div className="header-actions">
           <button className="btn btn-primary" onClick={handleOpenModal}>
-            <Plus size={18} /> Nouvelle Transaction
+            <Plus size={18} /> {t('fin.new_transaction') || 'Nouvelle Transaction'}
           </button>
         </div>
       </div>
@@ -224,7 +225,7 @@ export default function FinancePage() {
         {/* Total Revenus */}
         <div className="kpi-card kpi-income">
           <div className="kpi-header">
-            <span className="kpi-label">Total Revenus</span>
+            <span className="kpi-label">{t('fin.total_income') || 'Total Revenus'}</span>
             <div className="kpi-icon kpi-icon-green">
               <ArrowDownLeft size={20} />
             </div>
@@ -233,14 +234,16 @@ export default function FinancePage() {
             {formatGNF(summary?.total_income ?? 0)}
           </div>
           <div className="kpi-footer">
-            <span className="kpi-subtext">Entrées brutes enregistrées</span>
+            <span className="kpi-subtext">
+              {language === 'fr' ? 'Entrées brutes enregistrées' : 'Total gross income recorded'}
+            </span>
           </div>
         </div>
 
         {/* Total Dépenses */}
         <div className="kpi-card kpi-expense">
           <div className="kpi-header">
-            <span className="kpi-label">Total Dépenses</span>
+            <span className="kpi-label">{t('fin.total_expense') || 'Total Dépenses'}</span>
             <div className="kpi-icon kpi-icon-red">
               <ArrowUpRight size={20} />
             </div>
@@ -249,14 +252,16 @@ export default function FinancePage() {
             {formatGNF(summary?.total_expense ?? 0)}
           </div>
           <div className="kpi-footer">
-            <span className="kpi-subtext">Dépenses totales sorties</span>
+            <span className="kpi-subtext">
+              {language === 'fr' ? 'Dépenses totales sorties' : 'Total expenses paid'}
+            </span>
           </div>
         </div>
 
         {/* Solde Net */}
         <div className="kpi-card kpi-net">
           <div className="kpi-header">
-            <span className="kpi-label">Solde Net</span>
+            <span className="kpi-label">{t('fin.net_balance') || 'Solde Net'}</span>
             <div className="kpi-icon kpi-icon-blue">
               <Wallet size={20} />
             </div>
@@ -270,7 +275,7 @@ export default function FinancePage() {
           </div>
           <div className="kpi-footer">
             <span className="kpi-subtext">
-              {summary?.transactions_count ?? 0} transaction(s) au total
+              {summary?.transactions_count ?? 0} {language === 'fr' ? 'transaction(s) au total' : 'total transaction(s)'}
             </span>
           </div>
         </div>
@@ -282,11 +287,11 @@ export default function FinancePage() {
           {/* Period Filter Tabs */}
           <div className="period-pills">
             {[
-              { id: '7j', label: '7 jours' },
-              { id: '30j', label: '30 jours' },
-              { id: '90j', label: '90 jours' },
-              { id: 'all', label: 'Tout' },
-              { id: 'custom', label: 'Personnalisé' },
+              { id: '7j', label: language === 'fr' ? '7 jours' : '7 days' },
+              { id: '30j', label: language === 'fr' ? '30 jours' : '30 days' },
+              { id: '90j', label: language === 'fr' ? '90 jours' : '90 days' },
+              { id: 'all', label: language === 'fr' ? 'Tout' : 'All' },
+              { id: 'custom', label: language === 'fr' ? 'Personnalisé' : 'Custom' },
             ].map((p) => (
               <button
                 key={p.id}
@@ -312,9 +317,9 @@ export default function FinancePage() {
                 setPage(1);
               }}
             >
-              <option value="all">Tous les types</option>
-              <option value="income">Entrées (+)</option>
-              <option value="expense">Sorties (-)</option>
+              <option value="all">{language === 'fr' ? 'Tous les types' : 'All types'}</option>
+              <option value="income">{language === 'fr' ? 'Entrées (+)' : 'Income (+)'}</option>
+              <option value="expense">{language === 'fr' ? 'Sorties (-)' : 'Expenses (-)'}</option>
             </select>
           </div>
 
@@ -329,15 +334,10 @@ export default function FinancePage() {
                 setPage(1);
               }}
             >
-              <option value="all">Toutes les catégories</option>
-              <option value="sale">Vente</option>
-              <option value="other_income">Autre revenu</option>
-              <option value="supplier_purchase">Achat fournisseur</option>
-              <option value="salary">Salaire / Rémunération</option>
-              <option value="rent">Loyer & Charges</option>
-              <option value="utilities">Factures (Eau/Élec/Net)</option>
-              <option value="refund">Remboursement</option>
-              <option value="other_expense">Autre dépense</option>
+              <option value="all">{language === 'fr' ? 'Toutes les catégories' : 'All categories'}</option>
+              {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                <option key={key} value={key}>{label}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -349,7 +349,7 @@ export default function FinancePage() {
             <input
               type="text"
               className="input search-input"
-              placeholder="Rechercher par description, réf..."
+              placeholder={language === 'fr' ? 'Rechercher par description, réf...' : 'Search by description, ref...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -362,12 +362,12 @@ export default function FinancePage() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Date & Heure</th>
+              <th>{language === 'fr' ? 'Date & Heure' : 'Date & Time'}</th>
               <th>Type</th>
-              <th>Catégorie</th>
-              <th>Description / Réf</th>
-              <th>Mode de Paiement</th>
-              <th className="text-right">Montant</th>
+              <th>{language === 'fr' ? 'Catégorie' : 'Category'}</th>
+              <th>{language === 'fr' ? 'Description / Réf' : 'Description / Ref'}</th>
+              <th>{language === 'fr' ? 'Mode de Paiement' : 'Payment Method'}</th>
+              <th className="text-right">{language === 'fr' ? 'Montant' : 'Amount'}</th>
             </tr>
           </thead>
           <tbody>
@@ -376,14 +376,16 @@ export default function FinancePage() {
                 <td colSpan={6} className="text-center py-12">
                   <div className="spinner-container">
                     <div className="spinner" />
-                    <span className="text-muted">Chargement des transactions...</span>
+                    <span className="text-muted">
+                      {language === 'fr' ? 'Chargement des transactions...' : 'Loading transactions...'}
+                    </span>
                   </div>
                 </td>
               </tr>
             ) : filteredTransactions.length === 0 ? (
               <tr>
                 <td colSpan={6} className="text-center py-12 text-muted">
-                  Aucune transaction trouvée pour cette période.
+                  {language === 'fr' ? 'Aucune transaction trouvée pour cette période.' : 'No transactions found for this period.'}
                 </td>
               </tr>
             ) : (
@@ -395,14 +397,14 @@ export default function FinancePage() {
                     <td>
                       <div className="date-cell">
                         <span className="date-main">
-                          {new Date(tx.created_at).toLocaleDateString('fr-FR', {
+                          {new Date(tx.created_at).toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', {
                             day: '2-digit',
                             month: 'short',
                             year: 'numeric',
                           })}
                         </span>
                         <span className="date-sub">
-                          {new Date(tx.created_at).toLocaleTimeString('fr-FR', {
+                          {new Date(tx.created_at).toLocaleTimeString(language === 'fr' ? 'fr-FR' : 'en-US', {
                             hour: '2-digit',
                             minute: '2-digit',
                           })}
@@ -415,11 +417,11 @@ export default function FinancePage() {
                       <span className={`badge-type ${isIncome ? 'badge-income' : 'badge-expense'}`}>
                         {isIncome ? (
                           <>
-                            <ArrowDownLeft size={13} /> Entrée
+                            <ArrowDownLeft size={13} /> {language === 'fr' ? 'Entrée' : 'Income'}
                           </>
                         ) : (
                           <>
-                            <ArrowUpRight size={13} /> Sortie
+                            <ArrowUpRight size={13} /> {language === 'fr' ? 'Sortie' : 'Expense'}
                           </>
                         )}
                       </span>
@@ -437,7 +439,7 @@ export default function FinancePage() {
                       <div className="desc-cell">
                         <span className="desc-text">{tx.description}</span>
                         {tx.reference && (
-                          <span className="ref-tag">Réf: {tx.reference}</span>
+                          <span className="ref-tag">{language === 'fr' ? 'Réf:' : 'Ref:'} {tx.reference}</span>
                         )}
                       </div>
                     </td>
@@ -471,14 +473,13 @@ export default function FinancePage() {
           <div className="pagination-bar">
             <div className="pagination-info">
               <span>
-                Affichage de {filteredTransactions.length} sur {total} transaction(s) — Page{' '}
-                {page} sur {totalPages}
+                {language === 'fr' ? 'Affichage de' : 'Showing'} {filteredTransactions.length} {language === 'fr' ? 'sur' : 'of'} {total} {language === 'fr' ? 'transaction(s) — Page' : 'transaction(s) — Page'} {page} {language === 'fr' ? 'sur' : 'of'} {totalPages}
               </span>
             </div>
 
             <div className="pagination-controls">
               <div className="per-page-select">
-                <span className="per-page-label">Afficher</span>
+                <span className="per-page-label">{language === 'fr' ? 'Afficher' : 'Show'}</span>
                 <select
                   className="select-input select-sm"
                   value={perPage}
@@ -500,7 +501,7 @@ export default function FinancePage() {
                   disabled={page <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                 >
-                  <ChevronLeft size={16} /> Précédent
+                  <ChevronLeft size={16} /> {language === 'fr' ? 'Précédent' : 'Previous'}
                 </button>
 
                 <button
@@ -508,7 +509,7 @@ export default function FinancePage() {
                   disabled={page >= totalPages}
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 >
-                  Suivant <ChevronRight size={16} />
+                  {language === 'fr' ? 'Suivant' : 'Next'} <ChevronRight size={16} />
                 </button>
               </div>
             </div>
@@ -520,7 +521,7 @@ export default function FinancePage() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Nouvelle Transaction Financière"
+        title={language === 'fr' ? 'Nouvelle Transaction Financière' : 'New Financial Transaction'}
       >
         <form onSubmit={handleSubmit} className="modal-form">
           {/* Type Toggle Selector */}
@@ -533,7 +534,7 @@ export default function FinancePage() {
               onClick={() => handleTypeChange('income')}
             >
               <ArrowDownLeft size={18} />
-              <span>Entrée (Revenu)</span>
+              <span>{language === 'fr' ? 'Entrée (Revenu)' : 'Income (Revenue)'}</span>
             </button>
             <button
               type="button"
@@ -543,14 +544,14 @@ export default function FinancePage() {
               onClick={() => handleTypeChange('expense')}
             >
               <ArrowUpRight size={18} />
-              <span>Sortie (Dépense)</span>
+              <span>{language === 'fr' ? 'Sortie (Dépense)' : 'Expense (Payment)'}</span>
             </button>
           </div>
 
           <div className="form-grid">
             {/* Category Select */}
             <div className="form-group">
-              <label className="form-label">Catégorie *</label>
+              <label className="form-label">{language === 'fr' ? 'Catégorie *' : 'Category *'}</label>
               <select
                 className="input"
                 required
@@ -573,7 +574,7 @@ export default function FinancePage() {
 
             {/* Amount */}
             <div className="form-group">
-              <label className="form-label">Montant (GNF) *</label>
+              <label className="form-label">{language === 'fr' ? 'Montant (GNF) *' : 'Amount (GNF) *'}</label>
               <input
                 type="number"
                 min="1"
@@ -588,7 +589,7 @@ export default function FinancePage() {
 
             {/* Payment Method */}
             <div className="form-group">
-              <label className="form-label">Mode de Paiement *</label>
+              <label className="form-label">{language === 'fr' ? 'Mode de Paiement *' : 'Payment Method *'}</label>
               <select
                 className="input"
                 required
@@ -600,16 +601,16 @@ export default function FinancePage() {
                   })
                 }
               >
-                <option value="cash">Espèces</option>
+                <option value="cash">{language === 'fr' ? 'Espèces' : 'Cash'}</option>
                 <option value="orange_money">Orange Money</option>
-                <option value="card">Carte bancaire</option>
-                <option value="transfer">Virement bancaire</option>
+                <option value="card">{language === 'fr' ? 'Carte bancaire' : 'Credit Card'}</option>
+                <option value="transfer">{language === 'fr' ? 'Virement bancaire' : 'Bank Transfer'}</option>
               </select>
             </div>
 
             {/* Reference */}
             <div className="form-group">
-              <label className="form-label">Référence / N° de reçu (Optionnel)</label>
+              <label className="form-label">{language === 'fr' ? 'Référence / N° de reçu (Optionnel)' : 'Reference / Receipt No. (Optional)'}</label>
               <input
                 type="text"
                 className="input"
@@ -621,11 +622,11 @@ export default function FinancePage() {
 
             {/* Description */}
             <div className="form-group full-width">
-              <label className="form-label">Description *</label>
+              <label className="form-label">{language === 'fr' ? 'Description *' : 'Description *'}</label>
               <textarea
                 className="input"
                 rows={3}
-                placeholder="Détails de la transaction (ex: Vente directe en caisse, Achat de stock...)"
+                placeholder={language === 'fr' ? 'Détails de la transaction (ex: Vente directe en caisse, Achat de stock...)' : 'Transaction details (e.g. POS sale, stock purchase...)'}
                 required
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -644,7 +645,7 @@ export default function FinancePage() {
             <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
               {isSubmitting
                 ? t('common.saving') || 'Enregistrement...'
-                : 'Enregistrer la transaction'}
+                : (language === 'fr' ? 'Enregistrer la transaction' : 'Record Transaction')}
             </button>
           </div>
         </form>

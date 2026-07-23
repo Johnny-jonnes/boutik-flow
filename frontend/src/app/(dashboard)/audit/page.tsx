@@ -21,101 +21,132 @@ import { Modal } from '@/components/ui/Modal';
 import { useLanguage } from '@/context/LanguageContext';
 import { toast } from 'sonner';
 
-const ACTION_CONFIG: Record<string, { label: string; badgeClass: string; color: string; bg: string }> = {
-  login: { 
-    label: 'Connexion', 
-    badgeClass: 'badge-blue',
-    color: '#3b82f6', 
-    bg: 'rgba(59, 130, 246, 0.12)' 
-  },
-  create_sale: { 
-    label: 'Vente créée', 
-    badgeClass: 'badge-green',
-    color: '#10b981', 
-    bg: 'rgba(16, 185, 129, 0.12)' 
-  },
-  create_order: { 
-    label: 'Commande créée', 
-    badgeClass: 'badge-green',
-    color: '#10b981', 
-    bg: 'rgba(16, 185, 129, 0.12)' 
-  },
-  update_stock: { 
-    label: 'Stock modifié', 
-    badgeClass: 'badge-orange',
-    color: '#f59e0b', 
-    bg: 'rgba(245, 158, 11, 0.12)' 
-  },
-  return_order_items: { 
-    label: 'Retour produit', 
-    badgeClass: 'badge-red',
-    color: '#ef4444', 
-    bg: 'rgba(239, 68, 68, 0.12)' 
-  },
-  create_financial_transaction: { 
-    label: 'Transaction finance', 
-    badgeClass: 'badge-green',
-    color: '#10b981', 
-    bg: 'rgba(16, 185, 129, 0.12)' 
-  },
-  delete_product: { 
-    label: 'Produit supprimé', 
-    badgeClass: 'badge-red',
-    color: '#ef4444', 
-    bg: 'rgba(239, 68, 68, 0.12)' 
-  },
-  update_user: { 
-    label: 'Utilisateur modifié', 
-    badgeClass: 'badge-orange',
-    color: '#f59e0b', 
-    bg: 'rgba(245, 158, 11, 0.12)' 
-  },
-};
-
-function getActionInfo(action: string) {
-  if (ACTION_CONFIG[action]) {
-    return ACTION_CONFIG[action];
-  }
-  // Dynamic fallback mapping
-  if (action.startsWith('create_') || action.includes('add') || action.includes('create')) {
-    return { label: formatActionLabel(action), badgeClass: 'badge-green', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)' };
-  }
-  if (action.startsWith('update_') || action.includes('edit') || action.includes('update')) {
-    return { label: formatActionLabel(action), badgeClass: 'badge-orange', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)' };
-  }
-  if (action.startsWith('delete_') || action.startsWith('return_') || action.includes('remove') || action.includes('delete')) {
-    return { label: formatActionLabel(action), badgeClass: 'badge-red', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)' };
-  }
-  if (action.includes('login') || action.includes('auth')) {
-    return { label: formatActionLabel(action), badgeClass: 'badge-blue', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.12)' };
-  }
-  return { label: formatActionLabel(action), badgeClass: 'badge-neutral', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.12)' };
-}
-
 function formatActionLabel(action: string): string {
   return action
     .replace(/_/g, ' ')
     .replace(/\b\w/g, c => c.toUpperCase());
 }
 
-function formatDate(isoString: string) {
-  if (!isoString) return '—';
-  try {
-    return new Intl.DateTimeFormat('fr-FR', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    }).format(new Date(isoString));
-  } catch {
-    return isoString;
-  }
-}
-
 export default function AuditPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+
+  const ACTION_CONFIG: Record<string, { label: string; badgeClass: string; color: string; bg: string }> = {
+    login: { 
+      label: language === 'fr' ? 'Connexion' : 'Login', 
+      badgeClass: 'badge-blue',
+      color: '#3b82f6', 
+      bg: 'rgba(59, 130, 246, 0.12)' 
+    },
+    create_sale: { 
+      label: language === 'fr' ? 'Vente créée' : 'Sale Created', 
+      badgeClass: 'badge-green',
+      color: '#10b981', 
+      bg: 'rgba(16, 185, 129, 0.12)' 
+    },
+    create_order: { 
+      label: language === 'fr' ? 'Commande créée' : 'Order Created', 
+      badgeClass: 'badge-green',
+      color: '#10b981', 
+      bg: 'rgba(16, 185, 129, 0.12)' 
+    },
+    update_stock: { 
+      label: language === 'fr' ? 'Stock modifié' : 'Stock Updated', 
+      badgeClass: 'badge-orange',
+      color: '#f59e0b', 
+      bg: 'rgba(245, 158, 11, 0.12)' 
+    },
+    return_order_items: { 
+      label: language === 'fr' ? 'Retour produit' : 'Product Return', 
+      badgeClass: 'badge-red',
+      color: '#ef4444', 
+      bg: 'rgba(239, 68, 68, 0.12)' 
+    },
+    create_financial_transaction: { 
+      label: language === 'fr' ? 'Transaction finance' : 'Finance Tx', 
+      badgeClass: 'badge-green',
+      color: '#10b981', 
+      bg: 'rgba(16, 185, 129, 0.12)' 
+    },
+    delete_product: { 
+      label: language === 'fr' ? 'Produit supprimé' : 'Product Deleted', 
+      badgeClass: 'badge-red',
+      color: '#ef4444', 
+      bg: 'rgba(239, 68, 68, 0.12)' 
+    },
+    update_user: { 
+      label: language === 'fr' ? 'Utilisateur modifié' : 'User Modified', 
+      badgeClass: 'badge-orange',
+      color: '#f59e0b', 
+      bg: 'rgba(245, 158, 11, 0.12)' 
+    },
+  };
+
+  function getActionInfo(action: string) {
+    if (ACTION_CONFIG[action]) {
+      return ACTION_CONFIG[action];
+    }
+    if (action.startsWith('create_') || action.includes('add') || action.includes('create')) {
+      return { 
+        label: language === 'fr' ? formatActionLabel(action) : formatActionLabelEn(action), 
+        badgeClass: 'badge-green', 
+        color: '#10b981', 
+        bg: 'rgba(16, 185, 129, 0.12)' 
+      };
+    }
+    if (action.startsWith('update_') || action.includes('edit') || action.includes('update')) {
+      return { 
+        label: language === 'fr' ? formatActionLabel(action) : formatActionLabelEn(action), 
+        badgeClass: 'badge-orange', 
+        color: '#f59e0b', 
+        bg: 'rgba(245, 158, 11, 0.12)' 
+      };
+    }
+    if (action.startsWith('delete_') || action.startsWith('return_') || action.includes('remove') || action.includes('delete')) {
+      return { 
+        label: language === 'fr' ? formatActionLabel(action) : formatActionLabelEn(action), 
+        badgeClass: 'badge-red', 
+        color: '#ef4444', 
+        bg: 'rgba(239, 68, 68, 0.12)' 
+      };
+    }
+    if (action.includes('login') || action.includes('auth')) {
+      return { 
+        label: language === 'fr' ? 'Connexion' : 'Login', 
+        badgeClass: 'badge-blue', 
+        color: '#3b82f6', 
+        bg: 'rgba(59, 130, 246, 0.12)' 
+      };
+    }
+    return { 
+      label: formatActionLabel(action), 
+      badgeClass: 'badge-neutral', 
+      color: '#94a3b8', 
+      bg: 'rgba(148, 163, 184, 0.12)' 
+    };
+  }
+
+  function formatActionLabelEn(action: string): string {
+    return action
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  function formatDate(isoString: string) {
+    if (!isoString) return '—';
+    try {
+      return new Intl.DateTimeFormat(language === 'fr' ? 'fr-FR' : 'en-US', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }).format(new Date(isoString));
+    } catch {
+      return isoString;
+    }
+  }
+
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -176,10 +207,10 @@ export default function AuditPage() {
         <div>
           <div className="title-with-icon">
             <ShieldCheck className="header-icon" size={28} />
-            <h1 className="page-title">Journal d'Audit</h1>
+            <h1 className="page-title">{language === 'fr' ? "Journal d'Audit" : 'Audit Log'}</h1>
           </div>
           <p className="page-subtitle">
-            Historique d'activité et traçabilité détaillée des actions effectuées sur votre boutique.
+            {language === 'fr' ? "Historique d'activité et traçabilité détaillée des actions effectuées sur votre boutique." : 'Detailed activity history and traceability of all actions performed on your store.'}
           </p>
         </div>
         <div className="header-actions">
@@ -187,10 +218,10 @@ export default function AuditPage() {
             className="btn btn-ghost btn-refresh"
             onClick={fetchAuditLogs}
             disabled={isLoading}
-            title="Rafraîchir les données"
+            title={language === 'fr' ? 'Rafraîchir les données' : 'Refresh data'}
           >
             <RefreshCw size={16} className={isLoading ? 'spin' : ''} />
-            <span>Actualiser</span>
+            <span>{language === 'fr' ? 'Actualiser' : 'Refresh'}</span>
           </button>
         </div>
       </div>
@@ -201,29 +232,29 @@ export default function AuditPage() {
           {/* Action Type Dropdown */}
           <div className="filter-item">
             <label className="filter-label">
-              <Filter size={14} /> Type d'action
+              <Filter size={14} /> {language === 'fr' ? "Type d'action" : 'Action type'}
             </label>
             <select
               className="input select-input"
               value={selectedAction}
               onChange={handleActionChange}
             >
-              <option value="">Toutes les actions</option>
-              <option value="login">Connexion</option>
-              <option value="create_sale">Vente créée</option>
-              <option value="create_order">Commande créée</option>
-              <option value="update_stock">Stock modifié</option>
-              <option value="return_order_items">Retour produit</option>
-              <option value="create_financial_transaction">Transaction finance</option>
-              <option value="delete_product">Produit supprimé</option>
-              <option value="update_user">Utilisateur modifié</option>
+              <option value="">{language === 'fr' ? 'Toutes les actions' : 'All actions'}</option>
+              <option value="login">{language === 'fr' ? 'Connexion' : 'Login'}</option>
+              <option value="create_sale">{language === 'fr' ? 'Vente créée' : 'Sale Created'}</option>
+              <option value="create_order">{language === 'fr' ? 'Commande créée' : 'Order Created'}</option>
+              <option value="update_stock">{language === 'fr' ? 'Stock modifié' : 'Stock Updated'}</option>
+              <option value="return_order_items">{language === 'fr' ? 'Retour produit' : 'Product Return'}</option>
+              <option value="create_financial_transaction">{language === 'fr' ? 'Transaction finance' : 'Finance Tx'}</option>
+              <option value="delete_product">{language === 'fr' ? 'Produit supprimé' : 'Product Deleted'}</option>
+              <option value="update_user">{language === 'fr' ? 'Utilisateur modifié' : 'User Modified'}</option>
             </select>
           </div>
 
           {/* User Email Search Input */}
           <div className="filter-item search-filter">
             <label className="filter-label">
-              <User size={14} /> Rechercher par email
+              <User size={14} /> {language === 'fr' ? 'Rechercher par email' : 'Search by email'}
             </label>
             <div className="search-box">
               <span className="search-icon"><Search size={16} /></span>
@@ -252,12 +283,12 @@ export default function AuditPage() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Date / Heure</th>
-              <th>Utilisateur</th>
+              <th>{language === 'fr' ? 'Date / Heure' : 'Date / Time'}</th>
+              <th>{language === 'fr' ? 'Utilisateur' : 'User'}</th>
               <th>Action</th>
-              <th>Entité</th>
-              <th>Détails</th>
-              <th className="text-right">Aperçu</th>
+              <th>{language === 'fr' ? 'Entité' : 'Entity'}</th>
+              <th>{language === 'fr' ? 'Détails' : 'Details'}</th>
+              <th className="text-right">{language === 'fr' ? 'Aperçu' : 'View'}</th>
             </tr>
           </thead>
           <tbody>
@@ -275,7 +306,7 @@ export default function AuditPage() {
                   <td>
                     <div className="user-cell">
                       <div className="user-avatar">{userInitial}</div>
-                      <span className="user-email">{log.user_email || 'Système'}</span>
+                      <span className="user-email">{log.user_email || (language === 'fr' ? 'Système' : 'System')}</span>
                     </div>
                   </td>
                   <td>
@@ -313,7 +344,7 @@ export default function AuditPage() {
                   <td className="text-right" onClick={(e) => e.stopPropagation()}>
                     <button 
                       className="btn btn-ghost btn-icon" 
-                      title="Voir les détails complets"
+                      title={language === 'fr' ? 'Voir les détails complets' : 'View full details'}
                       onClick={() => setSelectedLog(log)}
                     >
                       <Eye size={16} />
@@ -328,7 +359,7 @@ export default function AuditPage() {
                 <td colSpan={6} className="text-center py-12">
                   <div className="spinner-container">
                     <div className="spinner"></div>
-                    <span className="text-muted mt-2">Chargement du journal d'audit...</span>
+                    <span className="text-muted mt-2">{language === 'fr' ? "Chargement du journal d'audit..." : 'Loading audit log...'}</span>
                   </div>
                 </td>
               </tr>
@@ -339,11 +370,11 @@ export default function AuditPage() {
                 <td colSpan={6} className="text-center py-12">
                   <div className="empty-state">
                     <Activity size={40} className="empty-icon" />
-                    <p className="empty-title">Aucune activité enregistrée</p>
+                    <p className="empty-title">{language === 'fr' ? 'Aucune activité enregistrée' : 'No activity recorded'}</p>
                     <p className="empty-subtitle">
                       {selectedAction || userEmailSearch 
-                        ? 'Aucun journal d\'audit ne correspond aux filtres appliqués.' 
-                        : 'Le journal d\'audit est actuellement vide.'}
+                        ? (language === 'fr' ? "Aucun journal d'audit ne correspond aux filtres appliqués." : 'No audit log matches the applied filters.')
+                        : (language === 'fr' ? "Le journal d'audit est actuellement vide." : 'The audit log is currently empty.')}
                     </p>
                   </div>
                 </td>
@@ -356,7 +387,7 @@ export default function AuditPage() {
         {!isLoading && total > 0 && (
           <div className="pagination-bar">
             <div className="pagination-info">
-              Affichage de <span className="font-semibold">{logs.length}</span> sur <span className="font-semibold">{total}</span> entrée{total > 1 ? 's' : ''} (Page {page} sur {pages || 1})
+              {language === 'fr' ? 'Affichage de' : 'Showing'} <span className="font-semibold">{logs.length}</span> {language === 'fr' ? 'sur' : 'of'} <span className="font-semibold">{total}</span> {language === 'fr' ? `entrée${total > 1 ? 's' : ''} (Page ${page} sur ${pages || 1})` : `entr${total > 1 ? 'ies' : 'y'} (Page ${page} of ${pages || 1})`}
             </div>
             <div className="pagination-controls">
               <button 
@@ -364,7 +395,7 @@ export default function AuditPage() {
                 disabled={page <= 1}
                 onClick={() => setPage(prev => Math.max(prev - 1, 1))}
               >
-                <ChevronLeft size={16} /> Précédent
+                <ChevronLeft size={16} /> {language === 'fr' ? 'Précédent' : 'Previous'}
               </button>
               
               <div className="page-numbers">
@@ -391,7 +422,7 @@ export default function AuditPage() {
                 disabled={page >= pages}
                 onClick={() => setPage(prev => Math.min(prev + 1, pages))}
               >
-                Suivant <ChevronRight size={16} />
+                {language === 'fr' ? 'Suivant' : 'Next'} <ChevronRight size={16} />
               </button>
             </div>
           </div>
@@ -402,7 +433,7 @@ export default function AuditPage() {
       <Modal 
         isOpen={!!selectedLog} 
         onClose={() => setSelectedLog(null)} 
-        title="Détails du journal d'audit"
+        title={language === 'fr' ? "Détails du journal d'audit" : 'Audit Log Details'}
       >
         {selectedLog && (
           <div className="modal-log-details">
@@ -427,40 +458,40 @@ export default function AuditPage() {
 
             <div className="detail-rows">
               <div className="detail-row">
-                <span className="detail-label">ID Événement</span>
+                <span className="detail-label">{language === 'fr' ? 'ID Événement' : 'Event ID'}</span>
                 <span className="detail-value mono">{selectedLog.id}</span>
               </div>
               <div className="detail-row">
-                <span className="detail-label">Utilisateur</span>
-                <span className="detail-value">{selectedLog.user_email || 'Système'}</span>
+                <span className="detail-label">{language === 'fr' ? 'Utilisateur' : 'User'}</span>
+                <span className="detail-value">{selectedLog.user_email || (language === 'fr' ? 'Système' : 'System')}</span>
               </div>
               {selectedLog.user_id && (
                 <div className="detail-row">
-                  <span className="detail-label">ID Utilisateur</span>
+                  <span className="detail-label">{language === 'fr' ? 'ID Utilisateur' : 'User ID'}</span>
                   <span className="detail-value mono">{selectedLog.user_id}</span>
                 </div>
               )}
               <div className="detail-row">
-                <span className="detail-label">Entité ciblée</span>
+                <span className="detail-label">{language === 'fr' ? 'Entité ciblée' : 'Target entity'}</span>
                 <span className="detail-value">{selectedLog.target_entity || '—'}</span>
               </div>
               {selectedLog.target_id && (
                 <div className="detail-row">
-                  <span className="detail-label">ID Cible</span>
+                  <span className="detail-label">{language === 'fr' ? 'ID Cible' : 'Target ID'}</span>
                   <span className="detail-value mono">{selectedLog.target_id}</span>
                 </div>
               )}
               <div className="detail-row full-width-row">
-                <span className="detail-label">Description / Détails</span>
+                <span className="detail-label">{language === 'fr' ? 'Description / Détails' : 'Description / Details'}</span>
                 <div className="details-box">
-                  {selectedLog.details || 'Aucun détail supplémentaire renseigné.'}
+                  {selectedLog.details || (language === 'fr' ? 'Aucun détail supplémentaire renseigné.' : 'No additional details provided.')}
                 </div>
               </div>
             </div>
 
             <div className="modal-actions">
               <button className="btn btn-ghost" onClick={() => setSelectedLog(null)}>
-                Fermer
+                {language === 'fr' ? 'Fermer' : 'Close'}
               </button>
             </div>
           </div>
