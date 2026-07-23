@@ -64,18 +64,18 @@
 }
 
 .receipt-paper.thermal {
-  width: 80mm;
+  width: 74mm;
   max-width: 100%;
-  padding: 6mm 4mm;
+  padding: 4mm 3mm;
   font-family: 'Courier New', Courier, monospace;
-  font-size: 11px;
-  line-height: 1.4;
+  font-size: 12px;
+  line-height: 1.3;
 }
 
 .receipt-paper.a4 {
-  width: 210mm;
-  max-width: 100%;
-  padding: 12mm 15mm;
+  width: 100%;
+  max-width: 800px;
+  padding: 10mm 12mm;
   font-family: 'Inter', 'Segoe UI', sans-serif;
   font-size: 13px;
   line-height: 1.5;

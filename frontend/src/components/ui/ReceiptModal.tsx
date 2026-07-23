@@ -101,7 +101,11 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           ${stylesHtml}
           <style>
             @page {
-              margin: 0;
+              size: ${format === 'thermal' ? '80mm auto' : 'A4'};
+              margin: ${format === 'thermal' ? '0' : '10mm 15mm'};
+            }
+            * {
+              box-sizing: border-box !important;
             }
             body {
               background: #fff !important;
@@ -115,18 +119,18 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               border: none !important;
               background: #fff !important;
               color: #000 !important;
-              box-sizing: border-box !important;
             }
             .receipt-paper.thermal {
-              width: 80mm !important;
-              max-width: 80mm !important;
-              padding: 2mm 3mm !important;
+              width: 74mm !important;
+              max-width: 74mm !important;
+              padding: 2mm 1mm !important;
               font-family: 'Courier New', Courier, monospace !important;
+              font-size: 12px !important;
+              line-height: 1.3 !important;
             }
             .receipt-paper.a4 {
-              width: 210mm !important;
-              max-width: 210mm !important;
-              padding: 10mm 15mm !important;
+              width: 100% !important;
+              max-width: 100% !important;
               font-family: system-ui, -apple-system, sans-serif !important;
             }
           </style>

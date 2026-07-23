@@ -32,6 +32,27 @@ export default function SalesHistoryPage() {
   // Modals state
   const [selectedSale, setSelectedSale] = useState<Order | null>(null);
   const [receiptOrder, setReceiptOrder] = useState<Order | null>(null);
+  const [shopName, setShopName] = useState('BoutikFlow');
+  const [sellerName, setSellerName] = useState('');
+
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem('boutikflow_access_token');
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.tenant_name) setShopName(payload.tenant_name);
+        if (payload.email) {
+          const namePart = payload.email.split('@')[0];
+          setSellerName(namePart.charAt(0).toUpperCase() + namePart.slice(1));
+        } else if (payload.sub) {
+          const namePart = payload.sub.split('@')[0];
+          setSellerName(namePart.charAt(0).toUpperCase() + namePart.slice(1));
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
   const [returnOrder, setReturnOrder] = useState<Order | null>(null);
   const [returnItems, setReturnItems] = useState<{ product_id: string; quantity: number }[]>([]);
   const [returnReason, setReturnReason] = useState('');
@@ -382,7 +403,8 @@ export default function SalesHistoryPage() {
           isOpen={!!receiptOrder}
           onClose={() => setReceiptOrder(null)}
           order={receiptOrder}
-          shopName="BoutikFlow"
+          shopName={shopName}
+          sellerName={sellerName}
         />
       )}
 

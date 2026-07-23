@@ -28,6 +28,8 @@ export default function POSPage() {
   
   const [receiptData, setReceiptData] = useState<any>(null);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [shopName, setShopName] = useState('BoutikFlow');
+  const [sellerName, setSellerName] = useState('');
 
   // States for cash outflow (sortie de caisse)
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
@@ -39,6 +41,22 @@ export default function POSPage() {
   useEffect(() => {
     fetchProducts();
     fetchClients();
+    try {
+      const token = localStorage.getItem('boutikflow_access_token');
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.tenant_name) setShopName(payload.tenant_name);
+        if (payload.email) {
+          const namePart = payload.email.split('@')[0];
+          setSellerName(namePart.charAt(0).toUpperCase() + namePart.slice(1));
+        } else if (payload.sub) {
+          const namePart = payload.sub.split('@')[0];
+          setSellerName(namePart.charAt(0).toUpperCase() + namePart.slice(1));
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
   }, []);
 
   const fetchClients = async () => {
@@ -418,7 +436,8 @@ export default function POSPage() {
           isOpen={isReceiptModalOpen}
           onClose={() => setIsReceiptModalOpen(false)}
           order={receiptData}
-          shopName="BoutikFlow"
+          shopName={shopName}
+          sellerName={sellerName}
         />
       )}
 
