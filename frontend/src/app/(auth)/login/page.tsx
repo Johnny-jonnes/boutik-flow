@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Check, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Check, Eye, EyeOff, AlertCircle, Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { api, ApiError } from '@/lib/api/client';
 import { toast } from 'sonner';
+import { useServerWakeup } from '@/hooks/useServerWakeup';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,6 +14,9 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
   const [isExpired, setIsExpired] = useState(false);
+  const [retryCountdown, setRetryCountdown] = useState(0);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { status: serverStatus, wakeSeconds } = useServerWakeup();
   const [form, setForm] = useState({
     boutique_slug: '',
     email: '',
@@ -48,11 +52,49 @@ export default function LoginPage() {
       }
     } catch (err) {
       if (err instanceof ApiError && err.status === 0) {
-        toast.error('Le serveur démarre, veuillez réessayer dans 30 secondes.');
+        // Serveur endormi — retry automatique dans 15s
+        let countdown = 15;
+        setRetryCountdown(countdown);
+        toast.error('Le serveur démarre... Nouvelle tentative automatique dans 15 secondes.');
+        const interval = setInterval(() => {
+          countdown -= 1;
+          setRetryCountdown(countdown);
+          if (countdown <= 0) clearInterval(interval);
+        }, 1000);
+        retryTimerRef.current = setTimeout(() => {
+          clearInterval(interval);
+          setRetryCountdown(0);
+          setIsLoading(false);
+          // Re-soumettre automatiquement
+          handleSubmitCore();
+        }, 15000);
+        return; // Ne pas exécuter le finally tout de suite
       } else {
         const msg = err instanceof Error ? err.message : 'Erreur de connexion';
         toast.error(msg);
       }
+    } finally {
+      if (retryTimerRef.current === null) setIsLoading(false);
+    }
+  };
+
+  // Fonction de soumission interne pour le retry automatique
+  const handleSubmitCore = async () => {
+    retryTimerRef.current = null;
+    setIsLoading(true);
+    try {
+      const res = await api.login(form);
+      toast.success('Connexion réussie !');
+      if (res.user && res.user.role && res.user.role.toLowerCase() === 'admin') {
+        router.push('/admin');
+      } else {
+        router.push('/dashboard');
+      }
+    } catch (err) {
+      const msg = err instanceof ApiError && err.status === 0
+        ? 'Connexion toujours impossible. Vérifiez votre connexion Internet et réessayez.'
+        : (err instanceof Error ? err.message : 'Erreur de connexion');
+      toast.error(msg);
     } finally {
       setIsLoading(false);
     }
@@ -86,6 +128,68 @@ export default function LoginPage() {
             <h1 className="auth-title">Bon retour</h1>
             <p className="auth-subtitle">Connectez-vous à votre boutique</p>
           </div>
+
+          {/* Bandeau d'état du serveur */}
+          {serverStatus === 'waking' && (
+            <div className="server-wake-banner" style={{
+              background: 'rgba(245, 158, 11, 0.15)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              borderRadius: '8px',
+              padding: '0.75rem',
+              marginBottom: '1.25rem',
+              fontSize: '0.8rem',
+              color: '#f59e0b',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              lineHeight: '1.4'
+            }}>
+              <Loader2 size={16} className="animate-spin" style={{ flexShrink: 0 }} />
+              <span>
+                Le serveur de démonstration est en veille. Démarrage automatique en cours... Réveil dans environ {wakeSeconds > 0 ? wakeSeconds : 10} secondes.
+              </span>
+            </div>
+          )}
+
+          {retryCountdown > 0 && (
+            <div className="server-wake-banner" style={{
+              background: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: '8px',
+              padding: '0.75rem',
+              marginBottom: '1.25rem',
+              fontSize: '0.8rem',
+              color: '#ef4444',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              lineHeight: '1.4'
+            }}>
+              <Loader2 size={16} className="animate-spin" style={{ flexShrink: 0 }} />
+              <span>
+                Connexion temporairement suspendue. Nouvelle tentative automatique dans {retryCountdown} secondes...
+              </span>
+            </div>
+          )}
+
+          {serverStatus === 'ready' && (
+            <div className="server-wake-banner" style={{
+              background: 'rgba(16, 185, 129, 0.15)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              borderRadius: '8px',
+              padding: '0.5rem 0.75rem',
+              marginBottom: '1.25rem',
+              fontSize: '0.8rem',
+              color: '#10b981',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              lineHeight: '1.4'
+            }}>
+              <Wifi size={14} style={{ flexShrink: 0 }} />
+              <span>Serveur BoutikFlow opérationnel et prêt.</span>
+            </div>
+          )}
 
           {isRegistered && (
             <div style={{
