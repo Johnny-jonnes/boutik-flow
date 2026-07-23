@@ -176,6 +176,7 @@ export interface Order {
 
 export interface OrderCreate {
   client_id?: string;
+  status?: OrderStatus | string;
   items: { product_id: string; quantity: number }[];
   notes?: string;
 }

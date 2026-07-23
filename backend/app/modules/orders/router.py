@@ -192,12 +192,19 @@ def create_order(
         client = counter_client
         target_client_id = counter_client.id
 
+    initial_status = OrderStatusEnum.delivered
+    if payload.status:
+        try:
+            initial_status = OrderStatusEnum[payload.status]
+        except KeyError:
+            initial_status = OrderStatusEnum.delivered
+
     # Créer l'entité Order de base
     order = Order(
         id=uuid.uuid4(),
         tenant_id=current_user.tenant_id,
         client_id=target_client_id,
-        status=OrderStatusEnum.confirmed,
+        status=initial_status,
         total=0,
         notes=payload.notes,
     )

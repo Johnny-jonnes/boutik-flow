@@ -38,47 +38,52 @@ import { ScrollToTop } from '@/components/ScrollToTop';
 
 const NAV_CATEGORIES = [
   {
+    titleKey: 'nav.dashboard',
     title: 'Tableau de Bord',
     icon: LayoutDashboard,
     items: [
-      { href: '/dashboard', icon: LayoutDashboard, label: 'Vue d\'ensemble', id: 'nav-dashboard' },
-      { href: '/analytics', icon: BarChart3, label: 'Analytique', id: 'nav-analytics' },
+      { href: '/dashboard', icon: LayoutDashboard, labelKey: 'nav.dashboard', label: "Vue d'ensemble", id: 'nav-dashboard' },
+      { href: '/analytics', icon: BarChart3, labelKey: 'nav.analytics', label: 'Analytique', id: 'nav-analytics' },
     ]
   },
   {
+    titleKey: 'nav.crm',
     title: 'CRM',
     icon: Users,
     items: [
-      { href: '/crm', icon: Users, label: 'Clients', id: 'nav-crm' },
-      { href: '/segments', icon: Tags, label: 'Segments', id: 'nav-segments' },
+      { href: '/crm', icon: Users, labelKey: 'nav.crm', label: 'Clients', id: 'nav-crm' },
+      { href: '/segments', icon: Tags, labelKey: 'nav.segments', label: 'Segments', id: 'nav-segments' },
     ]
   },
   {
+    titleKey: 'nav.orders',
     title: 'Ventes',
     icon: ShoppingBag,
     items: [
-      { href: '/products', icon: Package, label: 'Produits', id: 'nav-products' },
-      { href: '/categories', icon: FolderTree, label: 'Catégories', id: 'nav-categories' },
-      { href: '/pos', icon: ShoppingCart, label: 'Caisse', id: 'nav-pos' },
-      { href: '/suppliers', icon: Truck, label: 'Fournisseurs', id: 'nav-suppliers' },
-      { href: '/orders', icon: ShoppingBag, label: 'Commandes', id: 'nav-orders' },
+      { href: '/products', icon: Package, labelKey: 'nav.products', label: 'Produits', id: 'nav-products' },
+      { href: '/categories', icon: FolderTree, labelKey: 'nav.categories', label: 'Catégories', id: 'nav-categories' },
+      { href: '/pos', icon: ShoppingCart, labelKey: 'nav.pos', label: 'Caisse', id: 'nav-pos' },
+      { href: '/suppliers', icon: Truck, labelKey: 'nav.suppliers', label: 'Fournisseurs', id: 'nav-suppliers' },
+      { href: '/orders', icon: ShoppingBag, labelKey: 'nav.orders', label: 'Commandes', id: 'nav-orders' },
     ]
   },
   {
+    titleKey: 'nav.campaigns',
     title: 'Marketing',
     icon: Megaphone,
     items: [
-      { href: '/whatsapp', icon: MessageSquare, label: 'WhatsApp', id: 'nav-whatsapp' },
-      { href: '/campaigns', icon: Megaphone, label: 'Campagnes', id: 'nav-campaigns' },
+      { href: '/whatsapp', icon: MessageSquare, labelKey: 'nav.whatsapp', label: 'WhatsApp', id: 'nav-whatsapp' },
+      { href: '/campaigns', icon: Megaphone, labelKey: 'nav.campaigns', label: 'Campagnes', id: 'nav-campaigns' },
     ]
   },
   {
+    titleKey: 'nav.management',
     title: 'Gestion',
     icon: Settings,
     items: [
-      { href: '/team', icon: UserCog, label: 'Équipe', id: 'nav-team' },
-      { href: '/finance', icon: Wallet, label: 'Finance', id: 'nav-finance' },
-      { href: '/audit', icon: ClipboardList, label: 'Audit', id: 'nav-audit' },
+      { href: '/team', icon: UserCog, labelKey: 'nav.team', label: 'Équipe', id: 'nav-team' },
+      { href: '/finance', icon: Wallet, labelKey: 'nav.finance', label: 'Finance', id: 'nav-finance' },
+      { href: '/audit', icon: ClipboardList, labelKey: 'nav.audit', label: 'Audit', id: 'nav-audit' },
     ]
   }
 ];

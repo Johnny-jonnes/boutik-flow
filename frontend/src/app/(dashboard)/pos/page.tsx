@@ -135,6 +135,7 @@ export default function POSPage() {
       
       const order = await api.createOrder({
         client_id: selectedClientId || undefined,
+        status: 'delivered',
         items: orderItems,
         notes: `Mode de paiement: ${paymentMethod} | Remise: ${discount} GNF`
       });

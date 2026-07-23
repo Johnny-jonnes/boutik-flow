@@ -67,7 +67,7 @@ async def require_admin(
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
 ) -> CurrentUser:
     """Exige le rôle admin (dashboard administration globale)."""
-    if current_user.role != "admin":
+    if str(current_user.role).lower() != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Accès réservé aux administrateurs",
@@ -79,7 +79,8 @@ async def require_owner_or_manager(
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
 ) -> CurrentUser:
     """Exige le rôle owner ou manager (gestion d'équipe)."""
-    if current_user.role not in ("owner", "manager", "admin"):
+    user_role = str(current_user.role).lower() if current_user.role else "staff"
+    if user_role not in ("owner", "manager", "admin", "proprio", "gérant", "superadmin"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Accès réservé aux propriétaires et gérants",
