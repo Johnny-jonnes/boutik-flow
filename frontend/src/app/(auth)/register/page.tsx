@@ -34,6 +34,33 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // 1. Validation du slug côté client
+    const slug = form.boutique_slug;
+    if (slug.length < 2) {
+      toast.error('L\'identifiant de la boutique doit contenir au moins 2 caractères.');
+      return;
+    }
+    if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(slug)) {
+      toast.error('L\'identifiant de la boutique ne doit contenir que des lettres minuscules, chiffres et tirets (sans commencer ou finir par un tiret).');
+      return;
+    }
+
+    // 2. Validation du mot de passe côté client
+    const password = form.password;
+    if (password.length < 8) {
+      toast.error('Le mot de passe doit contenir au moins 8 caractères.');
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      toast.error('Le mot de passe doit contenir au moins une lettre majuscule.');
+      return;
+    }
+    if (!/[0-9]/.test(password)) {
+      toast.error('Le mot de passe doit contenir au moins un chiffre.');
+      return;
+    }
+
     setIsLoading(true);
     try {
       const res = await api.register({
