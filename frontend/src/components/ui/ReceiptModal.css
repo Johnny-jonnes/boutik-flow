@@ -274,44 +274,92 @@
 
 /* ── Print ─── */
 @media print {
-  /* Hides everything except the receipt paper */
-  body > *:not(#__next):not(main):not(.receipt-modal-content),
-  .modal-overlay,
+  /* Hide the rest of the application completely */
+  body > *:not(.modal-overlay),
+  .modal-overlay > *:not(.modal-content),
+  .modal-content > *:not(.modal-body),
+  .modal-body > *:not(.receipt-modal-content),
+  .receipt-modal-content > *:not(.receipt-preview-container),
+  .receipt-preview-container > *:not(.receipt-paper),
+  .no-print,
   .receipt-actions,
-  .format-selector {
-    visibility: hidden;
+  .format-selector,
+  .modal-header {
+    display: none !important;
   }
-  
+
+  /* Reset layout constraints for printing */
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+    height: auto !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .modal-overlay {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .modal-content {
+    position: static !important;
+    max-width: none !important;
+    width: auto !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .modal-body {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  .receipt-modal-content {
+    gap: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
   .receipt-preview-container {
     padding: 0 !important;
     background: transparent !important;
-    overflow: visible !important;
     max-height: none !important;
-  }
-  
-  .receipt-paper {
-    visibility: visible !important;
-    position: absolute;
-    left: 0;
-    top: 0;
-    box-shadow: none !important;
-    margin: 0 !important;
-    border: none !important;
+    overflow: visible !important;
+    display: block !important;
   }
 
-  .receipt-paper * {
-    visibility: visible !important;
+  .receipt-paper {
+    margin: 0 auto !important;
+    box-shadow: none !important;
+    border: none !important;
+    display: block !important;
   }
 
   .receipt-paper.thermal {
-    width: 80mm;
-    max-width: 80mm;
-    padding: 4mm 2mm;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    padding: 2mm 3mm !important;
   }
 
   .receipt-paper.a4 {
-    width: 210mm;
-    padding: 10mm 15mm;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    padding: 10mm 15mm !important;
   }
 
   @page {

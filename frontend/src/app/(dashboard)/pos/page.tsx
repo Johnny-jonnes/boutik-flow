@@ -139,22 +139,8 @@ export default function POSPage() {
         notes: `Mode de paiement: ${paymentMethod} | Remise: ${discount} GNF`
       };
       
-      let finalClientId = selectedClientId;
-      if (!finalClientId) {
-        const comptoir = clients.find(c => 
-          c.name.toLowerCase().includes('comptoir') || 
-          c.name.toLowerCase().includes('passant') || 
-          c.name.toLowerCase().includes('passant')
-        );
-        if (comptoir) {
-          finalClientId = comptoir.id;
-        } else if (clients.length > 0) {
-          finalClientId = clients[0].id;
-        }
-      }
-
-      if (finalClientId) {
-        payload.client_id = finalClientId;
+      if (selectedClientId) {
+        payload.client_id = selectedClientId;
       }
 
       const order = await api.createOrder(payload);
@@ -413,7 +399,7 @@ export default function POSPage() {
         }
               .pos-grid {
           display: grid;
-          grid-template-columns: 1fr 380px;
+          grid-template-columns: 1fr 420px;
           gap: 1.5rem;
           align-items: start;
         }
@@ -568,7 +554,7 @@ export default function POSPage() {
         }
         
         .cart-items {
-          max-height: 240px;
+          max-height: 520px;
           overflow-y: auto;
           padding: 1rem;
           display: flex;

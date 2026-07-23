@@ -15,7 +15,7 @@ const translations: Record<Language, Translations> = {
     'nav.segments': 'Segments',
     'nav.products': 'Produits',
     'nav.categories': 'Catégories',
-    'nav.orders': 'Commandes',
+    'nav.orders': 'Suivi Commandes',
     'nav.whatsapp': 'WhatsApp',
     'nav.campaigns': 'Campagnes',
     'nav.finance': 'Finance',
@@ -331,9 +331,21 @@ const translations: Record<Language, Translations> = {
 
     // Navigation
     'nav.pos': 'Caisse Rapide',
+    'nav.sales': 'Historique Ventes',
     'nav.suppliers': 'Fournisseurs',
     'nav.team': 'Équipe',
     'nav.management': 'Gestion',
+
+    // Sales History
+    'sales.title': 'Historique des Ventes',
+    'sales.subtitle': 'Consultez et gérez les ventes de votre caisse rapide.',
+    'sales.search': 'Rechercher une vente (N° Reçu, Client)...',
+    'sales.no_sales': 'Aucune vente trouvée.',
+    'sales.receipt_no': 'N° Reçu',
+    'sales.items_count': 'Articles',
+    'sales.payment_method': 'Paiement',
+    'sales.refund': 'Retour / Rembourser',
+    'sales.view_receipt': 'Voir Reçu',
 
     // Finance
     'fin.title': 'Finance & Trésorerie',
@@ -377,7 +389,7 @@ const translations: Record<Language, Translations> = {
     'nav.segments': 'Segments',
     'nav.products': 'Products',
     'nav.categories': 'Categories',
-    'nav.orders': 'Orders',
+    'nav.orders': 'Track Orders',
     'nav.whatsapp': 'WhatsApp',
     'nav.campaigns': 'Campaigns',
     'nav.finance': 'Finance',
@@ -693,9 +705,21 @@ const translations: Record<Language, Translations> = {
 
     // Navigation
     'nav.pos': 'Quick Checkout',
+    'nav.sales': 'Sales History',
     'nav.suppliers': 'Suppliers',
     'nav.team': 'Team',
     'nav.management': 'Management',
+
+    // Sales History
+    'sales.title': 'Sales History',
+    'sales.subtitle': 'View and manage your fast cash register sales.',
+    'sales.search': 'Search a sale (Receipt #, Customer)...',
+    'sales.no_sales': 'No sales found.',
+    'sales.receipt_no': 'Receipt No.',
+    'sales.items_count': 'Items',
+    'sales.payment_method': 'Payment',
+    'sales.refund': 'Return / Refund',
+    'sales.view_receipt': 'View Receipt',
 
     // Finance
     'fin.title': 'Finance & Cash Flow',

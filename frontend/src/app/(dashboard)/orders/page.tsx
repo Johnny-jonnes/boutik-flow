@@ -75,7 +75,7 @@ export default function OrdersPage() {
 
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('active');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(25);
@@ -281,7 +281,11 @@ export default function OrdersPage() {
   const getProductName = (productId: string) => products.find(p => p.id === productId)?.name || `Produit...`;
 
   const filteredOrders = orders.filter(o => {
-    if (filterStatus !== 'all' && o.status !== filterStatus) return false;
+    if (filterStatus === 'active') {
+      if (o.status === 'delivered' || o.status === 'cancelled') return false;
+    } else if (filterStatus !== 'all' && o.status !== filterStatus) {
+      return false;
+    }
     if (filterDateFrom && new Date(o.created_at) < new Date(filterDateFrom)) return false;
     if (filterDateTo && new Date(o.created_at) > new Date(filterDateTo + 'T23:59:59')) return false;
     if (searchQuery) {
@@ -325,6 +329,7 @@ export default function OrdersPage() {
         <span style={{ color: 'var(--text-muted)' }}>à</span>
         <input type="date" className="input" style={{ width: '160px' }} value={filterDateTo} onChange={e => { setFilterDateTo(e.target.value); setCurrentPage(1); }} />
         <select className="input" style={{ width: '160px' }} value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1); }}>
+          <option value="active">Commandes actives</option>
           <option value="all">Tous les statuts</option>
           <option value="pending">En attente</option>
           <option value="confirmed">Confirmée</option>

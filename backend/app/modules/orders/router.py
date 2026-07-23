@@ -169,11 +169,11 @@ def create_order(
         if not client:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client introuvable")
     else:
-        # Trouver ou créer le 'Client Comptoir' par défaut pour les ventes rapides
+        # Trouver ou créer le client générique 'Passant' pour les ventes de caisse anonymes
         counter_client = db.query(Client).filter(
             and_(
                 Client.tenant_id == current_user.tenant_id,
-                Client.name == "Client Comptoir",
+                Client.name.in_(["Passant", "Client Comptoir"]),
                 Client.deleted_at.is_(None),
             )
         ).first()
@@ -182,7 +182,7 @@ def create_order(
             counter_client = Client(
                 id=uuid.uuid4(),
                 tenant_id=current_user.tenant_id,
-                name="Client Comptoir",
+                name="Passant",
                 phone="+22400000000",
                 notes="Client automatique pour les ventes anonymes de caisse",
             )

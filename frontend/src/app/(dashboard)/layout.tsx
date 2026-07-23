@@ -29,7 +29,8 @@ import {
   CreditCard,
   LogOut,
   Wallet,
-  ClipboardList
+  ClipboardList,
+  History
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -56,15 +57,16 @@ const NAV_CATEGORIES = [
     ]
   },
   {
-    titleKey: 'nav.orders',
+    titleKey: 'nav.products',
     title: 'Ventes',
     icon: ShoppingBag,
     items: [
+      { href: '/pos', icon: ShoppingCart, labelKey: 'nav.pos', label: 'Caisse', id: 'nav-pos' },
+      { href: '/sales', icon: History, labelKey: 'nav.sales', label: 'Historique Ventes', id: 'nav-sales' },
+      { href: '/orders', icon: ClipboardList, labelKey: 'nav.orders', label: 'Suivi Commandes', id: 'nav-orders' },
       { href: '/products', icon: Package, labelKey: 'nav.products', label: 'Produits', id: 'nav-products' },
       { href: '/categories', icon: FolderTree, labelKey: 'nav.categories', label: 'Catégories', id: 'nav-categories' },
-      { href: '/pos', icon: ShoppingCart, labelKey: 'nav.pos', label: 'Caisse', id: 'nav-pos' },
       { href: '/suppliers', icon: Truck, labelKey: 'nav.suppliers', label: 'Fournisseurs', id: 'nav-suppliers' },
-      { href: '/orders', icon: ShoppingBag, labelKey: 'nav.orders', label: 'Commandes', id: 'nav-orders' },
     ]
   },
   {
@@ -225,11 +227,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               title: 'Ventes',
               icon: ShoppingBag,
               items: [
+                { href: '/pos', icon: ShoppingCart, labelKey: 'nav.pos', label: 'Caisse', id: 'nav-pos' },
+                { href: '/sales', icon: History, labelKey: 'nav.sales', label: 'Historique Ventes', id: 'nav-sales' },
+                { href: '/orders', icon: ClipboardList, labelKey: 'nav.orders', label: 'Suivi Commandes', id: 'nav-orders' },
                 { href: '/products', icon: Package, labelKey: 'nav.products', label: 'Produits', id: 'nav-products' },
                 { href: '/categories', icon: FolderTree, labelKey: 'nav.categories', label: 'Catégories', id: 'nav-categories' },
-                { href: '/pos', icon: ShoppingCart, labelKey: 'nav.pos', label: 'Caisse', id: 'nav-pos' },
                 { href: '/suppliers', icon: Truck, labelKey: 'nav.suppliers', label: 'Fournisseurs', id: 'nav-suppliers' },
-                { href: '/orders', icon: ShoppingBag, labelKey: 'nav.orders', label: 'Commandes', id: 'nav-orders' },
               ]
             },
             {
