@@ -184,16 +184,16 @@
 }
 
 .items-table td {
-  padding: 0.3rem 0;
+  padding: 0.3rem 0.1rem;
   border-bottom: 1px dotted #d1d5db;
   font-size: 0.9em;
   word-break: break-word;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: break-word;
+  white-space: normal;
 }
 
-.col-desc { width: 40%; }
-.col-qty { width: 12%; text-align: center; }
+.col-desc { width: 42%; }
+.col-qty { width: 10%; text-align: center; }
 .col-price { width: 24%; text-align: right; }
 .col-total { width: 24%; text-align: right; font-weight: 600; }
 
@@ -274,22 +274,47 @@
 
 /* ── Print ─── */
 @media print {
-  body * { visibility: hidden; }
-  .receipt-paper, .receipt-paper * { visibility: visible; }
+  /* Hides everything except the receipt paper */
+  body > *:not(#__next):not(main):not(.receipt-modal-content),
+  .modal-overlay,
+  .receipt-actions,
+  .format-selector {
+    visibility: hidden;
+  }
+  
+  .receipt-preview-container {
+    padding: 0 !important;
+    background: transparent !important;
+    overflow: visible !important;
+    max-height: none !important;
+  }
+  
   .receipt-paper {
+    visibility: visible !important;
     position: absolute;
-    left: 0; top: 0;
+    left: 0;
+    top: 0;
     box-shadow: none !important;
     margin: 0 !important;
+    border: none !important;
   }
+
+  .receipt-paper * {
+    visibility: visible !important;
+  }
+
   .receipt-paper.thermal {
     width: 80mm;
-    padding: 2mm 3mm;
+    max-width: 80mm;
+    padding: 4mm 2mm;
   }
+
   .receipt-paper.a4 {
-    width: 100%;
+    width: 210mm;
     padding: 10mm 15mm;
   }
-  .no-print { display: none !important; }
-  @page { margin: 0; }
+
+  @page {
+    margin: 0;
+  }
 }

@@ -56,6 +56,10 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
   if (!order) return null;
 
+  const formatNumber = (amount: number) => {
+    return new Intl.NumberFormat('fr-FR').format(amount);
+  };
+
   const receiptNumber = `BF-${order.id.slice(0, 8).toUpperCase()}`;
   const subtotal = order.items?.reduce((acc, item) => acc + (item.unit_price || 0) * item.quantity, 0) || 0;
   const paymentInfo = order.notes?.match(/Mode de paiement:\s*(\w+)/)?.[1] || 'cash';
@@ -142,7 +146,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                     <th className="col-desc">Article</th>
                     <th className="col-qty">Qté</th>
                     <th className="col-price">P.U.</th>
-                    <th className="col-total">{language === 'fr' ? 'Montant' : 'Amount'}</th>
+                    <th className="col-total">{language === 'fr' ? 'Total' : 'Total'}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -150,8 +154,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                     <tr key={index}>
                       <td className="col-desc">{item.product?.name || `Art. ${index + 1}`}</td>
                       <td className="col-qty">{item.quantity}</td>
-                      <td className="col-price">{formatGNF(item.unit_price || 0)}</td>
-                      <td className="col-total">{formatGNF((item.unit_price || 0) * item.quantity)}</td>
+                      <td className="col-price">{formatNumber(item.unit_price || 0)}</td>
+                      <td className="col-total">{formatNumber((item.unit_price || 0) * item.quantity)}</td>
                     </tr>
                   ))}
                 </tbody>

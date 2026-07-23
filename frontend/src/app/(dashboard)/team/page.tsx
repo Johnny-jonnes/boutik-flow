@@ -40,7 +40,10 @@ export default function TeamPage() {
   const [deleteTarget, setDeleteTarget] = useState<TeamMember | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   const fetchMembers = async () => {
+    setFetchError(null);
     try {
       const response = await api.getTeamMembers();
       if (Array.isArray(response)) {
@@ -50,8 +53,9 @@ export default function TeamPage() {
       } else {
         setMembers([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Fetch team error:', error);
+      setFetchError(error?.message || 'Erreur de connexion au serveur');
       setMembers([]);
     } finally {
       setIsLoading(false);
@@ -221,7 +225,13 @@ export default function TeamPage() {
               <tr><td colSpan={5} className="text-center py-8"><div className="spinner"></div></td></tr>
             )}
             {!isLoading && members.length === 0 && (
-              <tr><td colSpan={5} className="text-center py-8 text-muted">Aucun membre trouvé.</td></tr>
+              <tr>
+                <td colSpan={5} className="text-center py-8 text-muted">
+                  {fetchError
+                    ? `⚠️ ${fetchError}`
+                    : t('team.no_members') || 'Aucun membre trouvé.'}
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
