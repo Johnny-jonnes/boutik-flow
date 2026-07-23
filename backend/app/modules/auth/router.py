@@ -143,30 +143,8 @@ def register(
     )
     db.add(user)
  
-    # Créer une notification pour l'espace d'administration
-    admin_notif = AdminNotification(
-        id=uuid.uuid4(),
-        type=AdminNotificationTypeEnum.new_registration,
-        message=f"Nouvelle inscription : boutique '{tenant.name}' ({tenant.slug}) par {user.full_name or user.email}",
-        tenant_id=tenant.id,
-        is_read=False,
-    )
-    db.add(admin_notif)
- 
     db.commit()
     db.refresh(user)
- 
-    # Tenter l'envoi de l'email de notification à l'équipe admin en arrière-plan (évite le blocage HTTP)
-    try:
-        background_tasks.add_task(
-            send_admin_new_registration_notification,
-            tenant.name,
-            tenant.slug,
-            user.email,
-            user.full_name
-        )
-    except Exception as e:
-        logger.warning("Erreur lors de l'enregistrement de la tâche d'email: %s", str(e))
  
     logger.info(
         "Nouvelle demande de boutique enregistrée : %s (slug=%s, owner=%s)",
@@ -174,7 +152,7 @@ def register(
     )
  
     return RegisterResponse(
-        message="Votre demande de création de boutique a bien été envoyée et est en cours de validation par notre équipe d'administration.",
+        message="Inscription réussie ! Votre demande de création de boutique a bien été envoyée. Veuillez attendre l'acceptation des administrateurs pour vous connecter.",
         boutique_slug=tenant.slug,
         status="pending",
     )
