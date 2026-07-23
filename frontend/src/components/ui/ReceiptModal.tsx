@@ -51,7 +51,112 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   };
 
   const handlePrint = () => {
-    window.print();
+    // 1. Create a temporary iframe for printing
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    iframe.style.visibility = 'hidden';
+    document.body.appendChild(iframe);
+
+    // 2. Extract the ticket HTML
+    const paperElement = document.querySelector(`.receipt-paper.${format}`);
+    if (!paperElement) {
+      window.print();
+      return;
+    }
+    const paperHtml = paperElement.outerHTML;
+
+    // 3. Collect active CSS stylesheets
+    let stylesHtml = '';
+    for (let i = 0; i < document.styleSheets.length; i++) {
+      const sheet = document.styleSheets[i];
+      try {
+        let cssRules = '';
+        for (let j = 0; j < sheet.cssRules.length; j++) {
+          cssRules += sheet.cssRules[j].cssText + '\n';
+        }
+        stylesHtml += `<style>${cssRules}</style>`;
+      } catch (e) {
+        if (sheet.href) {
+          stylesHtml += `<link rel="stylesheet" href="${sheet.href}">`;
+        }
+      }
+    }
+
+    // 4. Open document in iframe and inject markup
+    const doc = iframe.contentWindow?.document || iframe.contentDocument;
+    if (!doc) {
+      window.print();
+      return;
+    }
+
+    doc.open();
+    doc.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${language === 'fr' ? 'Impression Reçu' : 'Print Receipt'}</title>
+          ${stylesHtml}
+          <style>
+            @page {
+              margin: 0;
+            }
+            body {
+              background: #fff !important;
+              color: #000 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            .receipt-paper {
+              margin: 0 auto !important;
+              box-shadow: none !important;
+              border: none !important;
+              background: #fff !important;
+              color: #000 !important;
+              box-sizing: border-box !important;
+            }
+            .receipt-paper.thermal {
+              width: 80mm !important;
+              max-width: 80mm !important;
+              padding: 2mm 3mm !important;
+              font-family: 'Courier New', Courier, monospace !important;
+            }
+            .receipt-paper.a4 {
+              width: 210mm !important;
+              max-width: 210mm !important;
+              padding: 10mm 15mm !important;
+              font-family: system-ui, -apple-system, sans-serif !important;
+            }
+          </style>
+        </head>
+        <body>
+          ${paperHtml}
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.focus();
+                window.print();
+              }, 300);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    doc.close();
+
+    // 5. Trigger print from iframe focus
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus();
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+        }, 10000); // Clean up after 10s
+      } catch (e) {
+        window.print();
+      }
+    }, 500);
   };
 
   if (!order) return null;

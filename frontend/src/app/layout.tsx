@@ -34,6 +34,8 @@ export const viewport: Viewport = {
   themeColor: '#10b981',
 };
 
+import { PWARegister } from "@/components/PWARegister";
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -44,6 +46,7 @@ export default function RootLayout({
       <body>
         <LanguageProvider>
           <ThemeProvider>
+            <PWARegister />
             {children}
             {/* Toaster global — fonctionne avec les deux thèmes via next-themes */}
             <Toaster richColors position="top-right" />

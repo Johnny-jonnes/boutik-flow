@@ -326,7 +326,20 @@ export default function AuditPage() {
                     {log.target_entity ? (
                       <div className="entity-cell">
                         <Database size={13} className="text-muted" />
-                        <span className="entity-name">{log.target_entity}</span>
+                        <span className="entity-name">
+                          {(() => {
+                            const labels: Record<string, string> = {
+                              order: language === 'fr' ? 'Commande' : 'Order',
+                              product: language === 'fr' ? 'Produit' : 'Product',
+                              client: language === 'fr' ? 'Client' : 'Customer',
+                              supplier: language === 'fr' ? 'Fournisseur' : 'Supplier',
+                              tenant: language === 'fr' ? 'Boutique' : 'Shop',
+                              user: language === 'fr' ? 'Membre' : 'Member',
+                              financial_transaction: language === 'fr' ? 'Transaction' : 'Transaction',
+                            };
+                            return labels[log.target_entity] || log.target_entity;
+                          })()}
+                        </span>
                         {log.target_id && (
                           <span className="entity-id" title={log.target_id}>
                             #{log.target_id.slice(0, 8)}

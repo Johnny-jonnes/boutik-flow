@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Minus, Trash2, CreditCard, Banknote, Smartphone, ShoppingCart, Printer } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, CreditCard, Banknote, Smartphone, ShoppingCart, Printer, ArrowUpRight } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { ReceiptModal } from '@/components/ui/ReceiptModal';
+import { Modal } from '@/components/ui/Modal';
 
 import { Product } from '@/types';
 
@@ -27,6 +28,13 @@ export default function POSPage() {
   
   const [receiptData, setReceiptData] = useState<any>(null);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+
+  // States for cash outflow (sortie de caisse)
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [expenseAmount, setExpenseAmount] = useState('');
+  const [expenseCategory, setExpenseCategory] = useState('other_expense');
+  const [expenseDescription, setExpenseDescription] = useState('');
+  const [isSubmittingExpense, setIsSubmittingExpense] = useState(false);
 
   useEffect(() => {
     fetchProducts();
@@ -186,12 +194,55 @@ export default function POSPage() {
     }
   };
 
+  const handleCreateExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!expenseAmount || Number(expenseAmount) <= 0) {
+      toast.error(language === 'fr' ? 'Indiquez un montant valide' : 'Please provide a valid amount');
+      return;
+    }
+    if (!expenseDescription.trim()) {
+      toast.error(language === 'fr' ? 'Indiquez le motif de la sortie' : 'Please provide a description');
+      return;
+    }
+    setIsSubmittingExpense(true);
+    try {
+      await api.createFinanceTransaction({
+        type: 'expense',
+        category: expenseCategory as any,
+        amount: Number(expenseAmount),
+        description: expenseDescription.trim(),
+        payment_method: 'cash',
+        reference: language === 'fr' ? 'Sortie Caisse' : 'POS Outflow'
+      });
+      toast.success(language === 'fr' ? 'Sortie de caisse enregistrée' : 'Cash outflow recorded');
+      setIsExpenseModalOpen(false);
+      setExpenseAmount('');
+      setExpenseDescription('');
+      setExpenseCategory('other_expense');
+    } catch (error: any) {
+      toast.error(error?.message || (language === 'fr' ? 'Erreur lors de l\'enregistrement' : 'Error recording outflow'));
+    } finally {
+      setIsSubmittingExpense(false);
+    }
+  };
+
   return (
     <div className="pos-container">
-      <div className="pos-header">
+      <div className="pos-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 className="pos-title">{language === 'fr' ? 'Caisse Rapide' : 'Quick Checkout'}</h1>
           <p className="pos-subtitle">{language === 'fr' ? 'Enregistrez vos ventes en magasin.' : 'Record your in-store sales.'}</p>
+        </div>
+        <div>
+          <button 
+            type="button" 
+            className="btn btn-ghost" 
+            style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.2)', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', height: 'auto', fontSize: '0.9rem' }}
+            onClick={() => setIsExpenseModalOpen(true)}
+          >
+            <ArrowUpRight size={16} />
+            {language === 'fr' ? 'Sortie de Caisse (-)' : 'Cash Outflow (-)'}
+          </button>
         </div>
       </div>
 
@@ -370,6 +421,85 @@ export default function POSPage() {
           shopName="BoutikFlow"
         />
       )}
+
+      {/* Modal de Sortie de Caisse */}
+      <Modal
+        isOpen={isExpenseModalOpen}
+        onClose={() => setIsExpenseModalOpen(false)}
+        title={language === 'fr' ? 'Déclarer une Sortie de Caisse' : 'Record Cash Outflow'}
+      >
+        <form onSubmit={handleCreateExpense} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+              {language === 'fr' ? 'Catégorie de charge *' : 'Expense Category *'}
+            </label>
+            <select
+              className="input"
+              style={{ width: '100%', padding: '0.5rem', background: 'var(--surface-0)' }}
+              value={expenseCategory}
+              onChange={(e) => setExpenseCategory(e.target.value)}
+              required
+            >
+              <option value="supplier_purchase">{language === 'fr' ? 'Achat fournisseur / Approvisionnement' : 'Supplier purchase / Stock procurement'}</option>
+              <option value="salary">{language === 'fr' ? 'Salaire / Rémunération équipe' : 'Salary / Team remuneration'}</option>
+              <option value="rent">{language === 'fr' ? 'Loyer & Charges boutique' : 'Rent & Shop charges'}</option>
+              <option value="utilities">{language === 'fr' ? 'Facture (Électricité, Eau, Internet)' : 'Bill (Electricity, Water, Internet)'}</option>
+              <option value="refund">{language === 'fr' ? 'Remboursement client (Retour)' : 'Customer refund (Return)'}</option>
+              <option value="other_expense">{language === 'fr' ? 'Autre dépense / Divers' : 'Other expense / Misc'}</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+              {language === 'fr' ? 'Montant (GNF) *' : 'Amount (GNF) *'}
+            </label>
+            <input
+              type="number"
+              min={1}
+              className="input"
+              style={{ width: '100%', padding: '0.5rem', background: 'var(--surface-0)', fontWeight: 'bold' }}
+              placeholder="ex: 50000"
+              value={expenseAmount}
+              onChange={(e) => setExpenseAmount(e.target.value)}
+              required
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+              {language === 'fr' ? 'Motif de la sortie / Description *' : 'Outflow reason / Description *'}
+            </label>
+            <textarea
+              className="input"
+              rows={3}
+              style={{ width: '100%', padding: '0.5rem', background: 'var(--surface-0)' }}
+              placeholder={language === 'fr' ? 'Ex: Achat fournitures, Paiement livreur...' : 'Ex: Office supplies, Delivery boy payment...'}
+              value={expenseDescription}
+              onChange={(e) => setExpenseDescription(e.target.value)}
+              required
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setIsExpenseModalOpen(false)}
+              disabled={isSubmittingExpense}
+            >
+              {language === 'fr' ? 'Annuler' : 'Cancel'}
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              style={{ background: '#ef4444' }}
+              disabled={isSubmittingExpense}
+            >
+              {isSubmittingExpense ? (language === 'fr' ? 'Enregistrement...' : 'Saving...') : (language === 'fr' ? 'Valider la sortie' : 'Validate Outflow')}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       <style jsx>{`
         .pos-container {
@@ -564,17 +694,18 @@ export default function POSPage() {
 
         @media (max-width: 767px) {
           .cart-panel {
-            position: sticky;
-            bottom: 0;
+            position: relative;
             top: auto;
-            max-height: 45vh;
-            z-index: 20;
-            box-shadow: 0 -8px 24px rgba(0,0,0,0.3);
-            border-top: 2px solid var(--color-brand-500);
+            bottom: auto;
+            max-height: none;
+            z-index: 10;
+            box-shadow: none;
+            border-top: 1px solid var(--border-subtle);
+            margin-top: 1.5rem;
           }
           .cart-items {
-            max-height: 140px;
-            overflow-y: auto;
+            max-height: none;
+            overflow-y: visible;
           }
         }
         
@@ -670,13 +801,14 @@ export default function POSPage() {
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 28px;
-          height: 28px;
-          border-radius: 6px;
+          width: 36px;
+          height: 36px;
+          border-radius: 8px;
           background: var(--surface-0);
           border: 1px solid var(--border-subtle);
           color: var(--text-primary);
           cursor: pointer;
+          font-size: 1.1rem;
         }
         
         .qty-btn:hover {
@@ -684,14 +816,14 @@ export default function POSPage() {
         }
         
         .qty-input {
-          width: 46px;
-          height: 28px;
+          width: 64px;
+          height: 36px;
           text-align: center;
-          font-weight: 600;
-          font-size: 0.9rem;
+          font-weight: 700;
+          font-size: 1rem;
           background: var(--surface-0);
           border: 1px solid var(--border-subtle);
-          border-radius: 6px;
+          border-radius: 8px;
           color: var(--text-primary);
           padding: 0 4px;
         }
@@ -705,9 +837,9 @@ export default function POSPage() {
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 28px;
-          height: 28px;
-          border-radius: 6px;
+          width: 36px;
+          height: 36px;
+          border-radius: 8px;
           background: rgba(239, 68, 68, 0.1);
           color: #ef4444;
           border: none;

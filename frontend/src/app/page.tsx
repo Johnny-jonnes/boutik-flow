@@ -945,6 +945,20 @@ export default function HomePage() {
             grid-template-columns: 1fr;
             gap: 2rem;
           }
+          .landing-nav {
+            padding: 0.75rem 1rem !important;
+          }
+          .nav-logo-text {
+            font-size: 1rem !important;
+          }
+          .nav-actions {
+            gap: 0.35rem !important;
+          }
+          .nav-actions .btn {
+            padding: 0.4rem 0.65rem !important;
+            font-size: 0.75rem !important;
+            height: auto !important;
+          }
         }
         .footer-brand-col {
           display: flex;
