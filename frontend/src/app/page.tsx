@@ -222,17 +222,38 @@ export default function HomePage() {
       <nav className="landing-nav glass">
         <div className="nav-logo">
           <div className="nav-logo-icon">
-            <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
-              <path d="M14 2L26 8V20L14 26L2 20V8L14 2Z" fill="url(#navgrad)" />
-              <path d="M9 14L12.5 17.5L19 11" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
               <defs>
-                <linearGradient id="navgrad" x1="2" y1="2" x2="26" y2="26">
-                  <stop stopColor="#818cf8" /><stop offset="1" stopColor="#4f46e5" />
+                <linearGradient id="nav-hex-grad" x1="0" y1="0" x2="40" y2="40">
+                  <stop stopColor="#818cf8" />
+                  <stop offset="1" stopColor="#4f46e5" />
                 </linearGradient>
+                <linearGradient id="nav-wave-amber" x1="0" y1="0" x2="40" y2="0">
+                  <stop stopColor="#fbbf24" stopOpacity="0" />
+                  <stop offset="0.4" stopColor="#f59e0b" />
+                  <stop offset="1" stopColor="#fbbf24" stopOpacity="0" />
+                </linearGradient>
+                <filter id="nav-glow">
+                  <feGaussianBlur stdDeviation="1.5" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
               </defs>
+              {/* Hexagon */}
+              <path d="M20 2L36 11V29L20 38L4 29V11L20 2Z" fill="url(#nav-hex-grad)" opacity="0.95" />
+              <path d="M20 2L36 11V29L20 38L4 29V11L20 2Z" stroke="rgba(129,140,248,0.3)" strokeWidth="0.5" fill="none" />
+              {/* Wave line 1 — top, white, subtle */}
+              <path d="M8 15 Q14 12 20 15 Q26 18 32 15" stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+              {/* Wave line 2 — middle, white bright */}
+              <path d="M8 20 Q14 16 20 20 Q26 24 32 20" stroke="rgba(255,255,255,0.9)" strokeWidth="1.6" fill="none" strokeLinecap="round" />
+              {/* Wave line 2 — amber accent overlay */}
+              <path d="M8 20 Q14 16 20 20 Q26 24 32 20" stroke="url(#nav-wave-amber)" strokeWidth="1.6" fill="none" strokeLinecap="round" opacity="0.7" />
+              {/* Wave line 3 — bottom, white subtle */}
+              <path d="M8 25 Q14 22 20 25 Q26 28 32 25" stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" fill="none" strokeLinecap="round" />
             </svg>
           </div>
-          <span className="nav-logo-text">BoutikFlow</span>
+          <span className="nav-logo-text">
+            <span style={{ color: 'var(--text-primary)', fontWeight: 800 }}>Boutik</span><span style={{ background: 'linear-gradient(135deg, #818cf8, #4f46e5)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 700 }}>Flow</span>
+          </span>
         </div>
         <div className="nav-actions">
           <ThemeToggle />

@@ -481,8 +481,15 @@ async function request<T>(
 
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout (Render cold start)
+    res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers, signal: controller.signal });
+    clearTimeout(timeoutId);
     if (!res.ok && (res.status >= 500 || res.status === 404 || res.status === 502 || res.status === 503 || res.status === 504)) {
+      return handleOfflineRequest<T>(path, options);
+    }
+    // Pour les GET de données publiques, préférer le cache offline sur 401 aussi
+    if (res.status === 401 && method === 'GET' && (path.startsWith('/products') || path.startsWith('/clients') || path.startsWith('/categories'))) {
       return handleOfflineRequest<T>(path, options);
     }
   } catch {

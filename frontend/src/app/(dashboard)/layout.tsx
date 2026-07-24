@@ -122,17 +122,16 @@ function Logo({ size = 20 }: { size?: number }) {
   return (
     <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
       <svg
-        width={size} height={size} viewBox="0 0 28 28" fill="none"
+        width={size} height={size} viewBox="0 0 40 40" fill="none"
+        xmlns="http://www.w3.org/2000/svg"
         style={{
-          filter: `drop-shadow(0 0 5px ${isOnline ? 'rgba(99,102,241,0.4)' : 'rgba(245,158,11,0.4)'})`,
-          transition: 'all 0.3s ease',
+          filter: `drop-shadow(0 0 ${isOnline ? '5px rgba(99,102,241,0.55)' : '5px rgba(245,158,11,0.45)'})`,
+          transition: 'filter 0.4s ease',
           animation: 'logo-breathing 4s ease-in-out infinite'
         }}
       >
-        <path d="M14 2L26 8V20L14 26L2 20V8L14 2Z" fill="url(#bf-g-dyn)" />
-        <path d="M9 14L12.5 17.5L19 11" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
         <defs>
-          <linearGradient id="bf-g-dyn" x1="2" y1="2" x2="26" y2="26">
+          <linearGradient id="bf-g-dyn" x1="0" y1="0" x2="40" y2="40">
             {isOnline ? (
               <>
                 <stop stopColor="#818cf8" />
@@ -145,7 +144,22 @@ function Logo({ size = 20 }: { size?: number }) {
               </>
             )}
           </linearGradient>
+          <linearGradient id="bf-wave-amber" x1="0" y1="0" x2="40" y2="0">
+            <stop stopColor="#fbbf24" stopOpacity="0" />
+            <stop offset="0.4" stopColor="#f59e0b" />
+            <stop offset="1" stopColor="#fbbf24" stopOpacity="0" />
+          </linearGradient>
         </defs>
+        {/* Hexagon body */}
+        <path d="M20 2L36 11V29L20 38L4 29V11L20 2Z" fill="url(#bf-g-dyn)" opacity="0.95" />
+        <path d="M20 2L36 11V29L20 38L4 29V11L20 2Z" stroke="rgba(255,255,255,0.12)" strokeWidth="0.5" fill="none" />
+        {/* Wave 1 – top subtle */}
+        <path d="M9 15 Q14.5 12 20 15 Q25.5 18 31 15" stroke="rgba(255,255,255,0.3)" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+        {/* Wave 2 – middle bright + amber glow */}
+        <path d="M9 20 Q14.5 16 20 20 Q25.5 24 31 20" stroke="rgba(255,255,255,0.88)" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+        <path d="M9 20 Q14.5 16 20 20 Q25.5 24 31 20" stroke="url(#bf-wave-amber)" strokeWidth="1.8" fill="none" strokeLinecap="round" opacity="0.65" />
+        {/* Wave 3 – bottom subtle */}
+        <path d="M9 25 Q14.5 22 20 25 Q25.5 28 31 25" stroke="rgba(255,255,255,0.3)" strokeWidth="1.2" fill="none" strokeLinecap="round" />
       </svg>
       <span
         style={{
@@ -251,7 +265,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <header className="mobile-bar">
         <div className="mobile-brand">
           <div className="logo-mark"><Logo size={18} /></div>
-          <span className="brand-text">BoutikFlow</span>
+          <span className="brand-text"><span style={{ color: 'var(--text-primary)', fontWeight: 800 }}>Boutik</span><span style={{ background: 'linear-gradient(135deg, #818cf8, #4f46e5)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 700 }}>Flow</span></span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <ThemeToggle />
@@ -272,7 +286,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Brand header */}
         <div className="sidebar__brand">
           <div className="logo-mark"><Logo size={20} /></div>
-          <span className="brand-text">BoutikFlow</span>
+          <span className="brand-text"><span style={{ color: 'var(--text-primary)', fontWeight: 800 }}>Boutik</span><span style={{ background: 'linear-gradient(135deg, #818cf8, #4f46e5)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 700 }}>Flow</span></span>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}>
             <ThemeToggle />
             <button className="sidebar-collapse-btn" onClick={() => setIsMobileMenuOpen(false)} aria-label="Fermer">
