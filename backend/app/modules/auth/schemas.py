@@ -176,3 +176,10 @@ class TeamMemberResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# ──────────────────────────── Change Password ────────────────────────────
+
+class ChangePasswordRequest(BaseModel):
+    """Changement de mot de passe d'un membre de l'équipe."""
+    new_password: str = Field(..., min_length=6, max_length=128, description="Nouveau mot de passe")
