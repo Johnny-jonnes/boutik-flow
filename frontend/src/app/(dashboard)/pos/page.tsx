@@ -301,15 +301,24 @@ export default function POSPage() {
                     title={product.name}
                   >
                     {inCart && <span className="p-qty-badge">{inCart.cartQuantity}</span>}
-                    <span className="p-emoji">{product.images?.[0]
-                      ? <img src={product.images[0]} alt={product.name} style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:'inherit' }}/>
-                      : emoji
-                    }</span>
-                    <span className="p-card-name">{product.name}</span>
-                    <span className="p-card-price">{product.price.toLocaleString('fr-FR')}<small> GNF</small></span>
-                    <span className={`p-card-stock ${disabled ? 'out' : product.stock <= 5 ? 'low' : ''}`}>
-                      {disabled ? '✗' : `${product.stock}`}
-                    </span>
+                    
+                    <div className="p-card-image-box">
+                      {product.images?.[0] ? (
+                        <img src={product.images[0]} alt={product.name} className="p-card-img" />
+                      ) : (
+                        <div className="p-card-img-placeholder">
+                          <span className="p-card-emoji">{emoji}</span>
+                        </div>
+                      )}
+                      <span className={`p-card-stock ${disabled ? 'out' : product.stock <= 5 ? 'low' : ''}`}>
+                        {disabled ? 'Rupture' : `${product.stock} dispo.`}
+                      </span>
+                    </div>
+
+                    <div className="p-card-info">
+                      <span className="p-card-name">{product.name}</span>
+                      <span className="p-card-price">{product.price.toLocaleString('fr-FR')}<small> GNF</small></span>
+                    </div>
                   </button>
                 );
               })
@@ -598,10 +607,9 @@ export default function POSPage() {
           background: var(--surface-1);
           border: 1.5px solid var(--border-subtle);
           border-radius: var(--radius-lg);
-          padding: 0.75rem 0.5rem 0.625rem;
           cursor: pointer;
-          display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
-          text-align: center;
+          display: flex; flex-direction: column;
+          text-align: left;
           position: relative; overflow: hidden;
           transition:
             border-color 100ms ease,
@@ -611,6 +619,7 @@ export default function POSPage() {
           animation: slideUp 0.3s var(--ease-out) both;
           -webkit-tap-highlight-color: transparent;
           user-select: none;
+          padding: 0;
         }
         .p-card:hover:not(.p-card--out) {
           border-color: rgba(99,102,241,0.5);
@@ -619,51 +628,106 @@ export default function POSPage() {
           box-shadow: var(--shadow-md);
         }
         .p-card:active:not(.p-card--out) {
-          transform: scale(0.93);
+          transform: scale(0.95);
           box-shadow: none;
           border-color: var(--color-brand-500);
         }
         .p-card--in-cart {
-          border-color: rgba(99,102,241,0.45);
-          background: rgba(99,102,241,0.05);
+          border-color: var(--color-brand-500);
+          background: var(--brand-alpha-08);
         }
-        .p-card--out { opacity: 0.35; cursor: not-allowed; }
+        .p-card--out { opacity: 0.45; cursor: not-allowed; }
 
-        .p-qty-badge {
-          position: absolute; top: 4px; right: 4px;
-          background: var(--color-brand-500); color: #fff;
-          font-size: 0.6rem; font-weight: 800;
-          min-width: 17px; height: 17px; border-radius: 99px;
-          display: flex; align-items: center; justify-content: center;
-          animation: bounceIn 0.25s var(--ease-spring);
-          padding: 0 3px;
+        .p-card-image-box {
+          position: relative;
+          width: 100%;
+          height: 100px;
+          background: var(--surface-2);
+          overflow: hidden;
+          border-bottom: 1px solid var(--border-subtle);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .p-card-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          transition: transform 0.3s ease;
+        }
+        .p-card:hover .p-card-img {
+          transform: scale(1.08);
+        }
+        .p-card-img-placeholder {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, var(--surface-2), var(--surface-3));
+        }
+        .p-card-emoji {
+          font-size: 2.2rem;
+          filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+          transition: transform 0.3s ease;
+        }
+        .p-card:hover .p-card-emoji {
+          transform: scale(1.15) rotate(5deg);
         }
 
-        .p-emoji {
-          font-size: 1.75rem; line-height: 1;
-          width: 48px; height: 48px;
-          display: flex; align-items: center; justify-content: center;
-          background: var(--surface-2); border-radius: var(--radius-md);
-          overflow: hidden; flex-shrink: 0;
-          transition: transform 180ms var(--ease-spring);
+        .p-card-info {
+          padding: 0.6rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.2rem;
+          flex: 1;
         }
-        .p-card:hover .p-emoji { transform: scale(1.12); }
 
         .p-card-name {
-          font-size: 0.72rem; font-weight: 600; color: var(--text-primary);
-          line-height: 1.3; width: 100%;
+          font-size: 0.76rem; font-weight: 700; color: var(--text-primary);
+          line-height: 1.35; width: 100%;
           display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
           overflow: hidden;
+          height: 2rem;
         }
         .p-card-price {
-          font-size: 0.75rem; font-weight: 800;
+          font-size: 0.8rem; font-weight: 800;
           color: var(--color-brand-400); font-family: var(--font-display);
         }
-        .p-card-price small { font-size: 0.6rem; opacity: 0.75; font-weight: 600; }
-        .p-card-stock { font-size: 0.62rem; font-weight: 600; color: var(--text-muted); }
-        .p-card-stock.low { color: var(--color-warning); }
-        .p-card-stock.out { color: var(--color-error); }
-        .p-card-skeleton { height: 145px; border-radius: var(--radius-lg); }
+        .p-card-price small { font-size: 0.62rem; opacity: 0.75; font-weight: 600; }
+        
+        .p-card-stock {
+          position: absolute;
+          bottom: 6px;
+          right: 6px;
+          font-size: 0.62rem;
+          font-weight: 800;
+          padding: 0.1rem 0.35rem;
+          border-radius: 4px;
+          background: rgba(0, 0, 0, 0.6);
+          color: #fff;
+          backdrop-filter: blur(4px);
+        }
+        .p-card-stock.low {
+          background: rgba(245, 158, 11, 0.8);
+        }
+        .p-card-stock.out {
+          background: rgba(244, 63, 94, 0.8);
+        }
+        
+        .p-qty-badge {
+          position: absolute; top: 6px; left: 6px;
+          background: var(--color-brand-500); color: #fff;
+          font-size: 0.65rem; font-weight: 800;
+          min-width: 19px; height: 19px; border-radius: 99px;
+          display: flex; align-items: center; justify-content: center;
+          animation: bounceIn 0.25s var(--ease-spring);
+          padding: 0 4px;
+          z-index: 2;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .p-card-skeleton { height: 160px; border-radius: var(--radius-lg); }
 
         .p-empty {
           grid-column: 1/-1;
@@ -797,71 +861,42 @@ export default function POSPage() {
         .p-total {
           padding-top: 0.35rem; margin-top: 0.125rem;
           border-top: 1px solid var(--border-subtle);
-          font-family: var(--font-display); font-size: 0.95rem;
-          font-weight: 800; color: var(--text-primary);
-        }
-        .p-total span:last-child { color: var(--color-brand-400); font-size: 1rem; }
-
-        .p-discount {
-          width: 85px; height: 26px;
-          background: var(--surface-2); border: 1px solid var(--border-default);
-          border-radius: 6px; color: var(--text-primary);
-          font-size: 0.76rem; text-align: right; padding: 0 0.4rem; outline: none;
-          transition: border-color 100ms;
-        }
-        .p-discount:focus { border-color: var(--color-brand-500); }
-        .p-discount::-webkit-outer-spin-button, .p-discount::-webkit-inner-spin-button { -webkit-appearance: none; }
-
-        /* Paiement */
-        .p-payment { display: grid; grid-template-columns: repeat(3,1fr); gap: 0.35rem; }
-        .p-pay-btn {
-          display: flex; flex-direction: column; align-items: center; justify-content: center;
-          gap: 0.2rem; padding: 0.45rem 0.25rem;
-          background: var(--surface-2); border: 1.5px solid var(--border-default);
-          border-radius: var(--radius-md); cursor: pointer;
-          font-size: 0.62rem; font-weight: 700; color: var(--text-muted);
-          transition: all 120ms ease; min-height: 46px;
-          text-transform: uppercase; letter-spacing: 0.04em;
-          user-select: none; -webkit-tap-highlight-color: transparent;
-        }
-        .p-pay-btn:hover { border-color: rgba(99,102,241,0.5); color: var(--text-primary); background: var(--brand-alpha-08); transform: translateY(-1px); }
-        .p-pay-btn.active { border-color: var(--color-brand-500); background: var(--brand-alpha-15); color: var(--color-brand-400); box-shadow: 0 0 0 1px var(--color-brand-500); }
-
-        /* Dette */
-        .p-debt-box {
-          background: rgba(244,63,94,0.05); border: 1px solid rgba(244,63,94,0.2);
-          border-radius: var(--radius-md); padding: 0.5rem 0.625rem;
-          display: flex; flex-direction: column; gap: 0.375rem;
-          animation: slideUp 0.2s var(--ease-out);
+           .p-debt-box {
+          background: rgba(244,63,94,0.06); border: 1.5px solid rgba(244,63,94,0.25);
+          border-radius: var(--radius-lg); padding: 0.75rem;
+          display: flex; flex-direction: column; gap: 0.5rem;
+          animation: slideUp 0.25s var(--ease-spring);
+          margin: 0.5rem 0;
         }
         .p-debt-label {
           display: flex; align-items: center; gap: 0.5rem;
-          font-size: 0.76rem; font-weight: 700; color: var(--color-error);
+          font-size: 0.8rem; font-weight: 800; color: var(--color-error);
           cursor: pointer;
         }
-        .p-debt-fields { display: flex; flex-direction: column; gap: 0.3rem; }
+        .p-debt-fields { display: flex; flex-direction: column; gap: 0.4rem; }
         .p-debt-input {
-          background: var(--surface-1); border: 1px solid var(--border-default);
+          background: var(--surface-1); border: 1.5px solid var(--border-default);
           border-radius: 8px; color: var(--text-primary);
-          font-size: 0.76rem !important; padding: 0.35rem 0.5rem;
+          font-size: 0.78rem !important; padding: 0.45rem 0.625rem;
           font-family: var(--font-sans); outline: none; width: 100%;
-          min-height: 32px;
+          min-height: 36px;
           transition: border-color 120ms;
         }
         .p-debt-input:focus { border-color: var(--color-error); }
 
         /* Bouton valider */
         .p-validate {
-          width: 100%; min-height: 52px;
+          width: 100%; min-height: 54px;
           background: linear-gradient(135deg, var(--color-brand-500), var(--color-brand-600));
           color: #fff; font-family: var(--font-display);
-          font-size: 0.9rem; font-weight: 800;
+          font-size: 0.92rem; font-weight: 800;
           border: none; border-radius: var(--radius-lg);
           cursor: pointer; letter-spacing: 0.01em;
           display: flex; align-items: center; justify-content: center; gap: 0.5rem;
-          transition: all 200ms var(--ease-out);
+          transition: all 250ms var(--ease-out);
           box-shadow: 0 4px 16px rgba(99,102,241,0.3), inset 0 1px 0 rgba(255,255,255,0.15);
           position: relative; overflow: hidden;
+          margin-top: 0.625rem;
           -webkit-tap-highlight-color: transparent;
         }
         .p-validate::before {
@@ -876,7 +911,22 @@ export default function POSPage() {
         .p-validate:active:not(:disabled) { transform: scale(0.97); box-shadow: none; }
         .p-validate:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; transform: none; }
         .p-validate.success { background: linear-gradient(135deg,#10b981,#059669) !important; animation: pulseSuccess 0.7s ease-out; }
-        .p-validate.debt { background: linear-gradient(135deg,#f43f5e,#e11d48) !important; box-shadow: 0 4px 16px rgba(244,63,94,0.3) !important; }
+        .p-validate.debt {
+          background: linear-gradient(135deg, #f43f5e, #be123c) !important;
+          box-shadow: 0 10px 25px rgba(244, 63, 94, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+          border: 1px solid rgba(255, 255, 255, 0.1) !important;
+          transform: scale(1.02);
+          animation: pulse-debt 2s infinite ease-in-out;
+        }
+        .p-validate.debt:hover:not(:disabled) {
+          transform: translateY(-2px) scale(1.04);
+          box-shadow: 0 12px 28px rgba(244, 63, 94, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+        }
+
+        @keyframes pulse-debt {
+          0%, 100% { box-shadow: 0 10px 25px rgba(244, 63, 94, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2); transform: scale(1.02); }
+          50% { box-shadow: 0 10px 30px rgba(244, 63, 94, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.3); transform: scale(1.035); }
+        }
 
         .p-validate-amount {
           font-size: 0.72rem; opacity: 0.85; font-weight: 600;

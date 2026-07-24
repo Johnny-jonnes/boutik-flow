@@ -128,33 +128,44 @@ async function tryRefreshToken(): Promise<boolean> {
   return result;
 }
 
-// ─── Offline-first Database & Cache Engine ─────────────────────────────────
+// ─── IDs UUID v4 stables pour les données offline par défaut ───────────────
+// (générés une fois — ne jamais utiliser de chaînes courtes type 'p1' qui
+// sont rejetées par le backend FastAPI avec "Input should be a valid UUID")
 
 const DEFAULT_PRODUCTS = [
-  { id: 'p1', name: "Robe d'été Fleurie", price: 150000, stock: 15, sku: "ROB-FL-01", description: "Robe légère en coton bio.", category_id: "c1", created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  { id: 'p2', name: "Baskets Sport Max", price: 350000, stock: 8, sku: "BAS-SP-02", description: "Chaussures de running ultra confort.", category_id: "c2", created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  { id: 'p3', name: "Rouge à Lèvres Matte", price: 75000, stock: 24, sku: "RAL-MA-03", description: "Tenue 24h sans transfert.", category_id: "c3", created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  { id: 'p4', name: "Crème Hydratante Aloé", price: 120000, stock: 18, sku: "CRE-HY-04", description: "Hydratation intense peaux sensibles.", category_id: "c3", created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  { id: 'p5', name: "Smartphone Zed X", price: 1800000, stock: 4, sku: "TEL-ZX-05", description: "Écran AMOLED, 128 Go.", category_id: "c4", created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: '11111111-0001-4000-a000-000000000001', name: "Robe d'été Fleurie",   price: 150000,  stock: 15, sku: 'ROB-FL-01', description: 'Robe légère en coton bio.',              category_id: 'cccc0001-0000-4000-a000-000000000001', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: '11111111-0002-4000-a000-000000000002', name: 'Baskets Sport Max',     price: 350000,  stock: 8,  sku: 'BAS-SP-02', description: 'Chaussures de running ultra confort.',     category_id: 'cccc0002-0000-4000-a000-000000000002', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: '11111111-0003-4000-a000-000000000003', name: 'Rouge à Lèvres Matte', price: 75000,   stock: 24, sku: 'RAL-MA-03', description: 'Tenue 24h sans transfert.',              category_id: 'cccc0003-0000-4000-a000-000000000003', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: '11111111-0004-4000-a000-000000000004', name: 'Crème Hydratante Aloé', price: 120000, stock: 18, sku: 'CRE-HY-04', description: 'Hydratation intense peaux sensibles.',   category_id: 'cccc0003-0000-4000-a000-000000000003', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: '11111111-0005-4000-a000-000000000005', name: 'Smartphone Zed X',     price: 1800000, stock: 4,  sku: 'TEL-ZX-05', description: 'Écran AMOLED, 128 Go.',                  category_id: 'cccc0004-0000-4000-a000-000000000004', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
 ];
 
 const DEFAULT_CLIENTS = [
-  { id: 'c1', name: "Mamadou Diallo", phone: "622 12 34 56", email: "diallo@boutik.com", status: "active", created_at: new Date().toISOString() },
-  { id: 'c2', name: "Mariama Barry", phone: "628 98 76 54", email: "barry@boutik.com", status: "vip", created_at: new Date().toISOString() },
-  { id: 'c3', name: "Amadou Camara", phone: "620 45 67 89", email: "camara@boutik.com", status: "new", created_at: new Date().toISOString() },
+  { id: 'aaaaaaaa-0001-4000-a000-000000000001', name: 'Mamadou Diallo', phone: '622 12 34 56', email: 'diallo@boutik.com', status: 'active', created_at: new Date().toISOString() },
+  { id: 'aaaaaaaa-0002-4000-a000-000000000002', name: 'Mariama Barry',  phone: '628 98 76 54', email: 'barry@boutik.com',  status: 'vip',    created_at: new Date().toISOString() },
+  { id: 'aaaaaaaa-0003-4000-a000-000000000003', name: 'Amadou Camara', phone: '620 45 67 89', email: 'camara@boutik.com', status: 'new',    created_at: new Date().toISOString() },
 ];
 
 const DEFAULT_CATEGORIES = [
-  { id: "c1", name: "Vêtements", slug: "vetements", created_at: new Date().toISOString() },
-  { id: "c2", name: "Chaussures", slug: "chaussures", created_at: new Date().toISOString() },
-  { id: "c3", name: "Cosmétiques", slug: "cosmetiques", created_at: new Date().toISOString() },
-  { id: "c4", name: "Électronique", slug: "electronique", created_at: new Date().toISOString() },
+  { id: 'cccc0001-0000-4000-a000-000000000001', name: 'Vêtements',    slug: 'vetements',    created_at: new Date().toISOString() },
+  { id: 'cccc0002-0000-4000-a000-000000000002', name: 'Chaussures',   slug: 'chaussures',   created_at: new Date().toISOString() },
+  { id: 'cccc0003-0000-4000-a000-000000000003', name: 'Cosmétiques',  slug: 'cosmetiques',  created_at: new Date().toISOString() },
+  { id: 'cccc0004-0000-4000-a000-000000000004', name: 'Électronique', slug: 'electronique', created_at: new Date().toISOString() },
 ];
 
 const OfflineDB = {
   getProducts(): any[] {
     if (typeof window === 'undefined') return [];
-    const p = localStorage.getItem('offline_products');
+    let p = localStorage.getItem('offline_products');
+    if (p) {
+      try {
+        const parsed = JSON.parse(p);
+        if (parsed.length > 0 && String(parsed[0].id).length < 30) {
+          localStorage.removeItem('offline_products');
+          p = null;
+        }
+      } catch { p = null; }
+    }
     if (!p) {
       localStorage.setItem('offline_products', JSON.stringify(DEFAULT_PRODUCTS));
       return DEFAULT_PRODUCTS;
@@ -167,7 +178,16 @@ const OfflineDB = {
   },
   getClients(): any[] {
     if (typeof window === 'undefined') return [];
-    const c = localStorage.getItem('offline_clients');
+    let c = localStorage.getItem('offline_clients');
+    if (c) {
+      try {
+        const parsed = JSON.parse(c);
+        if (parsed.length > 0 && String(parsed[0].id).length < 30) {
+          localStorage.removeItem('offline_clients');
+          c = null;
+        }
+      } catch { c = null; }
+    }
     if (!c) {
       localStorage.setItem('offline_clients', JSON.stringify(DEFAULT_CLIENTS));
       return DEFAULT_CLIENTS;
@@ -180,7 +200,16 @@ const OfflineDB = {
   },
   getCategories(): any[] {
     if (typeof window === 'undefined') return [];
-    const c = localStorage.getItem('offline_categories');
+    let c = localStorage.getItem('offline_categories');
+    if (c) {
+      try {
+        const parsed = JSON.parse(c);
+        if (parsed.length > 0 && String(parsed[0].id).length < 30) {
+          localStorage.removeItem('offline_categories');
+          c = null;
+        }
+      } catch { c = null; }
+    }
     if (!c) {
       localStorage.setItem('offline_categories', JSON.stringify(DEFAULT_CATEGORIES));
       return DEFAULT_CATEGORIES;
@@ -485,7 +514,7 @@ async function request<T>(
     const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout (Render cold start)
     res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers, signal: controller.signal });
     clearTimeout(timeoutId);
-    if (!res.ok && (res.status >= 500 || res.status === 404 || res.status === 502 || res.status === 503 || res.status === 504)) {
+    if (!res.ok && (res.status >= 500 || res.status === 404 || res.status === 422 || res.status === 502 || res.status === 503 || res.status === 504)) {
       return handleOfflineRequest<T>(path, options);
     }
     // Pour les GET de données publiques, préférer le cache offline sur 401 aussi
