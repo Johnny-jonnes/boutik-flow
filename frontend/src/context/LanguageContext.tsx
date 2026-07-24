@@ -11,7 +11,7 @@ const translations: Record<Language, Translations> = {
     // Sidebar
     'nav.dashboard': "Vue d'ensemble",
     'nav.analytics': 'Analytique',
-    'nav.crm': 'Clients',
+    'nav.crm': 'CRM / Clients',
     'nav.segments': 'Segments',
     'nav.products': 'Produits',
     'nav.categories': 'Catégories',
@@ -385,7 +385,7 @@ const translations: Record<Language, Translations> = {
     // Sidebar
     'nav.dashboard': 'Overview',
     'nav.analytics': 'Analytics',
-    'nav.crm': 'Customers',
+    'nav.crm': 'CRM / Customers',
     'nav.segments': 'Segments',
     'nav.products': 'Products',
     'nav.categories': 'Categories',

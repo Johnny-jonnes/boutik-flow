@@ -26,6 +26,11 @@ export default function POSPage() {
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   
+  // Debt states
+  const [isDebt, setIsDebt] = useState(false);
+  const [debtDescription, setDebtDescription] = useState('');
+  const [debtDueDate, setDebtDueDate] = useState('');
+
   const [receiptData, setReceiptData] = useState<any>(null);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [shopName, setShopName] = useState('BoutikFlow');
@@ -162,7 +167,9 @@ export default function POSPage() {
       const payload: any = {
         status: 'delivered',
         items: orderItems,
-        notes: `Mode de paiement: ${paymentMethod} | Remise: ${discount} GNF`
+        notes: isDebt 
+          ? `[Vente à crédit] Mode de paiement initial: ${paymentMethod} | Remise: ${discount} GNF` 
+          : `Mode de paiement: ${paymentMethod} | Remise: ${discount} GNF`
       };
       
       if (selectedClientId) {
@@ -170,6 +177,23 @@ export default function POSPage() {
       }
 
       const order = await api.createOrder(payload);
+
+      // Create debt if checked and client is selected
+      if (isDebt && selectedClientId) {
+        try {
+          await api.createDebt({
+            client_id: selectedClientId,
+            order_id: order.id,
+            original_amount: total,
+            description: debtDescription.trim() || (language === 'fr' ? 'Achat caisse à crédit' : 'POS credit purchase'),
+            due_date: debtDueDate || undefined
+          });
+          toast.success(language === 'fr' ? 'Dette client enregistrée avec succès' : 'Client debt recorded successfully');
+        } catch (debtErr: any) {
+          console.error('Failed to create debt:', debtErr);
+          toast.error(language === 'fr' ? 'Erreur lors de l\'enregistrement de la dette' : 'Failed to record debt');
+        }
+      }
       
       toast.success(language === 'fr' ? 'Vente validée avec succès' : 'Sale validated successfully');
       
@@ -188,7 +212,9 @@ export default function POSPage() {
       setReceiptData({
         id: order.id,
         total: total,
-        notes: `Mode de paiement: ${paymentMethod} | Remise: ${discount} GNF`,
+        notes: isDebt 
+          ? `[Vente à crédit] Mode de paiement initial: ${paymentMethod} | Remise: ${discount} GNF` 
+          : `Mode de paiement: ${paymentMethod} | Remise: ${discount} GNF`,
         items: cart.map(item => ({
           product_id: item.id,
           quantity: item.cartQuantity,
@@ -201,10 +227,13 @@ export default function POSPage() {
       });
       setIsReceiptModalOpen(true);
       
-      // Clear cart
+      // Clear cart and states
       setCart([]);
       setDiscount(0);
       setSelectedClientId('');
+      setIsDebt(false);
+      setDebtDescription('');
+      setDebtDueDate('');
     } catch (error: any) {
       toast.error(error?.message || (language === 'fr' ? 'Erreur lors de la validation' : 'Error validating sale'));
     } finally {
@@ -339,13 +368,65 @@ export default function POSPage() {
               className="input"
               style={{ width: '100%', padding: '0.4rem 0.6rem', fontSize: '0.85rem', background: 'var(--surface-0)' }}
               value={selectedClientId}
-              onChange={(e) => setSelectedClientId(e.target.value)}
+              onChange={(e) => {
+                setSelectedClientId(e.target.value);
+                if (!e.target.value) {
+                  setIsDebt(false);
+                }
+              }}
             >
               <option value="">{language === 'fr' ? '— Client passant (Comptoir) —' : '— Walk-in customer —'}</option>
               {clients.map(c => (
                 <option key={c.id} value={c.id}>{c.name} {c.phone ? `(${c.phone})` : ''}</option>
               ))}
             </select>
+
+            {selectedClientId && (
+              <div style={{ marginTop: '0.5rem', padding: '0.5rem', background: 'var(--surface-2)', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <input 
+                    type="checkbox" 
+                    id="pos-debt-check" 
+                    checked={isDebt} 
+                    onChange={e => setIsDebt(e.target.checked)} 
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <label htmlFor="pos-debt-check" style={{ fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', color: 'var(--text-primary)' }}>
+                    {language === 'fr' ? 'Enregistrer comme dette client (Crédit)' : 'Record as client debt (Credit)'}
+                  </label>
+                </div>
+
+                {isDebt && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem' }}>
+                    <div>
+                      <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.15rem' }}>
+                        {language === 'fr' ? 'Motif de la dette' : 'Debt description'}
+                      </label>
+                      <input 
+                        type="text" 
+                        className="input" 
+                        style={{ padding: '0.25rem 0.4rem', fontSize: '0.75rem', width: '100%' }}
+                        placeholder={language === 'fr' ? 'Ex: Reste à payer' : 'Ex: Balance due'}
+                        value={debtDescription}
+                        onChange={e => setDebtDescription(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.15rem' }}>
+                        {language === 'fr' ? "Date d'échéance" : 'Due date'}
+                      </label>
+                      <input 
+                        type="date" 
+                        className="input" 
+                        style={{ padding: '0.25rem 0.4rem', fontSize: '0.75rem', width: '100%' }}
+                        value={debtDueDate}
+                        onChange={e => setDebtDueDate(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           
           <div className="cart-items">
