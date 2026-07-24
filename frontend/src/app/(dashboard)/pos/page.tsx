@@ -421,7 +421,7 @@ export default function POSPage() {
             ))}
           </div>
 
-          {/* Summary + Validation */}
+          {/* Summary scrollable */}
           <div className="p-summary">
             {/* Totaux */}
             <div className="p-row">
@@ -466,7 +466,10 @@ export default function POSPage() {
                     onChange={e => setIsDebt(e.target.checked)}
                     style={{ accentColor: 'var(--color-error)', width:15, height:15, cursor:'pointer', flexShrink:0 }}
                   />
-                  <span>📋 {language === 'fr' ? 'Vente à crédit' : 'Credit sale'}</span>
+                  <span style={{ display:'flex', alignItems:'center', gap:'0.35rem' }}>
+                    <ArrowUpRight size={13} style={{ opacity:0.6 }}/>
+                    {language === 'fr' ? 'Vente à crédit' : 'Credit sale'}
+                  </span>
                 </label>
                 {isDebt && (
                   <div className="p-debt-fields">
@@ -476,8 +479,10 @@ export default function POSPage() {
                 )}
               </div>
             )}
+          </div>
 
-            {/* BOUTON VALIDER */}
+          {/* BOUTON VALIDER — STICKY FOOTER toujours visible */}
+          <div className="p-validate-footer">
             <button
               className={`p-validate ${successAnim ? 'success' : ''} ${isDebt ? 'debt' : ''}`}
               disabled={cart.length === 0 || isProcessing}
@@ -490,7 +495,10 @@ export default function POSPage() {
               ) : (
                 <>
                   <span style={{ flex: 1 }}>
-                    {isDebt ? `📋 ${language === 'fr' ? 'Crédit' : 'Credit'}` : `✓ ${language === 'fr' ? 'Encaisser' : 'Collect'}`}
+                    {isDebt
+                      ? <><ArrowUpRight size={16}/> {language === 'fr' ? 'Crédit' : 'Credit'}</>
+                      : <><CheckCircle size={16}/> {language === 'fr' ? 'Encaisser' : 'Collect'}</>
+                    }
                   </span>
                   {cart.length > 0 && <span className="p-validate-amount">{fmt(total)}</span>}
                 </>
@@ -877,7 +885,7 @@ export default function POSPage() {
         }
         .p-remove-btn:hover { background: rgba(244,63,94,0.1); color: var(--color-error); transform: scale(1.12); }
 
-        /* Summary */
+        /* Summary — scrollable zone (sans le bouton validate) */
         .p-summary {
           padding: 0.75rem 0.875rem;
           border-top: 1px solid var(--border-subtle);
@@ -885,7 +893,15 @@ export default function POSPage() {
           display: flex; flex-direction: column; gap: 0.45rem;
           background: var(--surface-1);
           overflow-y: auto;
-          max-height: 52vh;
+        }
+
+        /* Validate sticky footer */
+        .p-validate-footer {
+          padding: 0.75rem 0.875rem;
+          padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+          background: var(--surface-1);
+          border-top: 1px solid var(--border-subtle);
+          flex-shrink: 0;
         }
 
         .p-row {
@@ -922,17 +938,16 @@ export default function POSPage() {
 
         /* Bouton valider */
         .p-validate {
-          width: 100%; min-height: 54px;
+          width: 100%; min-height: 56px;
           background: linear-gradient(135deg, var(--color-brand-500), var(--color-brand-600));
           color: #fff; font-family: var(--font-display);
-          font-size: 0.92rem; font-weight: 800;
+          font-size: 0.95rem; font-weight: 800;
           border: none; border-radius: var(--radius-lg);
           cursor: pointer; letter-spacing: 0.01em;
           display: flex; align-items: center; justify-content: center; gap: 0.5rem;
           transition: all 250ms var(--ease-out);
-          box-shadow: 0 4px 16px rgba(99,102,241,0.3), inset 0 1px 0 rgba(255,255,255,0.15);
+          box-shadow: 0 4px 20px rgba(109,213,196,0.3), inset 0 1px 0 rgba(255,255,255,0.15);
           position: relative; overflow: hidden;
-          margin-top: 0.625rem;
           -webkit-tap-highlight-color: transparent;
         }
         .p-validate::before {
@@ -941,7 +956,7 @@ export default function POSPage() {
         }
         .p-validate:hover:not(:disabled) {
           transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(99,102,241,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+          box-shadow: 0 8px 28px rgba(109,213,196,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
           background: linear-gradient(135deg, var(--color-brand-400), var(--color-brand-500));
         }
         .p-validate:active:not(:disabled) { transform: scale(0.97); box-shadow: none; }
@@ -976,9 +991,15 @@ export default function POSPage() {
             max-height: none;
             overflow: visible;
           }
-          .p-products-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+          .p-products-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
           .p-grid { height: auto; }
-          .p-items { max-height: 220px; }
+          .p-items { max-height: 200px; }
+          .p-summary { max-height: none; }
+          .p-validate-footer {
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+          }
         }
       `}</style>
     </div>

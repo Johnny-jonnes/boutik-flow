@@ -433,20 +433,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </main>
 
       {/* ══════════════════════════════════════════════
-          BOTTOM NAV — Mobile uniquement
+          BOTTOM NAV — Mobile uniquement (Glassmorphism Dock Fixe)
           ══════════════════════════════════════════════ */}
-      <nav className="bottom-nav">
-        <div className="bottom-nav-items">
+      <nav className="bottom-nav" aria-label="Navigation principale mobile">
+        <div className="bottom-nav-glass">
           {BOTTOM_NAV.map((item) => {
             const Icon = item.icon;
             const isDash = item.href === '/dashboard';
             const active = isDash ? pathname === item.href : pathname.startsWith(item.href);
             return (
               <Link key={item.href} href={item.href} className={`bottom-nav-item ${active ? 'active' : ''}`}>
-                <div className="bottom-nav-icon">
-                  <Icon size={22} />
+                <div className="bottom-nav-icon-box">
+                  <Icon size={20} className="bottom-nav-icon" />
+                  {active && <div className="bottom-nav-pill-bg" />}
                 </div>
-                <span>{item.label}</span>
+                <span className="bottom-nav-label">{item.label}</span>
               </Link>
             );
           })}
@@ -466,13 +467,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           display: none;
           position: fixed; top: 0; left: 0; right: 0;
           height: 56px;
-          background: var(--surface-1);
-          border-bottom: 1px solid var(--border-subtle);
+          background: rgba(8, 12, 11, 0.85);
+          border-bottom: 1px solid rgba(109,213,196,0.15);
           padding: 0 1rem;
           align-items: center;
           justify-content: space-between;
           z-index: 40;
           backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
         }
         .mobile-brand { display: flex; align-items: center; gap: 0.5rem; }
         .mobile-toggle {
@@ -489,8 +491,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         .logo-mark {
           width: 34px; height: 34px;
           border-radius: 10px;
-          background: rgba(99,102,241,0.15);
-          border: 1px solid rgba(99,102,241,0.25);
+          background: rgba(109,213,196,0.15);
+          border: 1px solid rgba(109,213,196,0.25);
           display: flex; align-items: center; justify-content: center;
           flex-shrink: 0;
           transition: transform 0.2s var(--ease-spring);
@@ -503,7 +505,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         .brand-text {
           font-family: var(--font-display);
           font-size: 1.1rem; font-weight: 800;
-          background: linear-gradient(135deg, #818cf8 0%, #6366f1 50%, #4f46e5 100%);
+          background: linear-gradient(135deg, #6dd5c4 0%, #4ebfae 50%, #31a292 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
@@ -521,8 +523,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           height: 100vh;
           position: sticky; top: 0;
           display: flex; flex-direction: column;
-          background: linear-gradient(180deg, #0f0f14 0%, #0a0a0e 50%, #070709 100%);
-          border-right: 1px solid rgba(99,102,241,0.12);
+          background: linear-gradient(180deg, #080c0b 0%, #050807 50%, #030504 100%);
+          border-right: 1px solid rgba(109,213,196,0.14);
           flex-shrink: 0;
           z-index: 50;
           overflow-y: auto;
@@ -571,20 +573,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           margin: 0 0.75rem 1rem;
           padding: 0.625rem 0.75rem;
           border-radius: 12px;
-          background: rgba(99,102,241,0.06);
-          border: 1px solid rgba(99,102,241,0.15);
+          background: rgba(109,213,196,0.06);
+          border: 1px solid rgba(109,213,196,0.15);
           transition: all 0.2s ease;
           cursor: pointer;
         }
         .boutique-card:hover {
-          background: rgba(99,102,241,0.1);
-          border-color: rgba(99,102,241,0.25);
+          background: rgba(109,213,196,0.12);
+          border-color: rgba(109,213,196,0.28);
         }
         .boutique-icon {
           width: 34px; height: 34px;
           border-radius: 8px;
-          background: rgba(99,102,241,0.15);
-          color: #818cf8;
+          background: rgba(109,213,196,0.15);
+          color: #6dd5c4;
           display: flex; align-items: center; justify-content: center;
           flex-shrink: 0;
         }
@@ -599,7 +601,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
         .boutique-badge {
           font-size: 0.68rem;
-          color: #818cf8;
+          color: #6dd5c4;
           font-weight: 600;
           margin-top: 1px;
         }
@@ -621,7 +623,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         .nav-section-title {
           font-size: 0.7rem; font-weight: 700;
-          color: rgba(255,255,255,0.28);
+          color: rgba(255,255,255,0.32);
           text-transform: uppercase;
           letter-spacing: 0.08em;
           padding: 0.5rem 0.625rem 0.25rem;
@@ -635,7 +637,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           cursor: pointer;
           transition: color 0.15s ease;
         }
-        .nav-section-title:hover { color: rgba(255,255,255,0.55); }
+        .nav-section-title:hover { color: rgba(109,213,196,0.7); }
         .nav-section-title-left {
           display: flex;
           align-items: center;
@@ -653,7 +655,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           padding: 0.55rem 0.75rem;
           border-radius: 10px;
           text-decoration: none;
-          color: rgba(255,255,255,0.45);
+          color: rgba(255,255,255,0.48);
           font-size: 0.84rem; font-weight: 500;
           position: relative;
           transition: all 0.15s ease;
@@ -664,21 +666,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           overflow: hidden;
         }
         .nav-link:hover {
-          color: rgba(255,255,255,0.85);
+          color: rgba(255,255,255,0.9);
           background: rgba(255,255,255,0.05);
           border-color: rgba(255,255,255,0.06);
         }
         .nav-link:active { transform: scale(0.98); }
 
         .nav-link--active {
-          color: #a5b4fc;
-          background: rgba(99,102,241,0.14);
-          border-color: rgba(99,102,241,0.22);
+          color: #6dd5c4;
+          background: rgba(109,213,196,0.14);
+          border-color: rgba(109,213,196,0.25);
           font-weight: 600;
         }
         .nav-link--active:hover {
-          background: rgba(99,102,241,0.18);
-          color: #c7d2fe;
+          background: rgba(109,213,196,0.18);
+          color: #98e5d9;
         }
 
         .nav-icon {
@@ -686,9 +688,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           color: inherit;
           width: 15px; height: 15px;
           display: inline-block;
-          opacity: 0.8;
+          opacity: 0.85;
         }
-        .nav-link--active .nav-icon { opacity: 1; }
+        .nav-link--active .nav-icon { opacity: 1; color: #6dd5c4; }
 
         .nav-text {
           flex: 1;
@@ -698,8 +700,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         /* POS badge */
         .nav-pill-pos {
           font-size: 0.6rem; font-weight: 800;
-          background: rgba(99,102,241,0.25);
-          color: #818cf8;
+          background: rgba(109,213,196,0.25);
+          color: #6dd5c4;
           padding: 0.1rem 0.35rem;
           border-radius: 4px;
           letter-spacing: 0.05em;
@@ -733,7 +735,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           border-radius: 9px;
           background: transparent;
           border: 1px solid rgba(255,255,255,0.07);
-          color: rgba(255,255,255,0.38);
+          color: rgba(255,255,255,0.4);
           font-size: 0.78rem; font-weight: 500;
           cursor: pointer;
           transition: all 0.15s ease;
@@ -742,8 +744,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
         .lang-toggle:hover {
           background: rgba(255,255,255,0.05);
-          color: rgba(255,255,255,0.7);
-          border-color: rgba(255,255,255,0.12);
+          color: rgba(255,255,255,0.75);
+          border-color: rgba(109,213,196,0.2);
         }
         .lang-flag { margin-left: auto; font-size: 0.9rem; }
 
@@ -766,28 +768,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
         .profile-card:hover, .profile-card--open {
           background: rgba(255,255,255,0.05);
-          border-color: rgba(255,255,255,0.08);
+          border-color: rgba(109,213,196,0.2);
         }
 
         .profile-avatar {
           width: 34px; height: 34px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #6366f1, #4f46e5);
-          border: 2px solid rgba(99,102,241,0.4);
-          color: white;
+          background: linear-gradient(135deg, #6dd5c4, #31a292);
+          border: 2px solid rgba(109,213,196,0.4);
+          color: #080c0b;
           display: flex; align-items: center; justify-content: center;
-          font-weight: 700; font-size: 0.85rem;
+          font-weight: 800; font-size: 0.85rem;
           flex-shrink: 0;
-          box-shadow: 0 0 0 0 rgba(99,102,241,0.4);
+          box-shadow: 0 0 0 0 rgba(109,213,196,0.4);
           transition: box-shadow 0.2s ease;
         }
         .profile-card:hover .profile-avatar {
-          box-shadow: 0 0 0 3px rgba(99,102,241,0.2);
+          box-shadow: 0 0 0 3px rgba(109,213,196,0.25);
         }
 
         .profile-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
         .profile-name { font-size: 0.8rem; font-weight: 600; color: #f4f4f6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .profile-role { font-size: 0.68rem; color: rgba(255,255,255,0.38); margin-top: 1px; }
+        .profile-role { font-size: 0.68rem; color: rgba(255,255,255,0.4); margin-top: 1px; }
 
         .profile-chevron { color: rgba(255,255,255,0.3); transition: transform 0.2s ease; flex-shrink: 0; }
         .profile-chevron--rotated { transform: rotate(180deg); }
@@ -796,8 +798,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           position: absolute;
           bottom: calc(100% + 8px);
           left: 0; right: 0;
-          background: #1a1a20;
-          border: 1px solid rgba(255,255,255,0.12);
+          background: #0e1412;
+          border: 1px solid rgba(109,213,196,0.2);
           border-radius: 12px;
           padding: 0.35rem;
           box-shadow: 0 16px 40px rgba(0,0,0,0.7);
@@ -831,24 +833,133 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         .backdrop {
           display: none;
           position: fixed; inset: 0;
-          background: rgba(0,0,0,0.55);
-          backdrop-filter: blur(6px);
+          background: rgba(0,0,0,0.65);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
           z-index: 45;
         }
 
-        /* ══ Responsive ═════════════════════════════ */
+        /* ══ Bottom Navigation Fixed ══════════════════ */
+        .bottom-nav {
+          display: none;
+        }
+
         @media (max-width: 768px) {
           .mobile-bar { display: flex; }
-          .main__inner { padding: 1.25rem 1rem; padding-top: calc(56px + 1rem); }
+
+          .main__inner {
+            padding: 1.25rem 1rem;
+            padding-top: calc(56px + 1rem);
+            padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
+          }
 
           .sidebar {
             position: fixed; left: 0; top: 0; bottom: 0;
+            width: 280px;
             transform: translateX(-100%);
-            transition: transform 0.28s var(--ease-out);
-            z-index: 50;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 1050;
+            box-shadow: 12px 0 40px rgba(0,0,0,0.65);
+            padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
           }
           .sidebar--open { transform: translateX(0); }
           .backdrop { display: block; }
+
+          /* Glassmorphism Floating Dock Fixed Navigation */
+          .bottom-nav {
+            display: flex;
+            position: fixed;
+            bottom: calc(0.6rem + env(safe-area-inset-bottom, 0px));
+            left: 0;
+            right: 0;
+            justify-content: center;
+            z-index: 1000;
+            pointer-events: none;
+            padding: 0 1rem;
+          }
+
+          .bottom-nav-glass {
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            width: 100%;
+            max-width: 440px;
+            height: 64px;
+            background: rgba(8, 12, 11, 0.85);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(109, 213, 196, 0.24);
+            border-radius: 26px;
+            box-shadow: 
+              0 12px 32px rgba(0, 0, 0, 0.55),
+              0 2px 10px rgba(109, 213, 196, 0.12),
+              inset 0 1px 0 rgba(255, 255, 255, 0.12);
+            padding: 0 0.4rem;
+          }
+
+          .bottom-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            flex: 1;
+            height: 100%;
+            text-decoration: none;
+            color: var(--text-muted);
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
+          }
+
+          .bottom-nav-icon-box {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 42px;
+            height: 28px;
+            border-radius: 14px;
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+          }
+
+          .bottom-nav-icon {
+            z-index: 2;
+            transition: transform 0.2s var(--ease-spring), color 0.2s ease;
+          }
+
+          .bottom-nav-pill-bg {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(109, 213, 196, 0.25), rgba(49, 162, 146, 0.2));
+            border: 1px solid rgba(109, 213, 196, 0.35);
+            border-radius: 14px;
+            z-index: 1;
+            animation: pulseIn 0.25s var(--ease-spring);
+            box-shadow: 0 2px 10px rgba(109, 213, 196, 0.25);
+          }
+
+          .bottom-nav-label {
+            font-size: 0.68rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            transition: color 0.2s ease, font-weight 0.2s ease;
+          }
+
+          .bottom-nav-item.active .bottom-nav-icon {
+            color: #6dd5c4;
+            transform: translateY(-1px) scale(1.1);
+          }
+
+          .bottom-nav-item.active .bottom-nav-label {
+            color: #6dd5c4;
+            font-weight: 800;
+          }
+
+          .bottom-nav-item:active {
+            transform: scale(0.92);
+          }
         }
 
         @media (min-width: 769px) {
@@ -858,3 +969,4 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     </div>
   );
 }
+

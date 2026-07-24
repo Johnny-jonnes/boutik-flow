@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { Toaster } from '@/components/ui/sonner';
 import { LanguageProvider } from '@/context/LanguageContext';
+import { PWARegister } from "@/components/PWARegister";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
     description: "Caisse, CRM et gestion de boutique 100% offline pour commerçants africains.",
     type: "website",
   },
-  manifest: "/manifest.json",
+  manifest: "/manifest.json?v=2",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -23,11 +24,14 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icon.svg", type: "image/svg+xml" },
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon.svg?v=2", type: "image/svg+xml" },
+      { url: "/favicon-32x32.png?v=2", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192.png?v=2", sizes: "192x192", type: "image/png" },
     ],
-    apple: "/icon-192.png",
-    shortcut: "/icon.svg",
+    apple: [
+      { url: "/apple-touch-icon.png?v=2", sizes: "180x180", type: "image/png" },
+    ],
+    shortcut: "/icon.svg?v=2",
   },
 };
 
@@ -35,33 +39,36 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#4f46e5',
+  userScalable: false,
+  viewportFit: 'cover',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#6dd5c4' },
+    { media: '(prefers-color-scheme: dark)', color: '#080c0b' },
+  ],
 };
-
-import { PWARegister } from "@/components/PWARegister";
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    // suppressHydrationWarning évite le warning lié à la classe .light/.dark
-    // que next-themes injecte côté client sur <html>
     <html lang="fr" suppressHydrationWarning>
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="BoutikFlow" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-        <link rel="alternate icon" href="/icon-192.png" type="image/png" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
-        <meta name="msapplication-TileColor" content="#4f46e5" />
+        <link rel="icon" href="/icon.svg?v=2" type="image/svg+xml" />
+        <link rel="icon" href="/favicon.ico?v=2" sizes="any" />
+        <link rel="alternate icon" href="/icon-192.png?v=2" type="image/png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
+        <meta name="msapplication-TileColor" content="#6dd5c4" />
+        <meta name="msapplication-TileImage" content="/icon-144.png?v=2" />
       </head>
       <body>
         <LanguageProvider>
           <ThemeProvider>
             <PWARegister />
             {children}
-            {/* Toaster global — fonctionne avec les deux thèmes via next-themes */}
             <Toaster richColors position="top-right" />
           </ThemeProvider>
         </LanguageProvider>
