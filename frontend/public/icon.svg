@@ -1,4 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="108" fill="#10b981"/>
-  <text x="256" y="310" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="240" fill="white">BF</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none">
+  <defs>
+    <linearGradient id="hex-g" x1="0" y1="0" x2="40" y2="40">
+      <stop stop-color="#818cf8"/>
+      <stop offset="1" stop-color="#4f46e5"/>
+    </linearGradient>
+    <linearGradient id="wave-amber" x1="0" y1="0" x2="40" y2="0">
+      <stop stop-color="#fbbf24" stop-opacity="0"/>
+      <stop offset="0.4" stop-color="#f59e0b"/>
+      <stop offset="1" stop-color="#fbbf24" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- Hexagon body -->
+  <path d="M20 2L36 11V29L20 38L4 29V11L20 2Z" fill="url(#hex-g)" opacity="0.95"/>
+  <path d="M20 2L36 11V29L20 38L4 29V11L20 2Z" stroke="rgba(255,255,255,0.12)" stroke-width="0.5" fill="none"/>
+  <!-- Wave 1: top subtle -->
+  <path d="M9 15 Q14.5 12 20 15 Q25.5 18 31 15" stroke="rgba(255,255,255,0.3)" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+  <!-- Wave 2: middle bright -->
+  <path d="M9 20 Q14.5 16 20 20 Q25.5 24 31 20" stroke="rgba(255,255,255,0.9)" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  <!-- Wave 2: amber glow overlay -->
+  <path d="M9 20 Q14.5 16 20 20 Q25.5 24 31 20" stroke="url(#wave-amber)" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.65"/>
+  <!-- Wave 3: bottom subtle -->
+  <path d="M9 25 Q14.5 22 20 25 Q25.5 28 31 25" stroke="rgba(255,255,255,0.3)" stroke-width="1.2" fill="none" stroke-linecap="round"/>
 </svg>

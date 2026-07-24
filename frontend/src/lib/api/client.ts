@@ -511,14 +511,23 @@ async function request<T>(
   let res: Response;
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout (Render cold start)
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout (cold start Render)
     res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers, signal: controller.signal });
     clearTimeout(timeoutId);
-    if (!res.ok && (res.status >= 500 || res.status === 404 || res.status === 422 || res.status === 502 || res.status === 503 || res.status === 504)) {
+    
+    // Pour TOUT GET échouant sur les routes critiques → offline
+    const isCriticalRead = method === 'GET' && (
+      path.startsWith('/products') ||
+      path.startsWith('/clients') ||
+      path.startsWith('/categories') ||
+      path.startsWith('/finance') ||
+      path.startsWith('/dashboard/kpis')
+    );
+    if (!res.ok && isCriticalRead) {
       return handleOfflineRequest<T>(path, options);
     }
-    // Pour les GET de données publiques, préférer le cache offline sur 401 aussi
-    if (res.status === 401 && method === 'GET' && (path.startsWith('/products') || path.startsWith('/clients') || path.startsWith('/categories'))) {
+    // Pour les autres endpoints non-critiques → offline sur 5xx/404/422
+    if (!res.ok && (res.status >= 500 || res.status === 404 || res.status === 422 || res.status === 502 || res.status === 503 || res.status === 504)) {
       return handleOfflineRequest<T>(path, options);
     }
   } catch {

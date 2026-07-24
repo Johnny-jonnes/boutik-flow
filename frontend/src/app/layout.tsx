@@ -5,14 +5,14 @@ import { LanguageProvider } from '@/context/LanguageContext';
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "BoutikFlow \u2014 CRM WhatsApp pour boutiques africaines",
+  title: "BoutikFlow — Caisse, CRM & Gestion de boutique",
   description:
-    "Gérez vos clients, automatisez vos ventes WhatsApp et développez votre boutique avec BoutikFlow. Le CRM intelligent conçu pour les commerçants guinéens.",
-  keywords: ["CRM", "WhatsApp", "boutique", "Guinée", "ventes", "e-commerce", "automatisation"],
+    "BoutikFlow : caisse enregistreuse, CRM clients, gestion de stock et finances pour votre boutique. 100% offline, conçu pour les commerçants africains.",
+  keywords: ["caisse", "POS", "CRM", "boutique", "Guinée", "ventes", "offline", "stock", "BoutikFlow"],
   authors: [{ name: "BoutikFlow" }],
   openGraph: {
-    title: "BoutikFlow",
-    description: "CRM WhatsApp pour boutiques africaines",
+    title: "BoutikFlow — Caisse & CRM",
+    description: "Caisse, CRM et gestion de boutique 100% offline pour commerçants africains.",
     type: "website",
   },
   manifest: "/manifest.json",
@@ -22,8 +22,12 @@ export const metadata: Metadata = {
     title: "BoutikFlow",
   },
   icons: {
-    icon: "/icon.svg",
-    apple: "/icon.svg",
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: "/icon-192.png",
+    shortcut: "/icon.svg",
   },
 };
 
@@ -31,7 +35,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#10b981',
+  themeColor: '#4f46e5',
 };
 
 import { PWARegister } from "@/components/PWARegister";
@@ -47,6 +51,10 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="mobile-web-app-capable" content="yes" />
+        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+        <link rel="alternate icon" href="/icon-192.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <meta name="msapplication-TileColor" content="#4f46e5" />
       </head>
       <body>
         <LanguageProvider>

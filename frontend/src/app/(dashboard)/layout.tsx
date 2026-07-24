@@ -465,12 +465,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
         .brand-text {
           font-family: var(--font-display);
-          font-size: 1.15rem; font-weight: 800;
+          font-size: 1.1rem; font-weight: 800;
           background: linear-gradient(135deg, #818cf8 0%, #6366f1 50%, #4f46e5 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
           letter-spacing: -0.02em;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          flex: 1;
+          min-width: 0;
         }
 
         /* ══ SIDEBAR ════════════════════════════════ */
@@ -495,13 +500,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
 
         .sidebar__brand {
-          display: flex; align-items: center; gap: 0.625rem;
-          padding: 1.25rem 1rem 0.875rem;
+          display: flex; align-items: center; gap: 0.5rem;
+          padding: 1rem 0.875rem 0.75rem;
           position: sticky; top: 0;
           background: inherit;
           z-index: 1;
           border-bottom: 1px solid rgba(255,255,255,0.04);
           margin-bottom: 0.5rem;
+          min-width: 0;
         }
 
         .sidebar-collapse-btn {
@@ -510,10 +516,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           color: #9898a8;
           border-radius: 7px;
           width: 28px; height: 28px;
+          min-width: 28px;
           display: flex; align-items: center; justify-content: center;
           cursor: pointer;
           transition: all 0.15s ease;
           padding: 0;
+          flex-shrink: 0;
         }
         .sidebar-collapse-btn:hover {
           background: rgba(255,255,255,0.1);

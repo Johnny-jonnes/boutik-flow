@@ -72,22 +72,30 @@ export default function POSPage() {
   }, []);
 
   const loadClients = async () => {
-    try { const r = await api.getClients(1, 200); setClients(r.items || []); } catch {}
+    const cached = (() => { try { const c = localStorage.getItem('offline_clients'); if (c) { const parsed = JSON.parse(c); if (Array.isArray(parsed) && parsed.length > 0) return parsed; } } catch {} return []; })();
+    if (cached.length > 0) setClients(cached);
+    try { const r = await api.getClients(1, 200); const items = r.items || []; if (items.length > 0) { setClients(items); try { localStorage.setItem('offline_clients', JSON.stringify(items)); } catch {} } } catch {}
   };
 
   const loadProducts = async () => {
-    setLoading(true);
+    // 1. Instant load from cache (zero latency - never shows error)
+    const cached = (() => {
+      try {
+        const p = localStorage.getItem('offline_products');
+        if (p) { const parsed = JSON.parse(p); if (Array.isArray(parsed) && parsed.length > 0) return parsed; }
+      } catch {}
+      return [];
+    })();
+    if (cached.length > 0) { setProducts(cached); setLoading(false); } else { setLoading(true); }
+    // 2. Silent background refresh from server
     try {
       const data = await api.getProducts(1, 200);
       const items = Array.isArray(data) ? data : (data?.items ?? []);
-      setProducts(items);
-    } catch (e) {
-      console.error('POS: getProducts error', e);
-      setProducts([]);
-      toast.error(language === 'fr' ? 'Erreur chargement produits' : 'Error loading products');
-    } finally {
-      setLoading(false);
-    }
+      if (items.length > 0) {
+        setProducts(items);
+        try { localStorage.setItem('offline_products', JSON.stringify(items)); } catch {}
+      }
+    } catch { /* silent - cache already loaded */ } finally { setLoading(false); }
   };
 
   // ─── Filtrage ────────────────────────────────────────────────────
@@ -851,6 +859,8 @@ export default function POSPage() {
           flex-shrink: 0;
           display: flex; flex-direction: column; gap: 0.45rem;
           background: var(--surface-1);
+          overflow-y: auto;
+          max-height: 52vh;
         }
 
         .p-row {
@@ -861,7 +871,8 @@ export default function POSPage() {
         .p-total {
           padding-top: 0.35rem; margin-top: 0.125rem;
           border-top: 1px solid var(--border-subtle);
-           .p-debt-box {
+        }
+        .p-debt-box {
           background: rgba(244,63,94,0.06); border: 1.5px solid rgba(244,63,94,0.25);
           border-radius: var(--radius-lg); padding: 0.75rem;
           display: flex; flex-direction: column; gap: 0.5rem;
