@@ -912,6 +912,57 @@ export default function POSPage() {
         .p-total {
           padding-top: 0.35rem; margin-top: 0.125rem;
           border-top: 1px solid var(--border-subtle);
+          font-size: 0.95rem; font-weight: 800;
+          color: var(--text-primary);
+        }
+        .p-total span:last-child { color: var(--color-brand-400); font-size: 1rem; }
+
+        /* Remise */
+        .p-discount {
+          width: 90px; background: var(--surface-0);
+          border: 1px solid var(--border-default); border-radius: 6px;
+          color: var(--text-primary); font-size: 0.8rem; font-weight: 600;
+          padding: 0.25rem 0.5rem; text-align: right; outline: none;
+          font-family: var(--font-sans);
+          transition: border-color 120ms;
+        }
+        .p-discount:focus { border-color: var(--color-brand-500); }
+        .p-discount::-webkit-inner-spin-button, .p-discount::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+        /* ─── Modes de paiement ─────────────────────────────────── */
+        .p-payment {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 0.4rem;
+          margin: 0.25rem 0;
+        }
+        .p-pay-btn {
+          display: flex; flex-direction: column;
+          align-items: center; justify-content: center;
+          gap: 0.25rem;
+          padding: 0.55rem 0.25rem;
+          border-radius: var(--radius-md);
+          border: 1.5px solid var(--border-default);
+          background: var(--surface-2);
+          color: var(--text-secondary);
+          font-size: 0.7rem; font-weight: 600;
+          cursor: pointer;
+          transition: all 150ms ease;
+          text-align: center;
+          line-height: 1.2;
+          user-select: none;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .p-pay-btn:hover {
+          border-color: var(--color-brand-500);
+          color: var(--color-brand-400);
+          background: var(--surface-3);
+        }
+        .p-pay-btn.active {
+          border-color: var(--color-brand-500);
+          background: rgba(109,213,196,0.14);
+          color: var(--color-brand-400);
+          box-shadow: 0 0 0 2px rgba(109,213,196,0.2);
         }
         .p-debt-box {
           background: rgba(244,63,94,0.06); border: 1.5px solid rgba(244,63,94,0.25);

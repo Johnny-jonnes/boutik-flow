@@ -109,18 +109,27 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="auth-logo">
           <div className="auth-logo-icon">
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-              <path d="M14 2L26 8V20L14 26L2 20V8L14 2Z" fill="url(#grad)" />
-              <path d="M9 14L12.5 17.5L19 11" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            <svg width="36" height="36" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 0 8px rgba(109,213,196,0.5))' }}>
               <defs>
-                <linearGradient id="grad" x1="2" y1="2" x2="26" y2="26" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#10b981" />
-                  <stop offset="1" stopColor="#047857" />
+                <linearGradient id="auth-hex-grad" x1="0" y1="0" x2="40" y2="40">
+                  <stop stopColor="#6dd5c4" />
+                  <stop offset="1" stopColor="#31a292" />
+                </linearGradient>
+                <linearGradient id="auth-wave-amber" x1="0" y1="0" x2="40" y2="0">
+                  <stop stopColor="#fbbf24" stopOpacity="0" />
+                  <stop offset="0.4" stopColor="#f59e0b" />
+                  <stop offset="1" stopColor="#fbbf24" stopOpacity="0" />
                 </linearGradient>
               </defs>
+              <path d="M20 2L36 11V29L20 38L4 29V11L20 2Z" fill="url(#auth-hex-grad)" opacity="0.95" />
+              <path d="M20 2L36 11V29L20 38L4 29V11L20 2Z" stroke="rgba(109,213,196,0.3)" strokeWidth="0.5" fill="none" />
+              <path d="M9 15 Q14.5 12 20 15 Q25.5 18 31 15" stroke="rgba(255,255,255,0.3)" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+              <path d="M9 20 Q14.5 16 20 20 Q25.5 24 31 20" stroke="rgba(255,255,255,0.9)" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+              <path d="M9 20 Q14.5 16 20 20 Q25.5 24 31 20" stroke="url(#auth-wave-amber)" strokeWidth="1.8" fill="none" strokeLinecap="round" opacity="0.65" />
+              <path d="M9 25 Q14.5 22 20 25 Q25.5 28 31 25" stroke="rgba(255,255,255,0.3)" strokeWidth="1.2" fill="none" strokeLinecap="round" />
             </svg>
           </div>
-          <span className="auth-logo-text">BoutikFlow</span>
+          <span className="auth-logo-text" style={{ background: 'linear-gradient(135deg, #6dd5c4, #31a292)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 800 }}>BoutikFlow</span>
         </div>
 
         <div className="auth-card glass">

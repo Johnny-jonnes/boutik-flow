@@ -466,15 +466,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         .mobile-bar {
           display: none;
           position: fixed; top: 0; left: 0; right: 0;
-          height: 56px;
-          background: rgba(8, 12, 11, 0.85);
+          /* safe-area pour l'encoche iOS / Dynamic Island */
+          padding-top: env(safe-area-inset-top, 0px);
+          height: calc(56px + env(safe-area-inset-top, 0px));
+          background: rgba(8, 12, 11, 0.92);
           border-bottom: 1px solid rgba(109,213,196,0.15);
-          padding: 0 1rem;
-          align-items: center;
+          padding-left: 1rem;
+          padding-right: 1rem;
+          align-items: flex-end;
+          padding-bottom: 0.5rem;
           justify-content: space-between;
-          z-index: 40;
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
+          z-index: 1100;
+          backdrop-filter: blur(24px) saturate(160%);
+          -webkit-backdrop-filter: blur(24px) saturate(160%);
         }
         .mobile-brand { display: flex; align-items: center; gap: 0.5rem; }
         .mobile-toggle {
@@ -849,7 +853,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           .main__inner {
             padding: 1.25rem 1rem;
-            padding-top: calc(56px + 1rem);
+            /* Compense hauteur barre top + safe-area haut + marge */
+            padding-top: calc(56px + env(safe-area-inset-top, 0px) + 1rem) !important;
             padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
           }
 
