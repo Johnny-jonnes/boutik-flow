@@ -104,17 +104,64 @@ const BOTTOM_NAV = [
 
 /* ─── Logo SVG indigo ───────────────────────────────────────────── */
 function Logo({ size = 20 }: { size?: number }) {
+  const [isOnline, setIsOnline] = useState(true);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setIsOnline(window.navigator.onLine);
+    const goOnline = () => setIsOnline(true);
+    const goOffline = () => setIsOnline(false);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
+  }, []);
+
   return (
-    <svg width={size} height={size} viewBox="0 0 28 28" fill="none">
-      <path d="M14 2L26 8V20L14 26L2 20V8L14 2Z" fill="url(#bf-g)" />
-      <path d="M9 14L12.5 17.5L19 11" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      <defs>
-        <linearGradient id="bf-g" x1="2" y1="2" x2="26" y2="26">
-          <stop stopColor="#818cf8" />
-          <stop offset="1" stopColor="#4f46e5" />
-        </linearGradient>
-      </defs>
-    </svg>
+    <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+      <svg
+        width={size} height={size} viewBox="0 0 28 28" fill="none"
+        style={{
+          filter: `drop-shadow(0 0 5px ${isOnline ? 'rgba(99,102,241,0.4)' : 'rgba(245,158,11,0.4)'})`,
+          transition: 'all 0.3s ease',
+          animation: 'logo-breathing 4s ease-in-out infinite'
+        }}
+      >
+        <path d="M14 2L26 8V20L14 26L2 20V8L14 2Z" fill="url(#bf-g-dyn)" />
+        <path d="M9 14L12.5 17.5L19 11" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <defs>
+          <linearGradient id="bf-g-dyn" x1="2" y1="2" x2="26" y2="26">
+            {isOnline ? (
+              <>
+                <stop stopColor="#818cf8" />
+                <stop offset="1" stopColor="#4f46e5" />
+              </>
+            ) : (
+              <>
+                <stop stopColor="#fbbf24" />
+                <stop offset="1" stopColor="#f59e0b" />
+              </>
+            )}
+          </linearGradient>
+        </defs>
+      </svg>
+      <span
+        style={{
+          position: 'absolute',
+          bottom: '-3px',
+          right: '-3px',
+          width: '7px',
+          height: '7px',
+          borderRadius: '50%',
+          border: '1px solid #0a0a0d',
+          backgroundColor: isOnline ? '#22c55e' : '#fbbf24',
+          boxShadow: `0 0 5px ${isOnline ? '#22c55e' : '#fbbf24'}`,
+          transition: 'background-color 0.3s ease, box-shadow 0.3s ease',
+        }}
+      />
+    </div>
   );
 }
 
@@ -398,6 +445,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           transition: transform 0.2s var(--ease-spring);
         }
         .logo-mark:hover { transform: scale(1.06) rotate(-3deg); }
+        @keyframes logo-breathing {
+          0%, 100% { transform: scale(1); opacity: 0.92; }
+          50% { transform: scale(1.06); opacity: 1; }
+        }
         .brand-text {
           font-family: var(--font-display);
           font-size: 1.15rem; font-weight: 800;

@@ -482,6 +482,9 @@ async function request<T>(
   let res: Response;
   try {
     res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+    if (!res.ok && (res.status >= 500 || res.status === 404 || res.status === 502 || res.status === 503 || res.status === 504)) {
+      return handleOfflineRequest<T>(path, options);
+    }
   } catch {
     return handleOfflineRequest<T>(path, options);
   }
