@@ -84,16 +84,34 @@ async def health_check():
 async def version_check():
     """Retourne la version du backend déployé et les routes disponibles."""
     return {
-        "commit": "2012445",
-        "build_date": "2026-07-23",
+        "commit": "0168caa",
+        "build_date": "2026-07-24",
         "routes": {
             "finance": "/api/v1/finance",
             "audit": "/api/v1/audit",
             "suppliers": "/api/v1/suppliers",
             "team": "/api/v1/auth/team",
             "orders": "/api/v1/orders",
+            "debts": "/api/v1/crm/debts",
         }
     }
+
+
+@app.post("/api/v1/migrate", tags=["Health"])
+async def force_migrate():
+    """Force la création de toutes les tables manquantes (idempotent)."""
+    from app.core.database import engine, Base
+    from app.modules.auth.models import Tenant, User, AdminNotification  # noqa
+    from app.modules.crm.models import Client  # noqa
+    from app.modules.crm.debt_models import ClientDebt, DebtPayment  # noqa
+    from app.modules.products.models import Product, InventoryLog, Order, OrderItem, OrderLog, WhatsAppMessage, AILog, Subscription  # noqa
+    from app.modules.marketing.models import Campaign  # noqa
+    from app.modules.suppliers.models import Supplier  # noqa
+    from app.modules.audit.models import AuditLog  # noqa
+    from app.modules.finance.models import FinancialTransaction  # noqa
+    Base.metadata.create_all(bind=engine)
+    tables = list(Base.metadata.tables.keys())
+    return {"status": "ok", "tables_registered": tables}
 
 
 # ─── Auto-création des tables au démarrage ──────────────────────────────────

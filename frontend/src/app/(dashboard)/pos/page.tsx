@@ -370,9 +370,7 @@ export default function POSPage() {
               value={selectedClientId}
               onChange={(e) => {
                 setSelectedClientId(e.target.value);
-                if (!e.target.value) {
-                  setIsDebt(false);
-                }
+                if (!e.target.value) { setIsDebt(false); setDebtDescription(''); setDebtDueDate(''); }
               }}
             >
               <option value="">{language === 'fr' ? '— Client passant (Comptoir) —' : '— Walk-in customer —'}</option>
@@ -380,53 +378,6 @@ export default function POSPage() {
                 <option key={c.id} value={c.id}>{c.name} {c.phone ? `(${c.phone})` : ''}</option>
               ))}
             </select>
-
-            {selectedClientId && (
-              <div style={{ marginTop: '0.5rem', padding: '0.5rem', background: 'var(--surface-2)', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <input 
-                    type="checkbox" 
-                    id="pos-debt-check" 
-                    checked={isDebt} 
-                    onChange={e => setIsDebt(e.target.checked)} 
-                    style={{ cursor: 'pointer' }}
-                  />
-                  <label htmlFor="pos-debt-check" style={{ fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', color: 'var(--text-primary)' }}>
-                    {language === 'fr' ? 'Enregistrer comme dette client (Crédit)' : 'Record as client debt (Credit)'}
-                  </label>
-                </div>
-
-                {isDebt && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem' }}>
-                    <div>
-                      <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.15rem' }}>
-                        {language === 'fr' ? 'Motif de la dette' : 'Debt description'}
-                      </label>
-                      <input 
-                        type="text" 
-                        className="input" 
-                        style={{ padding: '0.25rem 0.4rem', fontSize: '0.75rem', width: '100%' }}
-                        placeholder={language === 'fr' ? 'Ex: Reste à payer' : 'Ex: Balance due'}
-                        value={debtDescription}
-                        onChange={e => setDebtDescription(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.15rem' }}>
-                        {language === 'fr' ? "Date d'échéance" : 'Due date'}
-                      </label>
-                      <input 
-                        type="date" 
-                        className="input" 
-                        style={{ padding: '0.25rem 0.4rem', fontSize: '0.75rem', width: '100%' }}
-                        value={debtDueDate}
-                        onChange={e => setDebtDueDate(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
           
           <div className="cart-items">
@@ -501,12 +452,55 @@ export default function POSPage() {
               </label>
             </div>
             
-            <button 
-              className="validate-btn" 
+            {/* Option vente à crédit — visible uniquement si client sélectionné */}
+            {selectedClientId && (
+              <div style={{ padding: '0.6rem', background: 'rgba(239,68,68,0.06)', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.15)', marginTop: '0.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="checkbox"
+                    id="pos-debt-chk"
+                    checked={isDebt}
+                    onChange={e => setIsDebt(e.target.checked)}
+                    style={{ cursor: 'pointer', accentColor: '#ef4444' }}
+                  />
+                  <label htmlFor="pos-debt-chk" style={{ fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', color: '#ef4444' }}>
+                    {language === 'fr' ? '📋 Vente à crédit (dette)' : '📋 Credit sale (debt)'}
+                  </label>
+                </div>
+                {isDebt && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.5rem' }}>
+                    <input
+                      type="text"
+                      className="input"
+                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                      placeholder={language === 'fr' ? 'Motif (optionnel)' : 'Reason (optional)'}
+                      value={debtDescription}
+                      onChange={e => setDebtDescription(e.target.value)}
+                    />
+                    <input
+                      type="date"
+                      className="input"
+                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                      value={debtDueDate}
+                      onChange={e => setDebtDueDate(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button
+              className="validate-btn"
               disabled={cart.length === 0 || isProcessing}
               onClick={handleValidateSale}
+              style={isDebt ? { background: '#dc2626' } : {}}
             >
-              {isProcessing ? t('common.loading') : (language === 'fr' ? 'Valider la vente' : 'Validate Sale')}
+              {isProcessing
+                ? t('common.loading')
+                : isDebt
+                  ? (language === 'fr' ? '📋 Valider (à crédit)' : '📋 Validate (credit)')
+                  : (language === 'fr' ? 'Valider la vente' : 'Validate Sale')
+              }
             </button>
           </div>
         </div>
