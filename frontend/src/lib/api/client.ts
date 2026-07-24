@@ -128,6 +128,337 @@ async function tryRefreshToken(): Promise<boolean> {
   return result;
 }
 
+// ─── Offline-first Database & Cache Engine ─────────────────────────────────
+
+const DEFAULT_PRODUCTS = [
+  { id: 'p1', name: "Robe d'été Fleurie", price: 150000, stock: 15, sku: "ROB-FL-01", description: "Robe légère en coton bio.", category_id: "c1", created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: 'p2', name: "Baskets Sport Max", price: 350000, stock: 8, sku: "BAS-SP-02", description: "Chaussures de running ultra confort.", category_id: "c2", created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: 'p3', name: "Rouge à Lèvres Matte", price: 75000, stock: 24, sku: "RAL-MA-03", description: "Tenue 24h sans transfert.", category_id: "c3", created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: 'p4', name: "Crème Hydratante Aloé", price: 120000, stock: 18, sku: "CRE-HY-04", description: "Hydratation intense peaux sensibles.", category_id: "c3", created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: 'p5', name: "Smartphone Zed X", price: 1800000, stock: 4, sku: "TEL-ZX-05", description: "Écran AMOLED, 128 Go.", category_id: "c4", created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+];
+
+const DEFAULT_CLIENTS = [
+  { id: 'c1', name: "Mamadou Diallo", phone: "622 12 34 56", email: "diallo@boutik.com", status: "active", created_at: new Date().toISOString() },
+  { id: 'c2', name: "Mariama Barry", phone: "628 98 76 54", email: "barry@boutik.com", status: "vip", created_at: new Date().toISOString() },
+  { id: 'c3', name: "Amadou Camara", phone: "620 45 67 89", email: "camara@boutik.com", status: "new", created_at: new Date().toISOString() },
+];
+
+const DEFAULT_CATEGORIES = [
+  { id: "c1", name: "Vêtements", slug: "vetements", created_at: new Date().toISOString() },
+  { id: "c2", name: "Chaussures", slug: "chaussures", created_at: new Date().toISOString() },
+  { id: "c3", name: "Cosmétiques", slug: "cosmetiques", created_at: new Date().toISOString() },
+  { id: "c4", name: "Électronique", slug: "electronique", created_at: new Date().toISOString() },
+];
+
+const OfflineDB = {
+  getProducts(): any[] {
+    if (typeof window === 'undefined') return [];
+    const p = localStorage.getItem('offline_products');
+    if (!p) {
+      localStorage.setItem('offline_products', JSON.stringify(DEFAULT_PRODUCTS));
+      return DEFAULT_PRODUCTS;
+    }
+    return JSON.parse(p);
+  },
+  saveProducts(products: any[]) {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('offline_products', JSON.stringify(products));
+  },
+  getClients(): any[] {
+    if (typeof window === 'undefined') return [];
+    const c = localStorage.getItem('offline_clients');
+    if (!c) {
+      localStorage.setItem('offline_clients', JSON.stringify(DEFAULT_CLIENTS));
+      return DEFAULT_CLIENTS;
+    }
+    return JSON.parse(c);
+  },
+  saveClients(clients: any[]) {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('offline_clients', JSON.stringify(clients));
+  },
+  getCategories(): any[] {
+    if (typeof window === 'undefined') return [];
+    const c = localStorage.getItem('offline_categories');
+    if (!c) {
+      localStorage.setItem('offline_categories', JSON.stringify(DEFAULT_CATEGORIES));
+      return DEFAULT_CATEGORIES;
+    }
+    return JSON.parse(c);
+  },
+  saveCategories(categories: any[]) {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('offline_categories', JSON.stringify(categories));
+  },
+  getOrders(): any[] {
+    if (typeof window === 'undefined') return [];
+    const o = localStorage.getItem('offline_orders');
+    return o ? JSON.parse(o) : [];
+  },
+  saveOrders(orders: any[]) {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('offline_orders', JSON.stringify(orders));
+  },
+  getDebts(): any[] {
+    if (typeof window === 'undefined') return [];
+    const d = localStorage.getItem('offline_debts');
+    return d ? JSON.parse(d) : [];
+  },
+  saveDebts(debts: any[]) {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('offline_debts', JSON.stringify(debts));
+  },
+  getTransactions(): any[] {
+    if (typeof window === 'undefined') return [];
+    const t = localStorage.getItem('offline_transactions');
+    return t ? JSON.parse(t) : [];
+  },
+  saveTransactions(transactions: any[]) {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('offline_transactions', JSON.stringify(transactions));
+  }
+};
+
+function handleOfflineRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const method = (options.method || 'GET').toUpperCase();
+  const uuid = () => Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+
+  if (path.startsWith('/products')) {
+    const products = OfflineDB.getProducts();
+    if (method === 'GET') {
+      return Promise.resolve({
+        items: products,
+        total: products.length,
+        page: 1,
+        per_page: 200,
+        pages: 1
+      } as any as T);
+    }
+    if (method === 'POST') {
+      const data = JSON.parse(options.body as string);
+      const newProduct = {
+        id: uuid(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        stock: Number(data.stock) || 0,
+        price: Number(data.price) || 0,
+        ...data
+      };
+      products.push(newProduct);
+      OfflineDB.saveProducts(products);
+      return Promise.resolve(newProduct as any as T);
+    }
+  }
+
+  if (path.startsWith('/clients')) {
+    const clients = OfflineDB.getClients();
+    if (method === 'GET') {
+      return Promise.resolve({
+        items: clients,
+        total: clients.length,
+        page: 1,
+        per_page: 200,
+        pages: 1
+      } as any as T);
+    }
+    if (method === 'POST') {
+      const data = JSON.parse(options.body as string);
+      const newClient = {
+        id: uuid(),
+        created_at: new Date().toISOString(),
+        ...data
+      };
+      clients.push(newClient);
+      OfflineDB.saveClients(clients);
+      return Promise.resolve(newClient as any as T);
+    }
+  }
+
+  if (path.startsWith('/orders')) {
+    const orders = OfflineDB.getOrders();
+    if (method === 'GET') {
+      return Promise.resolve({
+        items: orders,
+        total: orders.length,
+        page: 1,
+        per_page: 200,
+        pages: 1
+      } as any as T);
+    }
+    if (method === 'POST') {
+      const data = JSON.parse(options.body as string);
+      const items = data.items || [];
+      
+      const products = OfflineDB.getProducts();
+      let orderTotal = 0;
+      items.forEach((item: any) => {
+        const prod = products.find(p => p.id === item.product_id);
+        if (prod) {
+          orderTotal += prod.price * item.quantity;
+          prod.stock = Math.max(0, prod.stock - item.quantity);
+        }
+      });
+      OfflineDB.saveProducts(products);
+
+      const newOrder = {
+        id: uuid(),
+        status: data.status || 'delivered',
+        items,
+        total: orderTotal,
+        notes: data.notes || '',
+        client_id: data.client_id || null,
+        created_at: new Date().toISOString(),
+      };
+      orders.unshift(newOrder);
+      OfflineDB.saveOrders(orders);
+
+      return Promise.resolve(newOrder as any as T);
+    }
+  }
+
+  if (path.startsWith('/crm/debts')) {
+    const debts = OfflineDB.getDebts();
+    if (method === 'GET') {
+      return Promise.resolve(debts as any as T);
+    }
+    if (method === 'POST') {
+      const data = JSON.parse(options.body as string);
+      const newDebt = {
+        id: uuid(),
+        client_id: data.client_id,
+        order_id: data.order_id || null,
+        original_amount: Number(data.original_amount),
+        remaining_amount: Number(data.original_amount),
+        description: data.description || 'Achat à crédit',
+        due_date: data.due_date || null,
+        status: 'unpaid',
+        created_at: new Date().toISOString(),
+      };
+      debts.unshift(newDebt);
+      OfflineDB.saveDebts(debts);
+      return Promise.resolve(newDebt as any as T);
+    }
+    if (method === 'POST' && path.includes('/pay')) {
+      const parts = path.split('/');
+      const debtId = parts[3];
+      const data = JSON.parse(options.body as string);
+      const amountPaid = Number(data.amount);
+      
+      const debt = debts.find(d => d.id === debtId);
+      if (debt) {
+        debt.remaining_amount = Math.max(0, debt.remaining_amount - amountPaid);
+        if (debt.remaining_amount <= 0) {
+          debt.status = 'paid';
+        }
+        OfflineDB.saveDebts(debts);
+
+        // Record a paid debt as an INCOME transaction in finance
+        const transactions = OfflineDB.getTransactions();
+        const clients = OfflineDB.getClients();
+        const clientName = clients.find(c => c.id === debt.client_id)?.name || 'Client';
+        
+        const newTx = {
+          id: uuid(),
+          type: 'income',
+          category: 'sale',
+          amount: amountPaid,
+          description: `Paiement dette client — ${clientName} (${debt.description})`,
+          payment_method: data.payment_method || 'cash',
+          reference: debt.id,
+          created_at: new Date().toISOString(),
+        };
+        transactions.unshift(newTx);
+        OfflineDB.saveTransactions(transactions);
+
+        return Promise.resolve({
+          message: 'Paiement de dette enregistré',
+          remaining_amount: debt.remaining_amount,
+          status: debt.status
+        } as any as T);
+      }
+    }
+  }
+
+  if (path.startsWith('/finance')) {
+    const transactions = OfflineDB.getTransactions();
+    if (method === 'GET') {
+      const total_income = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+      const total_expense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+      const summary = {
+        total_income,
+        total_expense,
+        net_balance: total_income - total_expense,
+        transactions_count: transactions.length
+      };
+      return Promise.resolve({
+        items: transactions,
+        total: transactions.length,
+        page: 1,
+        per_page: 50,
+        pages: 1,
+        summary
+      } as any as T);
+    }
+    if (method === 'POST') {
+      const data = JSON.parse(options.body as string);
+      const newTx = {
+        id: uuid(),
+        type: data.type,
+        category: data.category,
+        amount: Number(data.amount),
+        description: data.description,
+        payment_method: data.payment_method,
+        reference: data.reference || null,
+        created_at: new Date().toISOString(),
+      };
+      transactions.unshift(newTx);
+      OfflineDB.saveTransactions(transactions);
+      return Promise.resolve(newTx as any as T);
+    }
+  }
+
+  if (path.startsWith('/dashboard/kpis')) {
+    const transactions = OfflineDB.getTransactions();
+    const orders = OfflineDB.getOrders();
+    const clients = OfflineDB.getClients();
+
+    const total_revenue = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const total_expenses = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    const net_balance = total_revenue - total_expenses;
+    const pending_orders = orders.filter(o => o.status === 'pending').length;
+
+    return Promise.resolve({
+      total_revenue,
+      total_expenses,
+      net_balance,
+      total_orders: orders.length,
+      total_clients: clients.length,
+      pending_orders
+    } as any as T);
+  }
+
+  if (path.startsWith('/dashboard/analytics')) {
+    const transactions = OfflineDB.getTransactions();
+    const revenue_data = [] as any[];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+      const dateKey = d.toISOString().split('T')[0];
+
+      const dayTotal = transactions
+        .filter(t => t.type === 'income' && t.created_at.startsWith(dateKey))
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      revenue_data.push({ name: dateStr, value: dayTotal });
+    }
+    return Promise.resolve({ revenue_data } as any as T);
+  }
+
+  return Promise.reject(new ApiError('Offline module mapping error for: ' + path, 404));
+}
+
 // ─── Helper requête générique ───────────────────────────────────────────────
 
 async function request<T>(
@@ -135,6 +466,12 @@ async function request<T>(
   options: RequestInit = {},
   allowRetry = true
 ): Promise<T> {
+  const method = (options.method || 'GET').toUpperCase();
+  
+  if (typeof window !== 'undefined' && !window.navigator.onLine) {
+    return handleOfflineRequest<T>(path, options);
+  }
+
   const token = getAccessToken();
   const headers = new Headers(options.headers);
   if (!headers.has('Content-Type') && options.body) {
@@ -146,7 +483,30 @@ async function request<T>(
   try {
     res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
   } catch {
-    throw new ApiError('Connexion au serveur en cours... Veuillez réessayez dans quelques secondes.', 0);
+    return handleOfflineRequest<T>(path, options);
+  }
+
+  if (res.ok) {
+    try {
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const bodyClone = await res.clone().json().catch(() => null);
+        if (bodyClone) {
+          if (path.startsWith('/products') && method === 'GET') {
+            const items = Array.isArray(bodyClone) ? bodyClone : bodyClone.items;
+            if (items) OfflineDB.saveProducts(items);
+          } else if (path.startsWith('/clients') && method === 'GET') {
+            const items = Array.isArray(bodyClone) ? bodyClone : bodyClone.items;
+            if (items) OfflineDB.saveClients(items);
+          } else if (path.startsWith('/finance') && method === 'GET') {
+            const items = Array.isArray(bodyClone) ? bodyClone : bodyClone.items;
+            if (items) OfflineDB.saveTransactions(items);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Offline caching error', e);
+    }
   }
 
   // Tentative de rafraîchissement automatique en cas de 401

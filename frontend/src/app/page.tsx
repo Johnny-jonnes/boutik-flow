@@ -227,7 +227,7 @@ export default function HomePage() {
               <path d="M9 14L12.5 17.5L19 11" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               <defs>
                 <linearGradient id="navgrad" x1="2" y1="2" x2="26" y2="26">
-                  <stop stopColor="#10b981" /><stop offset="1" stopColor="#047857" />
+                  <stop stopColor="#818cf8" /><stop offset="1" stopColor="#4f46e5" />
                 </linearGradient>
               </defs>
             </svg>
@@ -573,7 +573,7 @@ export default function HomePage() {
           font-family: var(--font-display);
           font-size: 1.15rem;
           font-weight: 700;
-          background: linear-gradient(135deg, #10b981, #047857);
+          background: linear-gradient(135deg, #818cf8, #4f46e5);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;

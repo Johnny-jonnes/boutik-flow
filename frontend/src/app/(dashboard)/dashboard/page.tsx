@@ -333,10 +333,10 @@ export default function DashboardPage() {
 
       {/* Chart Section */}
       {chartData.length > 0 && (
-        <div className="card chart-card animate-fade-in">
+        <div className="card chart-card anim-fade-in">
           <div className="card-header">
             <h2 className="card-title">
-              {language === 'fr' ? 'Tendances du Chiffre d\'Affaires' : 'Revenue Trend'}
+              {language === 'fr' ? 'Tendance du Chiffre d\'Affaires' : 'Revenue Trend'}
             </h2>
           </div>
           <div className="chart-container">
@@ -344,40 +344,45 @@ export default function DashboardPage() {
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25}/>
+                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
-                <XAxis 
-                  dataKey="name" 
-                  tickLine={false} 
-                  axisLine={false} 
-                  tick={{ fill: 'var(--text-muted)', fontSize: 11 }} 
+                <XAxis
+                  dataKey="name"
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
                 />
-                <YAxis 
-                  tickLine={false} 
-                  axisLine={false} 
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
                   tickFormatter={(val) => `${val / 1000}k`}
-                  tick={{ fill: 'var(--text-muted)', fontSize: 11 }} 
+                  tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
                 />
-                <Tooltip 
+                <Tooltip
                   formatter={(value: any) => [`${new Intl.NumberFormat('fr-FR').format(value)} GNF`, language === 'fr' ? 'Chiffre d\'affaires' : 'Revenue']}
                   contentStyle={{
-                    background: 'var(--surface-1)',
+                    background: 'var(--surface-2)',
                     border: '1px solid var(--border-default)',
-                    borderRadius: '8px',
-                    color: 'var(--text-primary)'
+                    borderRadius: '12px',
+                    color: 'var(--text-primary)',
+                    boxShadow: 'var(--shadow-lg)',
+                    fontSize: '0.85rem',
                   }}
+                  cursor={{ stroke: 'var(--color-brand-400)', strokeWidth: 1, strokeDasharray: '4 4' }}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="value" 
-                  stroke="#10b981" 
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#6366f1"
                   strokeWidth={2.5}
-                  fillOpacity={1} 
-                  fill="url(#colorRevenue)" 
-                  animationDuration={1500}
+                  fillOpacity={1}
+                  fill="url(#colorRevenue)"
+                  dot={false}
+                  activeDot={{ r: 5, fill: '#818cf8', stroke: '#6366f1', strokeWidth: 2 }}
+                  animationDuration={1200}
                 />
               </AreaChart>
             </ResponsiveContainer>

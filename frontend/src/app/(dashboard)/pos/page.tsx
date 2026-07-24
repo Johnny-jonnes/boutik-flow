@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   Search, Plus, Minus, Trash2, CreditCard, Banknote,
-  Smartphone, ShoppingCart, ArrowUpRight, CheckCircle, X, Receipt,
+  Smartphone, ShoppingCart, ArrowUpRight, CheckCircle, X,
+  Zap, Package, AlertCircle,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { api } from '@/lib/api/client';
@@ -14,15 +15,14 @@ import { Product } from '@/types';
 
 interface CartItem extends Product { cartQuantity: number; }
 
-/* ─── Icône produit ─────────────────────────────────────────────── */
-const PRODUCT_EMOJIS = ['🛍️','📦','👗','👟','💄','🍎','🥤','🫒','🧴','💊','📱','🔧','🎁','🪴','🧸'];
-function productEmoji(name: string) {
+/* ─── Emoji déterministe par nom de produit ──────────────────────── */
+const EMOJIS = ['🛍️','📦','👗','👟','💄','🍎','🥤','🫒','🧴','💊','📱','🔧','🎁','🪴','🧸','🍕','☕','🎽','💎','🖥️'];
+const getEmoji = (name: string) => {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
-  return PRODUCT_EMOJIS[Math.abs(h) % PRODUCT_EMOJIS.length];
-}
+  return EMOJIS[Math.abs(h) % EMOJIS.length];
+};
 
-/* ─── Formatage GNF ─────────────────────────────────────────────── */
 const fmt = (n: number) => n.toLocaleString('fr-FR') + ' GNF';
 
 export default function POSPage() {
@@ -33,64 +33,70 @@ export default function POSPage() {
   const [cart, setCart]                 = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery]   = useState('');
   const [discount, setDiscount]         = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState<'cash'|'card'|'orange_money'|'transfer'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'orange_money' | 'transfer'>('cash');
   const [loading, setLoading]           = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [successAnim, setSuccessAnim]   = useState(false);
 
-  // Debt
+  // Dette
   const [isDebt, setIsDebt]               = useState(false);
   const [debtDescription, setDebtDescription] = useState('');
   const [debtDueDate, setDebtDueDate]     = useState('');
 
-  // Receipt
-  const [receiptData, setReceiptData]         = useState<any>(null);
+  // Reçu
+  const [receiptData, setReceiptData]               = useState<any>(null);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
-  const [shopName, setShopName]           = useState('BoutikFlow');
-  const [sellerName, setSellerName]       = useState('');
+  const [shopName, setShopName]   = useState('BoutikFlow');
+  const [sellerName, setSellerName] = useState('');
 
-  // Expense modal
-  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
-  const [expenseAmount, setExpenseAmount]     = useState('');
-  const [expenseCategory, setExpenseCategory] = useState('other_expense');
-  const [expenseDescription, setExpenseDescription] = useState('');
-  const [isSubmittingExpense, setIsSubmittingExpense] = useState(false);
+  // Sortie caisse
+  const [isExpenseModalOpen, setIsExpenseModalOpen]       = useState(false);
+  const [expenseAmount, setExpenseAmount]                 = useState('');
+  const [expenseCategory, setExpenseCategory]             = useState('other_expense');
+  const [expenseDescription, setExpenseDescription]       = useState('');
+  const [isSubmittingExpense, setIsSubmittingExpense]     = useState(false);
 
+  // ─── Init ──────────────────────────────────────────────────────────
   useEffect(() => {
-    fetchProducts();
-    fetchClients();
+    loadProducts();
+    loadClients();
     try {
       const token = localStorage.getItem('boutikflow_access_token');
       if (token) {
         const p = JSON.parse(atob(token.split('.')[1]));
         if (p.tenant_name) setShopName(p.tenant_name);
         const raw = p.email || p.sub || '';
-        if (raw) {
-          const n = raw.split('@')[0];
-          setSellerName(n.charAt(0).toUpperCase() + n.slice(1));
-        }
+        if (raw) { const n = raw.split('@')[0]; setSellerName(n.charAt(0).toUpperCase() + n.slice(1)); }
       }
     } catch {}
   }, []);
 
-  const fetchClients = async () => {
-    try { const r = await api.getClients(1, 100); setClients(r.items || []); } catch {}
+  const loadClients = async () => {
+    try { const r = await api.getClients(1, 200); setClients(r.items || []); } catch {}
   };
 
-  const fetchProducts = async () => {
+  const loadProducts = async () => {
     setLoading(true);
     try {
       const data = await api.getProducts(1, 200);
-      setProducts(Array.isArray(data) ? data : data?.items || []);
-    } catch { setProducts([]); }
-    finally { setLoading(false); }
+      const items = Array.isArray(data) ? data : (data?.items ?? []);
+      setProducts(items);
+    } catch (e) {
+      console.error('POS: getProducts error', e);
+      setProducts([]);
+      toast.error(language === 'fr' ? 'Erreur chargement produits' : 'Error loading products');
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // ─── Filtrage ────────────────────────────────────────────────────
   const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  // ─── Panier ──────────────────────────────────────────────────────
   const addToCart = (product: Product) => {
     if (product.stock <= 0) return;
     setCart(prev => {
@@ -107,16 +113,16 @@ export default function POSPage() {
     setCart(prev => prev.map(i => {
       if (i.id !== id) return i;
       const q = i.cartQuantity + delta;
-      if (q <= 0) return i;
+      if (q <= 0) return { ...i, cartQuantity: 1 };
       if (q > i.stock) { toast.error(language === 'fr' ? 'Stock insuffisant' : 'Insufficient stock'); return i; }
       return { ...i, cartQuantity: q };
-    }).filter(i => i.cartQuantity > 0));
+    }));
 
   const setDirectQty = (id: string, qty: number) =>
     setCart(prev => prev.map(i => {
       if (i.id !== id) return i;
       if (qty <= 0) return { ...i, cartQuantity: 1 };
-      if (qty > i.stock) { toast.error(language === 'fr' ? 'Stock insuffisant' : 'Insufficient stock'); return { ...i, cartQuantity: i.stock }; }
+      if (qty > i.stock) return { ...i, cartQuantity: i.stock };
       return { ...i, cartQuantity: qty };
     }));
 
@@ -126,21 +132,24 @@ export default function POSPage() {
   const totalItems = cart.reduce((s, i) => s + i.cartQuantity, 0);
   const total      = Math.max(0, subtotal - discount);
 
+  // ─── Validation vente ────────────────────────────────────────────
   const handleValidateSale = async () => {
-    if (cart.length === 0) return;
+    if (cart.length === 0 || isProcessing) return;
     setIsProcessing(true);
     try {
       const payload: any = {
-        status: 'delivered',
+        status: isDebt ? 'pending' : 'delivered',
         items: cart.map(i => ({ product_id: i.id, quantity: i.cartQuantity })),
         notes: isDebt
-          ? `[Vente à crédit] Paiement: ${paymentMethod} | Remise: ${discount} GNF`
+          ? `[DETTE] Montant: ${total} GNF | Paiement: ${paymentMethod} | Remise: ${discount} GNF`
           : `Paiement: ${paymentMethod} | Remise: ${discount} GNF`,
+        is_debt: isDebt,
       };
       if (selectedClientId) payload.client_id = selectedClientId;
 
       const order = await api.createOrder(payload);
 
+      // Enregistrement de la dette — ne compte PAS comme encaissement
       if (isDebt && selectedClientId) {
         try {
           await api.createDebt({
@@ -150,20 +159,32 @@ export default function POSPage() {
             description: debtDescription.trim() || (language === 'fr' ? 'Achat à crédit' : 'Credit purchase'),
             due_date: debtDueDate || undefined,
           });
-          toast.success(language === 'fr' ? 'Dette enregistrée ✓' : 'Debt recorded ✓');
-        } catch { toast.error(language === 'fr' ? 'Erreur lors de la dette' : 'Failed to record debt'); }
+          toast.success(language === 'fr' ? '📋 Dette enregistrée — sera comptabilisée à l\'encaissement' : '📋 Debt recorded — will be counted on payment');
+        } catch { toast.error(language === 'fr' ? 'Erreur enregistrement dette' : 'Error recording debt'); }
+      } else {
+        // Vente normale → transaction finance positive
+        try {
+          await api.createFinanceTransaction({
+            type: 'income',
+            category: 'sale',
+            amount: total,
+            description: `Vente caisse — ${cart.length} article(s)`,
+            payment_method: paymentMethod,
+            reference: order.id,
+          });
+        } catch { /* Finance non bloquante */ }
       }
 
       // Mise à jour stock local
       setProducts(prev => prev.map(p => {
         const ci = cart.find(c => c.id === p.id);
-        return ci ? { ...p, stock: p.stock - ci.cartQuantity } : p;
+        return ci ? { ...p, stock: Math.max(0, p.stock - ci.cartQuantity) } : p;
       }));
 
       // Animation succès
       setSuccessAnim(true);
-      setTimeout(() => setSuccessAnim(false), 1200);
-      toast.success(language === 'fr' ? '✓ Vente validée !' : '✓ Sale validated!');
+      setTimeout(() => setSuccessAnim(false), 1400);
+      if (!isDebt) toast.success(language === 'fr' ? '✓ Vente encaissée !' : '✓ Sale recorded!');
 
       const client = clients.find(c => c.id === selectedClientId);
       setReceiptData({
@@ -172,10 +193,11 @@ export default function POSPage() {
         items: cart.map(i => ({ product_id: i.id, quantity: i.cartQuantity, unit_price: i.price, product: { name: i.name } })),
         client: client ? { name: client.name, phone: client.phone || '' } : { name: language === 'fr' ? 'Client passant' : 'Walk-in', phone: '' },
         created_at: order.created_at || new Date().toISOString(),
-        status: 'confirmed',
+        status: isDebt ? 'pending' : 'confirmed',
       });
       setIsReceiptModalOpen(true);
 
+      // Reset
       setCart([]); setDiscount(0); setSelectedClientId('');
       setIsDebt(false); setDebtDescription(''); setDebtDueDate('');
     } catch (err: any) {
@@ -205,222 +227,209 @@ export default function POSPage() {
     } finally { setIsSubmittingExpense(false); }
   };
 
-  /* ─── Render ────────────────────────────────────────────────────── */
+  // ─── RENDER ─────────────────────────────────────────────────────
   return (
-    <div className="pos-root">
-      {/* ── Top header ── */}
-      <div className="pos-topbar">
+    <div className="pos-page-container">
+      {/* ══ TOP BAR ══════════════════════════════════════════════════ */}
+      <div className="p-topbar">
         <div>
-          <h1 className="pos-title">
-            <ShoppingCart size={22} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.5rem', opacity: 0.7 }} />
-            {language === 'fr' ? 'Caisse' : 'Checkout'}
+          <h1 className="p-title">
+            <Zap size={20} style={{ display:'inline', verticalAlign:'middle', marginRight:'0.5rem', color:'var(--color-accent-500)' }}/>
+            {language === 'fr' ? 'Caisse / Vente' : 'Checkout / Sales'}
           </h1>
-          <p className="pos-subtitle">{language === 'fr' ? 'Enregistrez vos ventes rapidement.' : 'Record your sales quickly.'}</p>
+          <p className="p-subtitle">{language === 'fr' ? 'Enregistrez vos ventes.' : 'Record your sales.'}</p>
         </div>
-        <button
-          className="btn btn-ghost expense-btn"
-          onClick={() => setIsExpenseModalOpen(true)}
-        >
-          <ArrowUpRight size={16} />
-          {language === 'fr' ? 'Sortie de caisse' : 'Cash Outflow'}
+        <button className="btn btn-ghost p-expense-btn" onClick={() => setIsExpenseModalOpen(true)}>
+          <ArrowUpRight size={15}/>
+          {language === 'fr' ? 'Sortie de caisse' : 'Outflow'}
         </button>
       </div>
 
-      {/* ── Main grid ── */}
-      <div className="pos-grid">
+      {/* ══ GRID ════════════════════════════════════════════════════ */}
+      <div className="p-grid">
 
-        {/* ══ Products zone ══════════════════════════════════════════ */}
-        <div className="pos-products-zone">
-          {/* Search bar */}
-          <div className="pos-header">
-            <div className="pos-search">
-              <Search className="pos-search-icon" size={18} />
-              <input
-                type="text"
-                className="input pos-search-input"
-                placeholder={language === 'fr' ? 'Rechercher un produit…' : 'Search product…'}
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <span className="products-count">
-              {filteredProducts.length} {language === 'fr' ? 'produits' : 'products'}
+        {/* ── Zone produits ──────────────────────────────────────── */}
+        <section className="p-products-zone">
+
+          {/* Barre de recherche */}
+          <div className="p-search-bar">
+            <Search size={16} className="p-search-icon"/>
+            <input
+              className="p-search-input"
+              type="text"
+              placeholder={language === 'fr' ? 'Rechercher…' : 'Search…'}
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              autoComplete="off"
+            />
+            {searchQuery && (
+              <button className="p-search-clear" onClick={() => setSearchQuery('')}><X size={14}/></button>
+            )}
+            <span className="p-products-count">
+              {filteredProducts.length}
             </span>
           </div>
 
-          {/* Products grid */}
-          <div className="pos-products-grid">
+          {/* Grille */}
+          <div className="p-products-grid">
             {loading ? (
-              Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="skeleton skeleton-card product-skeleton" />
+              Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} className="skeleton p-card-skeleton" style={{ animationDelay: `${i * 40}ms` }}/>
               ))
             ) : filteredProducts.length === 0 ? (
-              <div className="pos-empty" style={{ gridColumn: '1/-1' }}>
-                <ShoppingCart size={40} opacity={0.2} />
-                <p>{language === 'fr' ? 'Aucun produit trouvé' : 'No products found'}</p>
+              <div className="p-empty">
+                <Package size={36} opacity={0.2}/>
+                <span>{searchQuery ? (language === 'fr' ? 'Aucun résultat' : 'No results') : (language === 'fr' ? 'Aucun produit' : 'No products')}</span>
+                {!searchQuery && (
+                  <button className="btn btn-ghost btn--sm" onClick={loadProducts} style={{ marginTop: '0.5rem' }}>
+                    ↻ {language === 'fr' ? 'Recharger' : 'Reload'}
+                  </button>
+                )}
               </div>
             ) : (
-              filteredProducts.map(product => {
-                const disabled  = product.stock <= 0;
-                const inCart    = cart.find(i => i.id === product.id);
-                const emoji     = productEmoji(product.name);
+              filteredProducts.map((product, idx) => {
+                const disabled = product.stock <= 0;
+                const inCart   = cart.find(i => i.id === product.id);
+                const emoji    = getEmoji(product.name);
                 return (
-                  <div
+                  <button
                     key={product.id}
-                    className={`product-card ${disabled ? 'product-card--disabled' : ''} ${inCart ? 'product-card--in-cart' : ''}`}
+                    className={`p-card ${disabled ? 'p-card--out' : ''} ${inCart ? 'p-card--in-cart' : ''}`}
                     onClick={() => !disabled && addToCart(product)}
+                    disabled={disabled}
+                    style={{ animationDelay: `${idx * 20}ms` }}
+                    title={product.name}
                   >
-                    {/* Qty badge */}
-                    {inCart && (
-                      <div className="product-cart-badge">{inCart.cartQuantity}</div>
-                    )}
-                    {/* Image / emoji */}
-                    {product.images && product.images[0] ? (
-                      <img src={product.images[0]} alt={product.name} className="product-img" />
-                    ) : (
-                      <div className="product-emoji">{emoji}</div>
-                    )}
-                    <span className="product-name">{product.name}</span>
-                    <span className="product-price">{product.price.toLocaleString('fr-FR')} <small>GNF</small></span>
-                    <span className={`product-stock ${disabled ? 'product-stock--out' : product.stock <= 5 ? 'product-stock--low' : ''}`}>
-                      {disabled ? (language === 'fr' ? 'Épuisé' : 'Out of stock') : `${product.stock} ${language === 'fr' ? 'en stock' : 'in stock'}`}
+                    {inCart && <span className="p-qty-badge">{inCart.cartQuantity}</span>}
+                    <span className="p-emoji">{product.images?.[0]
+                      ? <img src={product.images[0]} alt={product.name} style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:'inherit' }}/>
+                      : emoji
+                    }</span>
+                    <span className="p-card-name">{product.name}</span>
+                    <span className="p-card-price">{product.price.toLocaleString('fr-FR')}<small> GNF</small></span>
+                    <span className={`p-card-stock ${disabled ? 'out' : product.stock <= 5 ? 'low' : ''}`}>
+                      {disabled ? '✗' : `${product.stock}`}
                     </span>
-                  </div>
+                  </button>
                 );
               })
             )}
           </div>
-        </div>
+        </section>
 
-        {/* ══ Cart panel ══════════════════════════════════════════════ */}
-        <div className="cart-panel">
+        {/* ── Panier ──────────────────────────────────────────────── */}
+        <aside className="p-cart">
+
           {/* Header */}
-          <div className="cart-header">
-            <span className="cart-title">{language === 'fr' ? 'Panier' : 'Cart'}</span>
-            {totalItems > 0 && (
-              <span className="cart-count">{totalItems}</span>
-            )}
+          <div className="p-cart-header">
+            <span className="p-cart-title">
+              <ShoppingCart size={16} style={{ opacity: 0.7 }}/>
+              {language === 'fr' ? 'Panier' : 'Cart'}
+            </span>
+            {totalItems > 0 && <span className="p-cart-badge">{totalItems}</span>}
             {cart.length > 0 && (
-              <button
-                onClick={() => { setCart([]); setDiscount(0); }}
-                className="btn btn-ghost btn--sm"
-                style={{ marginLeft: 'auto', color: 'var(--color-error)', fontSize: '0.75rem' }}
-                title={language === 'fr' ? 'Vider le panier' : 'Clear cart'}
-              >
-                <X size={14} />
+              <button className="p-cart-clear" onClick={() => { setCart([]); setDiscount(0); }} title={language === 'fr' ? 'Vider' : 'Clear'}>
+                <X size={13}/>
               </button>
             )}
           </div>
 
-          {/* Client selector */}
-          <div className="client-selector-box">
-            <label className="form-label">{language === 'fr' ? 'Client' : 'Customer'}</label>
+          {/* Client */}
+          <div className="p-client-box">
             <select
-              className="input"
+              className="p-select"
               value={selectedClientId}
               onChange={e => {
                 setSelectedClientId(e.target.value);
                 if (!e.target.value) { setIsDebt(false); setDebtDescription(''); setDebtDueDate(''); }
               }}
             >
-              <option value="">{language === 'fr' ? '— Client passant —' : '— Walk-in customer —'}</option>
+              <option value="">{language === 'fr' ? 'Client passant' : 'Walk-in customer'}</option>
               {clients.map(c => (
                 <option key={c.id} value={c.id}>{c.name}{c.phone ? ` · ${c.phone}` : ''}</option>
               ))}
             </select>
           </div>
 
-          {/* Cart items */}
-          <div className="cart-items">
+          {/* Articles — zone scrollable */}
+          <div className="p-items">
             {cart.length === 0 ? (
-              <div className="cart-empty">
-                <ShoppingCart size={44} className="empty-icon" />
-                <p style={{ fontSize: '0.85rem' }}>{language === 'fr' ? 'Sélectionnez des produits' : 'Select products to start'}</p>
+              <div className="p-cart-empty">
+                <ShoppingCart size={40} opacity={0.15}/>
+                <span>{language === 'fr' ? 'Appuyez sur un produit' : 'Tap a product'}</span>
               </div>
-            ) : (
-              cart.map(item => (
-                <div key={item.id} className="cart-item">
-                  <div className="item-emoji">{productEmoji(item.name)}</div>
-                  <div className="item-details">
-                    <span className="item-name">{item.name}</span>
-                    <span className="item-price">{fmt(item.price * item.cartQuantity)}</span>
-                  </div>
-                  <div className="item-controls">
-                    <button onClick={() => updateQty(item.id, -1)} className="qty-btn"><Minus size={13}/></button>
-                    <input
-                      type="number" className="qty-input"
-                      value={item.cartQuantity} min="1" max={item.stock}
-                      onChange={e => setDirectQty(item.id, parseInt(e.target.value) || 1)}
-                    />
-                    <button onClick={() => updateQty(item.id, 1)} className="qty-btn"><Plus size={13}/></button>
-                    <button onClick={() => removeFromCart(item.id)} className="remove-btn"><Trash2 size={13}/></button>
-                  </div>
+            ) : cart.map(item => (
+              <div key={item.id} className="p-item">
+                <span className="p-item-emoji">{getEmoji(item.name)}</span>
+                <div className="p-item-info">
+                  <span className="p-item-name">{item.name}</span>
+                  <span className="p-item-total">{fmt(item.price * item.cartQuantity)}</span>
                 </div>
-              ))
-            )}
+                <div className="p-item-ctrl">
+                  <button className="p-qty-btn" onClick={() => updateQty(item.id, -1)}><Minus size={12}/></button>
+                  <input
+                    className="p-qty-input"
+                    type="number" value={item.cartQuantity} min="1" max={item.stock}
+                    onChange={e => setDirectQty(item.id, parseInt(e.target.value) || 1)}
+                  />
+                  <button className="p-qty-btn" onClick={() => updateQty(item.id, 1)}><Plus size={12}/></button>
+                  <button className="p-remove-btn" onClick={() => removeFromCart(item.id)}><Trash2 size={12}/></button>
+                </div>
+              </div>
+            ))}
           </div>
 
-          {/* Summary + validation */}
-          <div className="cart-summary">
+          {/* Summary + Validation */}
+          <div className="p-summary">
             {/* Totaux */}
-            <div className="summary-row">
+            <div className="p-row">
               <span>{language === 'fr' ? 'Sous-total' : 'Subtotal'}</span>
               <span>{fmt(subtotal)}</span>
             </div>
-            <div className="summary-row discount-row">
-              <span>{language === 'fr' ? 'Remise (GNF)' : 'Discount (GNF)'}</span>
+            <div className="p-row">
+              <span>{language === 'fr' ? 'Remise' : 'Discount'}</span>
               <input
-                type="number" className="discount-input"
-                value={discount || ''} min="0" max={subtotal}
+                className="p-discount"
+                type="number" min="0" max={subtotal}
+                value={discount || ''} placeholder="0"
                 onChange={e => setDiscount(Number(e.target.value))}
-                placeholder="0"
               />
             </div>
-            <div className="summary-row total-row">
+            <div className="p-row p-total">
               <span>Total</span>
               <span>{fmt(total)}</span>
             </div>
 
-            {/* Modes de paiement */}
-            <div className="payment-methods">
+            {/* Paiement */}
+            <div className="p-payment">
               {([
-                { value: 'cash',         label: language === 'fr' ? 'Espèces' : 'Cash',   Icon: Banknote },
-                { value: 'orange_money', label: 'Orange M.',                              Icon: Smartphone },
-                { value: 'card',         label: language === 'fr' ? 'Carte' : 'Card',     Icon: CreditCard },
-              ] as const).map(({ value, label, Icon }) => (
-                <label key={value} className={`pay-btn ${paymentMethod === value ? 'active' : ''}`}>
-                  <input type="radio" name="payment" value={value} checked={paymentMethod === value} onChange={() => setPaymentMethod(value)} className="hidden" />
-                  <Icon size={18} />
+                { v: 'cash',         label: language === 'fr' ? 'Espèces' : 'Cash',  Icon: Banknote },
+                { v: 'orange_money', label: 'Orange M.',                             Icon: Smartphone },
+                { v: 'card',         label: language === 'fr' ? 'Carte' : 'Card',    Icon: CreditCard },
+              ] as const).map(({ v, label, Icon }) => (
+                <label key={v} className={`p-pay-btn ${paymentMethod === v ? 'active' : ''}`}>
+                  <input type="radio" name="pm" value={v} checked={paymentMethod === v} onChange={() => setPaymentMethod(v)} style={{ display:'none' }}/>
+                  <Icon size={16}/>
                   <span>{label}</span>
                 </label>
               ))}
             </div>
 
-            {/* Option dette — uniquement si client sélectionné */}
+            {/* Dette — visible uniquement si client sélectionné */}
             {selectedClientId && (
-              <div className="debt-box">
-                <label className="debt-checkbox-label">
+              <div className="p-debt-box">
+                <label className="p-debt-label">
                   <input
-                    type="checkbox" id="pos-debt-chk"
-                    checked={isDebt}
+                    type="checkbox" checked={isDebt}
                     onChange={e => setIsDebt(e.target.checked)}
-                    style={{ accentColor: 'var(--color-error)', width: 16, height: 16, cursor: 'pointer', flexShrink: 0 }}
+                    style={{ accentColor: 'var(--color-error)', width:15, height:15, cursor:'pointer', flexShrink:0 }}
                   />
-                  <span>{language === 'fr' ? '📋 Vente à crédit (dette)' : '📋 Credit sale (debt)'}</span>
+                  <span>📋 {language === 'fr' ? 'Vente à crédit' : 'Credit sale'}</span>
                 </label>
                 {isDebt && (
-                  <div className="debt-fields">
-                    <input
-                      type="text" className="input"
-                      placeholder={language === 'fr' ? 'Motif (optionnel)' : 'Reason (optional)'}
-                      value={debtDescription}
-                      onChange={e => setDebtDescription(e.target.value)}
-                    />
-                    <input
-                      type="date" className="input"
-                      value={debtDueDate}
-                      onChange={e => setDebtDueDate(e.target.value)}
-                    />
+                  <div className="p-debt-fields">
+                    <input className="p-debt-input" type="text" placeholder={language === 'fr' ? 'Motif (optionnel)' : 'Reason'} value={debtDescription} onChange={e => setDebtDescription(e.target.value)}/>
+                    <input className="p-debt-input" type="date" value={debtDueDate} onChange={e => setDebtDueDate(e.target.value)}/>
                   </div>
                 )}
               </div>
@@ -428,29 +437,28 @@ export default function POSPage() {
 
             {/* BOUTON VALIDER */}
             <button
-              className={`validate-btn ${successAnim ? 'validate-btn--success' : ''} ${isDebt ? 'validate-btn--debt' : ''}`}
+              className={`p-validate ${successAnim ? 'success' : ''} ${isDebt ? 'debt' : ''}`}
               disabled={cart.length === 0 || isProcessing}
               onClick={handleValidateSale}
             >
               {isProcessing ? (
-                <><span className="spinner" /> {language === 'fr' ? 'Traitement…' : 'Processing…'}</>
+                <><span className="spinner spinner--sm"/> {language === 'fr' ? 'En cours…' : 'Processing…'}</>
               ) : successAnim ? (
-                <><CheckCircle size={22} /> {language === 'fr' ? 'Vente validée !' : 'Sale confirmed!'}</>
+                <><CheckCircle size={20}/> {language === 'fr' ? 'Validé !' : 'Done!'}</>
               ) : (
                 <>
-                  {isDebt
-                    ? `📋 ${language === 'fr' ? 'Valider à crédit' : 'Validate credit'}`
-                    : `✓ ${language === 'fr' ? 'Valider la vente' : 'Validate sale'}`
-                  }
-                  {cart.length > 0 && <span className="validate-total">{fmt(total)}</span>}
+                  <span style={{ flex: 1 }}>
+                    {isDebt ? `📋 ${language === 'fr' ? 'Crédit' : 'Credit'}` : `✓ ${language === 'fr' ? 'Encaisser' : 'Collect'}`}
+                  </span>
+                  {cart.length > 0 && <span className="p-validate-amount">{fmt(total)}</span>}
                 </>
               )}
             </button>
           </div>
-        </div>
+        </aside>
       </div>
 
-      {/* ── Receipt modal ── */}
+      {/* ── Reçu ─────────────────────────────────────────────────── */}
       {receiptData && (
         <ReceiptModal
           isOpen={isReceiptModalOpen}
@@ -461,510 +469,430 @@ export default function POSPage() {
         />
       )}
 
-      {/* ── Expense modal ── */}
-      <Modal
-        isOpen={isExpenseModalOpen}
-        onClose={() => setIsExpenseModalOpen(false)}
-        title={language === 'fr' ? 'Sortie de Caisse' : 'Cash Outflow'}
-      >
-        <form onSubmit={handleCreateExpense} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      {/* ── Modal sortie caisse ──────────────────────────────────── */}
+      <Modal isOpen={isExpenseModalOpen} onClose={() => setIsExpenseModalOpen(false)} title={language === 'fr' ? 'Sortie de Caisse' : 'Cash Outflow'}>
+        <form onSubmit={handleCreateExpense} style={{ display:'flex', flexDirection:'column', gap:'1rem' }}>
           <div className="input-group">
             <label className="form-label">{language === 'fr' ? 'Catégorie *' : 'Category *'}</label>
             <select className="input" value={expenseCategory} onChange={e => setExpenseCategory(e.target.value)} required>
               <option value="supplier_purchase">{language === 'fr' ? 'Achat fournisseur' : 'Supplier purchase'}</option>
               <option value="salary">{language === 'fr' ? 'Salaire équipe' : 'Staff salary'}</option>
               <option value="rent">{language === 'fr' ? 'Loyer & charges' : 'Rent & charges'}</option>
-              <option value="utilities">{language === 'fr' ? 'Factures (eau, électricité…)' : 'Bills (water, electricity…)'}</option>
+              <option value="utilities">{language === 'fr' ? 'Factures' : 'Bills'}</option>
               <option value="refund">{language === 'fr' ? 'Remboursement client' : 'Customer refund'}</option>
               <option value="other_expense">{language === 'fr' ? 'Autre dépense' : 'Other expense'}</option>
             </select>
           </div>
           <div className="input-group">
             <label className="form-label">{language === 'fr' ? 'Montant (GNF) *' : 'Amount (GNF) *'}</label>
-            <input type="number" min={1} className="input" placeholder="ex: 50 000" value={expenseAmount} onChange={e => setExpenseAmount(e.target.value)} required />
+            <input type="number" min={1} className="input" placeholder="50 000" value={expenseAmount} onChange={e => setExpenseAmount(e.target.value)} required/>
           </div>
           <div className="input-group">
             <label className="form-label">{language === 'fr' ? 'Motif *' : 'Reason *'}</label>
-            <textarea className="input" rows={3} placeholder={language === 'fr' ? 'Ex: Paiement livreur, fournitures…' : 'Ex: Delivery payment, supplies…'} value={expenseDescription} onChange={e => setExpenseDescription(e.target.value)} required />
+            <textarea className="input" rows={3} placeholder={language === 'fr' ? 'Ex: Paiement livreur…' : 'Ex: Delivery payment…'} value={expenseDescription} onChange={e => setExpenseDescription(e.target.value)} required/>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '0.25rem' }}>
-            <button type="button" className="btn btn-ghost" onClick={() => setIsExpenseModalOpen(false)} disabled={isSubmittingExpense}>
-              {language === 'fr' ? 'Annuler' : 'Cancel'}
-            </button>
-            <button type="submit" className="btn btn-danger" disabled={isSubmittingExpense}>
-              {isSubmittingExpense ? (language === 'fr' ? 'Enregistrement…' : 'Saving…') : (language === 'fr' ? 'Valider la sortie' : 'Record outflow')}
-            </button>
+          <div style={{ display:'flex', gap:'0.75rem', justifyContent:'flex-end' }}>
+            <button type="button" className="btn btn-ghost" onClick={() => setIsExpenseModalOpen(false)} disabled={isSubmittingExpense}>{language === 'fr' ? 'Annuler' : 'Cancel'}</button>
+            <button type="submit" className="btn btn-danger" disabled={isSubmittingExpense}>{isSubmittingExpense ? '…' : (language === 'fr' ? 'Valider la sortie' : 'Record')}</button>
           </div>
         </form>
       </Modal>
 
+      {/* ══ STYLES SCOPED ═══════════════════════════════════════════ */}
       <style jsx>{`
-        /* ── Layout racine ── */
-        .pos-root {
+        /* ─── Layout racine ─────────────────────────────────────── */
+        .pos-page-container {
           display: flex;
           flex-direction: column;
-          gap: 1.25rem;
-          height: calc(100vh - 4.5rem);
-          max-height: calc(100vh - 4.5rem);
+          height: calc(100vh - 8rem);
+          max-height: calc(100vh - 8rem);
           overflow: hidden;
+          padding-bottom: 1rem;
         }
 
-        /* ── Top bar ── */
-        .pos-topbar {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 1rem;
-          flex-shrink: 0;
+        .p-topbar {
+          display: flex; align-items: center; justify-content: space-between;
+          gap: 1rem; margin-bottom: 1rem; flex-shrink: 0;
         }
-        .pos-title {
+        .p-title {
           font-family: var(--font-display);
-          font-size: 1.5rem;
-          font-weight: 800;
-          color: var(--text-primary);
-          letter-spacing: -0.03em;
+          font-size: 1.625rem; font-weight: 800;
+          color: var(--text-primary); letter-spacing: -0.03em;
         }
-        .pos-subtitle {
-          font-size: 0.85rem;
-          color: var(--text-muted);
-          margin-top: 2px;
+        .p-subtitle { font-size: 0.82rem; color: var(--text-muted); margin-top: 2px; }
+        .p-expense-btn {
+          color: var(--color-error); border-color: rgba(244,63,94,0.2);
+          font-size: 0.8rem; min-height: 38px;
         }
-        .expense-btn {
-          color: var(--color-error);
-          border-color: rgba(244,63,94,0.2);
-          font-size: 0.82rem;
-        }
-        .expense-btn:hover {
-          background: rgba(244,63,94,0.08);
-          border-color: rgba(244,63,94,0.3);
-        }
+        .p-expense-btn:hover { background: rgba(244,63,94,0.08); border-color: rgba(244,63,94,0.3); }
 
-        /* ── Main grid ── */
-        .pos-grid {
+        /* ─── Grid ──────────────────────────────────────────────── */
+        .p-grid {
           display: grid;
-          grid-template-columns: 1fr 380px;
+          grid-template-columns: 1fr 360px;
           gap: 0;
           flex: 1;
           min-height: 0;
           border-radius: var(--radius-xl);
           border: 1px solid var(--border-subtle);
           overflow: hidden;
-          background: var(--surface-1);
-          box-shadow: var(--shadow-md);
+          box-shadow: var(--shadow-lg);
         }
 
-        @media (max-width: 1100px) {
-          .pos-grid { grid-template-columns: 1fr 340px; }
-        }
-
-        @media (max-width: 900px) {
-          .pos-root { height: auto; max-height: none; overflow: visible; }
-          .pos-grid { grid-template-columns: 1fr; border-radius: var(--radius-lg); }
-        }
-
-        /* ── Products zone ── */
-        .pos-products-zone {
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-          border-right: 1px solid var(--border-subtle);
-        }
-
-        /* Search header */
-        .pos-header {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          padding: 0.875rem 1rem;
-          border-bottom: 1px solid var(--border-subtle);
-          flex-shrink: 0;
-          background: var(--surface-2);
-        }
-        .pos-search {
-          flex: 1;
-          position: relative;
-        }
-        .pos-search-icon {
-          position: absolute;
-          left: 0.75rem;
-          top: 50%;
-          transform: translateY(-50%);
-          color: var(--text-muted);
-          pointer-events: none;
-        }
-        .pos-search-input {
-          padding-left: 2.5rem !important;
-          min-height: 42px;
-          border-radius: var(--radius-md);
-          background: var(--surface-1) !important;
-        }
-        .products-count {
-          font-size: 0.75rem;
-          color: var(--text-muted);
-          font-weight: 600;
-          white-space: nowrap;
-          flex-shrink: 0;
-        }
-
-        /* Products grid */
-        .pos-products-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-          gap: 0.625rem;
-          padding: 0.875rem;
-          overflow-y: auto;
-          flex: 1;
-          align-content: start;
-        }
-
-        @media (max-width: 768px) {
-          .pos-products-grid {
-            grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
-            gap: 0.5rem;
-            padding: 0.625rem;
+        @media (max-width: 1100px) { .p-grid { grid-template-columns: 1fr 320px; } }
+        @media (max-width: 860px) {
+          .p-grid {
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr auto;
+            height: auto;
           }
         }
 
-        /* Product card */
-        .product-card {
+        /* ─── Zone produits ─────────────────────────────────────── */
+        .p-products-zone {
+          display: flex; flex-direction: column;
           background: var(--surface-0);
+          border-right: 1px solid var(--border-subtle);
+          overflow: hidden;
+        }
+
+        /* Search */
+        .p-search-bar {
+          display: flex; align-items: center; gap: 0.5rem;
+          padding: 0.75rem 0.875rem;
+          border-bottom: 1px solid var(--border-subtle);
+          background: var(--surface-1);
+          flex-shrink: 0; position: relative;
+        }
+        .p-search-icon { color: var(--text-muted); flex-shrink: 0; }
+        .p-search-input {
+          flex: 1; background: transparent; border: none; outline: none;
+          color: var(--text-primary); font-size: 0.9rem; font-family: var(--font-sans);
+          min-width: 0;
+        }
+        .p-search-input::placeholder { color: var(--text-muted); }
+        .p-search-clear {
+          background: none; border: none; color: var(--text-muted);
+          cursor: pointer; padding: 2px; display: flex; align-items: center;
+          transition: color 120ms; flex-shrink: 0;
+        }
+        .p-search-clear:hover { color: var(--text-primary); }
+        .p-products-count {
+          font-size: 0.72rem; font-weight: 700;
+          color: var(--text-muted); flex-shrink: 0;
+          background: var(--surface-2); padding: 0.15rem 0.5rem;
+          border-radius: 99px; border: 1px solid var(--border-subtle);
+        }
+
+        /* Grid produits */
+        .p-products-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+          gap: 0.5rem;
+          padding: 0.75rem;
+          overflow-y: auto; flex: 1; align-content: start;
+        }
+
+        /* Card produit */
+        .p-card {
+          background: var(--surface-1);
           border: 1.5px solid var(--border-subtle);
           border-radius: var(--radius-lg);
-          padding: 0.75rem 0.625rem;
+          padding: 0.75rem 0.5rem 0.625rem;
           cursor: pointer;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 0.35rem;
+          display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
           text-align: center;
-          position: relative;
-          overflow: hidden;
+          position: relative; overflow: hidden;
           transition:
-            border-color 120ms ease,
-            background 120ms ease,
-            transform 200ms var(--ease-spring),
+            border-color 100ms ease,
+            background 100ms ease,
+            transform 180ms var(--ease-spring),
             box-shadow 150ms ease;
+          animation: slideUp 0.3s var(--ease-out) both;
+          -webkit-tap-highlight-color: transparent;
           user-select: none;
-          -webkit-user-select: none;
         }
-        .product-card:hover:not(.product-card--disabled) {
-          border-color: var(--color-brand-400);
-          background: var(--surface-1);
-          transform: translateY(-2px);
+        .p-card:hover:not(.p-card--out) {
+          border-color: rgba(99,102,241,0.5);
+          background: var(--surface-2);
+          transform: translateY(-3px) scale(1.01);
           box-shadow: var(--shadow-md);
         }
-        .product-card:active:not(.product-card--disabled) {
-          transform: scale(0.94);
+        .p-card:active:not(.p-card--out) {
+          transform: scale(0.93);
           box-shadow: none;
+          border-color: var(--color-brand-500);
         }
-        .product-card--in-cart {
-          border-color: rgba(99,102,241,0.4);
-          background: rgba(99,102,241,0.04);
+        .p-card--in-cart {
+          border-color: rgba(99,102,241,0.45);
+          background: rgba(99,102,241,0.05);
         }
-        .product-card--disabled {
-          opacity: 0.4;
-          cursor: not-allowed;
-        }
+        .p-card--out { opacity: 0.35; cursor: not-allowed; }
 
-        .product-cart-badge {
-          position: absolute;
-          top: 5px; right: 5px;
-          background: var(--color-brand-500);
-          color: white;
-          font-size: 0.62rem;
-          font-weight: 800;
-          width: 18px; height: 18px;
-          border-radius: 50%;
+        .p-qty-badge {
+          position: absolute; top: 4px; right: 4px;
+          background: var(--color-brand-500); color: #fff;
+          font-size: 0.6rem; font-weight: 800;
+          min-width: 17px; height: 17px; border-radius: 99px;
           display: flex; align-items: center; justify-content: center;
           animation: bounceIn 0.25s var(--ease-spring);
+          padding: 0 3px;
         }
-        .product-img {
-          width: 52px; height: 52px;
-          border-radius: var(--radius-md);
-          object-fit: cover;
-        }
-        .product-emoji {
-          font-size: 2rem;
-          line-height: 1;
-          width: 52px; height: 52px;
+
+        .p-emoji {
+          font-size: 1.75rem; line-height: 1;
+          width: 48px; height: 48px;
           display: flex; align-items: center; justify-content: center;
-          background: var(--surface-2);
-          border-radius: var(--radius-md);
-          transition: transform 200ms var(--ease-spring);
+          background: var(--surface-2); border-radius: var(--radius-md);
+          overflow: hidden; flex-shrink: 0;
+          transition: transform 180ms var(--ease-spring);
         }
-        .product-card:hover .product-emoji { transform: scale(1.1); }
+        .p-card:hover .p-emoji { transform: scale(1.12); }
 
-        .product-name {
-          font-size: 0.73rem;
-          font-weight: 600;
-          color: var(--text-primary);
-          line-height: 1.3;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
+        .p-card-name {
+          font-size: 0.72rem; font-weight: 600; color: var(--text-primary);
+          line-height: 1.3; width: 100%;
+          display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
           overflow: hidden;
-          width: 100%;
         }
-        .product-price {
-          font-size: 0.78rem;
-          font-weight: 800;
-          color: var(--color-brand-400);
-          font-family: var(--font-display);
+        .p-card-price {
+          font-size: 0.75rem; font-weight: 800;
+          color: var(--color-brand-400); font-family: var(--font-display);
         }
-        .product-price small { font-size: 0.62rem; font-weight: 600; opacity: 0.7; }
-        .product-stock { font-size: 0.63rem; font-weight: 600; color: var(--text-muted); }
-        .product-stock--low { color: var(--color-warning); }
-        .product-stock--out { color: var(--color-error); }
+        .p-card-price small { font-size: 0.6rem; opacity: 0.75; font-weight: 600; }
+        .p-card-stock { font-size: 0.62rem; font-weight: 600; color: var(--text-muted); }
+        .p-card-stock.low { color: var(--color-warning); }
+        .p-card-stock.out { color: var(--color-error); }
+        .p-card-skeleton { height: 145px; border-radius: var(--radius-lg); }
 
-        /* Skeleton */
-        .product-skeleton { height: 150px; }
-
-        /* Empty */
-        .pos-empty {
+        .p-empty {
+          grid-column: 1/-1;
           display: flex; flex-direction: column; align-items: center; justify-content: center;
-          padding: 3rem 1rem;
-          gap: 0.75rem;
-          color: var(--text-muted);
-          font-size: 0.875rem;
+          padding: 4rem 1rem; gap: 0.75rem;
+          color: var(--text-muted); font-size: 0.875rem;
         }
 
-        /* ── Cart panel ── */
-        .cart-panel {
+        /* ─── Panier ────────────────────────────────────────────── */
+        .p-cart {
           background: var(--surface-1);
-          display: flex;
-          flex-direction: column;
-          height: 100%;
-          overflow: hidden;
+          display: flex; flex-direction: column;
+          height: 100%; overflow: hidden;
         }
 
-        .cart-header {
-          padding: 0.875rem 1rem;
+        .p-cart-header {
+          display: flex; align-items: center; gap: 0.5rem;
+          padding: 0.75rem 0.875rem;
           border-bottom: 1px solid var(--border-subtle);
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          flex-shrink: 0;
-          background: var(--surface-2);
+          background: var(--surface-2); flex-shrink: 0;
         }
-        .cart-title {
-          font-family: var(--font-display);
-          font-size: 0.95rem;
-          font-weight: 800;
-          color: var(--text-primary);
+        .p-cart-title {
+          font-family: var(--font-display); font-size: 0.88rem; font-weight: 800;
+          color: var(--text-primary); display: flex; align-items: center; gap: 0.4rem;
         }
-        .cart-count {
-          background: var(--color-brand-500);
-          color: white;
-          font-size: 0.68rem; font-weight: 700;
-          min-width: 20px; height: 20px;
-          border-radius: 99px;
+        .p-cart-badge {
+          background: var(--color-brand-500); color: #fff;
+          font-size: 0.65rem; font-weight: 800;
+          min-width: 20px; height: 20px; border-radius: 99px;
           display: flex; align-items: center; justify-content: center;
           padding: 0 0.3rem;
           animation: scaleIn 0.2s var(--ease-spring);
         }
-
-        /* Client selector */
-        .client-selector-box {
-          padding: 0.625rem 0.875rem;
-          border-bottom: 1px solid var(--border-subtle);
-          background: var(--surface-2);
-          flex-shrink: 0;
-          display: flex;
-          flex-direction: column;
-          gap: 0.3rem;
-        }
-
-        /* Items */
-        .cart-items { flex: 1; overflow-y: auto; padding: 0.25rem 0; }
-        .cart-empty {
-          display: flex; flex-direction: column;
-          align-items: center; justify-content: center;
-          height: 100%; gap: 0.75rem;
-          color: var(--text-muted); padding: 2rem;
-        }
-        .cart-empty .empty-icon { opacity: 0.2; }
-
-        .cart-item {
-          display: flex; align-items: center; gap: 0.5rem;
-          padding: 0.625rem 0.875rem;
-          border-bottom: 1px solid var(--border-subtle);
-          transition: background 120ms ease;
-          animation: slideUp 0.2s var(--ease-out) both;
-        }
-        .cart-item:hover { background: var(--surface-2); }
-        .cart-item:last-child { border-bottom: none; }
-
-        .item-emoji {
-          font-size: 1.25rem;
-          flex-shrink: 0;
-          width: 30px; text-align: center;
-        }
-        .item-details { flex: 1; min-width: 0; }
-        .item-name {
-          display: block;
-          font-size: 0.78rem; font-weight: 600;
-          color: var(--text-primary);
-          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .item-price {
-          display: block;
-          font-size: 0.72rem; font-weight: 700;
-          color: var(--color-brand-400);
-          font-family: var(--font-display);
-          margin-top: 1px;
-        }
-
-        .item-controls { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
-        .qty-btn {
+        .p-cart-clear {
+          margin-left: auto; background: none; border: 1px solid var(--border-subtle);
+          border-radius: 6px; color: var(--text-muted);
           width: 26px; height: 26px;
-          background: var(--surface-2);
-          border: 1px solid var(--border-default);
-          border-radius: var(--radius-sm);
-          color: var(--text-secondary);
-          cursor: pointer; display: flex; align-items: center; justify-content: center;
-          transition: all 120ms ease; flex-shrink: 0; padding: 0;
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer; transition: all 120ms ease;
         }
-        .qty-btn:hover { background: var(--color-brand-500); border-color: var(--color-brand-600); color: white; transform: scale(1.08); }
-        .qty-btn:active { transform: scale(0.9); }
+        .p-cart-clear:hover { background: rgba(244,63,94,0.1); color: var(--color-error); border-color: rgba(244,63,94,0.2); }
 
-        .qty-input {
-          width: 34px; height: 26px;
-          background: var(--surface-0);
-          border: 1px solid var(--border-default);
-          border-radius: var(--radius-sm);
-          color: var(--text-primary);
-          font-size: 0.75rem; font-weight: 700;
-          text-align: center; outline: none;
+        /* Client */
+        .p-client-box {
+          padding: 0.5rem 0.875rem;
+          border-bottom: 1px solid var(--border-subtle);
+          background: var(--surface-2); flex-shrink: 0;
+        }
+        .p-select {
+          width: 100%; background: var(--surface-1);
+          border: 1px solid var(--border-default); border-radius: var(--radius-md);
+          color: var(--text-primary); font-size: 0.82rem;
+          padding: 0.45rem 0.625rem; outline: none;
           transition: border-color 120ms ease;
+          font-family: var(--font-sans);
         }
-        .qty-input:focus { border-color: var(--color-brand-500); }
-        .qty-input::-webkit-outer-spin-button,
-        .qty-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .p-select:focus { border-color: var(--color-brand-500); }
 
-        .remove-btn {
-          width: 26px; height: 26px;
-          background: transparent; border: none;
-          border-radius: var(--radius-sm);
-          color: var(--text-disabled);
-          cursor: pointer; display: flex; align-items: center; justify-content: center;
-          transition: all 120ms ease; flex-shrink: 0; padding: 0;
+        /* Items — scrollable */
+        .p-items { flex: 1; overflow-y: auto; padding: 0.25rem 0; }
+
+        .p-cart-empty {
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          height: 100%; gap: 0.625rem; color: var(--text-muted);
+          font-size: 0.82rem; padding: 2rem;
         }
-        .remove-btn:hover { background: rgba(244,63,94,0.1); color: var(--color-error); transform: scale(1.1); }
+
+        .p-item {
+          display: flex; align-items: center; gap: 0.5rem;
+          padding: 0.5rem 0.875rem;
+          border-bottom: 1px solid var(--border-subtle);
+          transition: background 100ms ease;
+          animation: slideUp 0.15s var(--ease-out) both;
+        }
+        .p-item:hover { background: var(--surface-2); }
+        .p-item:last-child { border-bottom: none; }
+
+        .p-item-emoji { font-size: 1.1rem; flex-shrink: 0; width: 26px; text-align: center; }
+        .p-item-info { flex: 1; min-width: 0; }
+        .p-item-name {
+          display: block; font-size: 0.76rem; font-weight: 600;
+          color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .p-item-total {
+          display: block; font-size: 0.7rem; font-weight: 700;
+          color: var(--color-brand-400); font-family: var(--font-display); margin-top: 1px;
+        }
+
+        .p-item-ctrl { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+        .p-qty-btn {
+          width: 24px; height: 24px; background: var(--surface-2);
+          border: 1px solid var(--border-default); border-radius: 6px;
+          color: var(--text-secondary); cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          transition: all 100ms ease; flex-shrink: 0; padding: 0;
+        }
+        .p-qty-btn:hover { background: var(--color-brand-500); border-color: var(--color-brand-600); color: #fff; transform: scale(1.1); }
+        .p-qty-btn:active { transform: scale(0.88); }
+
+        .p-qty-input {
+          width: 30px; height: 24px; background: var(--surface-0);
+          border: 1px solid var(--border-default); border-radius: 6px;
+          color: var(--text-primary); font-size: 0.72rem; font-weight: 700;
+          text-align: center; outline: none; transition: border-color 100ms ease;
+        }
+        .p-qty-input:focus { border-color: var(--color-brand-500); }
+        .p-qty-input::-webkit-outer-spin-button, .p-qty-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+        .p-remove-btn {
+          width: 24px; height: 24px; background: none; border: none;
+          border-radius: 6px; color: var(--text-disabled);
+          cursor: pointer; display: flex; align-items: center; justify-content: center;
+          transition: all 100ms ease; flex-shrink: 0; padding: 0;
+        }
+        .p-remove-btn:hover { background: rgba(244,63,94,0.1); color: var(--color-error); transform: scale(1.12); }
 
         /* Summary */
-        .cart-summary {
+        .p-summary {
           padding: 0.75rem 0.875rem;
           border-top: 1px solid var(--border-subtle);
           flex-shrink: 0;
-          display: flex; flex-direction: column; gap: 0.5rem;
+          display: flex; flex-direction: column; gap: 0.45rem;
           background: var(--surface-1);
         }
 
-        .summary-row {
-          display: flex; justify-content: space-between; align-items: center;
-          font-size: 0.82rem; color: var(--text-secondary);
+        .p-row {
+          display: flex; align-items: center; justify-content: space-between;
+          font-size: 0.8rem; color: var(--text-secondary);
         }
-        .summary-row span:last-child { font-weight: 600; }
-        .total-row {
-          padding-top: 0.4rem;
+        .p-row span:last-child { font-weight: 600; }
+        .p-total {
+          padding-top: 0.35rem; margin-top: 0.125rem;
           border-top: 1px solid var(--border-subtle);
-          font-size: 0.95rem; font-weight: 800;
-          color: var(--text-primary);
-          font-family: var(--font-display);
+          font-family: var(--font-display); font-size: 0.95rem;
+          font-weight: 800; color: var(--text-primary);
         }
-        .total-row span:last-child { color: var(--color-brand-400); font-size: 1rem; }
+        .p-total span:last-child { color: var(--color-brand-400); font-size: 1rem; }
 
-        .discount-input {
-          width: 90px; height: 28px;
+        .p-discount {
+          width: 85px; height: 26px;
           background: var(--surface-2); border: 1px solid var(--border-default);
-          border-radius: var(--radius-sm); color: var(--text-primary);
-          font-size: 0.78rem; text-align: right; padding: 0 0.5rem; outline: none;
-          transition: border-color 120ms ease;
+          border-radius: 6px; color: var(--text-primary);
+          font-size: 0.76rem; text-align: right; padding: 0 0.4rem; outline: none;
+          transition: border-color 100ms;
         }
-        .discount-input:focus { border-color: var(--color-brand-500); }
-        .discount-input::-webkit-outer-spin-button,
-        .discount-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+        .p-discount:focus { border-color: var(--color-brand-500); }
+        .p-discount::-webkit-outer-spin-button, .p-discount::-webkit-inner-spin-button { -webkit-appearance: none; }
 
-        /* Payment methods */
-        .payment-methods { display: grid; grid-template-columns: repeat(3,1fr); gap: 0.375rem; }
-        .pay-btn {
+        /* Paiement */
+        .p-payment { display: grid; grid-template-columns: repeat(3,1fr); gap: 0.35rem; }
+        .p-pay-btn {
           display: flex; flex-direction: column; align-items: center; justify-content: center;
-          gap: 0.25rem; padding: 0.5rem 0.25rem;
+          gap: 0.2rem; padding: 0.45rem 0.25rem;
           background: var(--surface-2); border: 1.5px solid var(--border-default);
           border-radius: var(--radius-md); cursor: pointer;
-          font-size: 0.65rem; font-weight: 700; color: var(--text-muted);
-          transition: all 120ms ease; min-height: 48px; user-select: none;
-          text-transform: uppercase; letter-spacing: 0.03em;
+          font-size: 0.62rem; font-weight: 700; color: var(--text-muted);
+          transition: all 120ms ease; min-height: 46px;
+          text-transform: uppercase; letter-spacing: 0.04em;
+          user-select: none; -webkit-tap-highlight-color: transparent;
         }
-        .pay-btn:hover { border-color: var(--color-brand-400); color: var(--text-primary); background: var(--brand-alpha-08); transform: translateY(-1px); }
-        .pay-btn.active { border-color: var(--color-brand-500); background: var(--brand-alpha-15); color: var(--color-brand-400); box-shadow: 0 0 0 1px var(--color-brand-500); }
+        .p-pay-btn:hover { border-color: rgba(99,102,241,0.5); color: var(--text-primary); background: var(--brand-alpha-08); transform: translateY(-1px); }
+        .p-pay-btn.active { border-color: var(--color-brand-500); background: var(--brand-alpha-15); color: var(--color-brand-400); box-shadow: 0 0 0 1px var(--color-brand-500); }
 
-        /* Debt box */
-        .debt-box {
-          background: rgba(244,63,94,0.06);
-          border: 1px solid rgba(244,63,94,0.18);
-          border-radius: var(--radius-md);
-          padding: 0.625rem;
-          display: flex; flex-direction: column; gap: 0.4rem;
+        /* Dette */
+        .p-debt-box {
+          background: rgba(244,63,94,0.05); border: 1px solid rgba(244,63,94,0.2);
+          border-radius: var(--radius-md); padding: 0.5rem 0.625rem;
+          display: flex; flex-direction: column; gap: 0.375rem;
+          animation: slideUp 0.2s var(--ease-out);
         }
-        .debt-checkbox-label {
+        .p-debt-label {
           display: flex; align-items: center; gap: 0.5rem;
-          font-size: 0.78rem; font-weight: 700;
-          color: var(--color-error); cursor: pointer;
-        }
-        .debt-fields { display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.125rem; }
-        .debt-fields .input { font-size: 0.78rem !important; min-height: 36px !important; }
-
-        /* Validate button */
-        .validate-btn {
-          width: 100%;
-          min-height: 54px;
-          background: linear-gradient(135deg, var(--color-brand-500), var(--color-brand-600));
-          color: white;
-          font-family: var(--font-display);
-          font-size: 0.95rem; font-weight: 800;
-          border: none; border-radius: var(--radius-lg);
+          font-size: 0.76rem; font-weight: 700; color: var(--color-error);
           cursor: pointer;
-          letter-spacing: 0.01em;
+        }
+        .p-debt-fields { display: flex; flex-direction: column; gap: 0.3rem; }
+        .p-debt-input {
+          background: var(--surface-1); border: 1px solid var(--border-default);
+          border-radius: 8px; color: var(--text-primary);
+          font-size: 0.76rem !important; padding: 0.35rem 0.5rem;
+          font-family: var(--font-sans); outline: none; width: 100%;
+          min-height: 32px;
+          transition: border-color 120ms;
+        }
+        .p-debt-input:focus { border-color: var(--color-error); }
+
+        /* Bouton valider */
+        .p-validate {
+          width: 100%; min-height: 52px;
+          background: linear-gradient(135deg, var(--color-brand-500), var(--color-brand-600));
+          color: #fff; font-family: var(--font-display);
+          font-size: 0.9rem; font-weight: 800;
+          border: none; border-radius: var(--radius-lg);
+          cursor: pointer; letter-spacing: 0.01em;
+          display: flex; align-items: center; justify-content: center; gap: 0.5rem;
           transition: all 200ms var(--ease-out);
           box-shadow: 0 4px 16px rgba(99,102,241,0.3), inset 0 1px 0 rgba(255,255,255,0.15);
-          display: flex; align-items: center; justify-content: center; gap: 0.5rem;
           position: relative; overflow: hidden;
+          -webkit-tap-highlight-color: transparent;
         }
-        .validate-btn::before {
-          content: '';
-          position: absolute; top: 0; left: 0; right: 0; height: 50%;
-          background: rgba(255,255,255,0.06);
-          border-radius: inherit;
-          pointer-events: none;
+        .p-validate::before {
+          content:''; position:absolute; top:0; left:0; right:0; height:50%;
+          background: rgba(255,255,255,0.06); border-radius: inherit; pointer-events:none;
         }
-        .validate-btn:hover:not(:disabled) {
+        .p-validate:hover:not(:disabled) {
           transform: translateY(-2px);
           box-shadow: 0 8px 24px rgba(99,102,241,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
           background: linear-gradient(135deg, var(--color-brand-400), var(--color-brand-500));
         }
-        .validate-btn:active:not(:disabled) { transform: scale(0.97); box-shadow: none; }
-        .validate-btn:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; transform: none; }
-        .validate-btn--success { background: linear-gradient(135deg, #10b981, #059669) !important; animation: pulseSuccess 0.6s ease-out; box-shadow: var(--shadow-success) !important; }
-        .validate-btn--debt { background: linear-gradient(135deg, #f43f5e, #e11d48) !important; box-shadow: 0 4px 16px rgba(244,63,94,0.3) !important; }
+        .p-validate:active:not(:disabled) { transform: scale(0.97); box-shadow: none; }
+        .p-validate:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; transform: none; }
+        .p-validate.success { background: linear-gradient(135deg,#10b981,#059669) !important; animation: pulseSuccess 0.7s ease-out; }
+        .p-validate.debt { background: linear-gradient(135deg,#f43f5e,#e11d48) !important; box-shadow: 0 4px 16px rgba(244,63,94,0.3) !important; }
 
-        .validate-total {
-          font-size: 0.75rem;
-          opacity: 0.8;
-          font-weight: 600;
-          margin-left: 0.25rem;
-          background: rgba(255,255,255,0.15);
-          padding: 0.1rem 0.4rem;
-          border-radius: var(--radius-sm);
+        .p-validate-amount {
+          font-size: 0.72rem; opacity: 0.85; font-weight: 600;
+          background: rgba(255,255,255,0.15); padding: 0.1rem 0.4rem;
+          border-radius: 5px; white-space: nowrap;
         }
 
-        /* Hidden radio */
-        .hidden { display: none; }
-
         @media (max-width: 768px) {
-          .pos-topbar { flex-wrap: wrap; }
-          .pos-grid { min-height: 0; }
-          .pos-products-zone { min-height: 360px; }
+          .pos-page-container {
+            height: auto;
+            max-height: none;
+            overflow: visible;
+          }
+          .p-products-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+          .p-grid { height: auto; }
+          .p-items { max-height: 220px; }
         }
       `}</style>
     </div>

@@ -330,7 +330,7 @@ const translations: Record<Language, Translations> = {
     'sup.delete_msg': 'Êtes-vous sûr de vouloir supprimer ce fournisseur ?',
 
     // Navigation
-    'nav.pos': 'Caisse Rapide',
+    'nav.pos': 'Caisse / Vente',
     'nav.sales': 'Historique Ventes',
     'nav.suppliers': 'Fournisseurs',
     'nav.team': 'Équipe',
@@ -704,7 +704,7 @@ const translations: Record<Language, Translations> = {
     'sup.delete_msg': 'Are you sure you want to delete this supplier?',
 
     // Navigation
-    'nav.pos': 'Quick Checkout',
+    'nav.pos': 'Checkout / Sales',
     'nav.sales': 'Sales History',
     'nav.suppliers': 'Suppliers',
     'nav.team': 'Team',

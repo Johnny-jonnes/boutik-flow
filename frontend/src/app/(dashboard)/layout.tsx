@@ -65,7 +65,7 @@ const NAV_GROUPS = [
     titleKey: 'nav.products',
     icon: ShoppingBag,
     items: [
-      { href: '/pos',        icon: ShoppingCart, labelKey: 'nav.pos',        label: 'Caisse',             id: 'nav-pos' },
+      { href: '/pos',        icon: ShoppingCart, labelKey: 'nav.pos',        label: 'Vente Express',      id: 'nav-pos' },
       { href: '/sales',      icon: History,      labelKey: 'nav.sales',      label: 'Historique Ventes',  id: 'nav-sales' },
       { href: '/orders',     icon: ClipboardList,labelKey: 'nav.orders',     label: 'Suivi Commandes',    id: 'nav-orders' },
       { href: '/products',   icon: Package,      labelKey: 'nav.products',   label: 'Produits',           id: 'nav-products' },
@@ -279,7 +279,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         >
                           <ItemIcon size={15} className="nav-icon" />
                           <span className="nav-text">{t(item.labelKey)}</span>
-                          {item.id === 'nav-pos' && <span className="nav-pill-pos">POS</span>}
                           {item.id === 'nav-whatsapp' && <span className="wa-dot" />}
                         </Link>
                       );
