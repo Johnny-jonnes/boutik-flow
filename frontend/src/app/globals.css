@@ -22,48 +22,48 @@
    Surfaces profondes, couleurs chaudes et lumineuses
    ═══════════════════════════════════════════════════════════════════ */
 :root {
-  /* ── Brand : Indigo chaud ── */
-  --color-brand-50:  #eef2ff;
-  --color-brand-100: #e0e7ff;
-  --color-brand-200: #c7d2fe;
-  --color-brand-300: #a5b4fc;
-  --color-brand-400: #818cf8;
-  --color-brand-500: #6366f1;
-  --color-brand-600: #4f46e5;
-  --color-brand-700: #4338ca;
-  --color-brand-800: #3730a3;
-  --color-brand-900: #312e81;
+  /* ── Brand : Turquoise premium (#6DD5C4) ── */
+  --color-brand-50:  #f0fbf9;
+  --color-brand-100: #dff6f0;
+  --color-brand-200: #b9edd9;
+  --color-brand-300: #8ce0cc;
+  --color-brand-400: #6dd5c4;
+  --color-brand-500: #4ebfae;
+  --color-brand-600: #31a292;
+  --color-brand-700: #228678;
+  --color-brand-800: #1c6b61;
+  --color-brand-900: #185750;
 
-  /* ── Accent : Ambre ── */
-  --color-accent-400: #fbbf24;
-  --color-accent-500: #f59e0b;
-  --color-accent-600: #d97706;
+  /* ── Accent : Dérivé de Turquoise ── */
+  --color-accent-400: #51c7b7;
+  --color-accent-500: #3ea39b;
+  --color-accent-600: #2eada2;
 
-  /* ── Surfaces sombres — chaleur subtile ── */
-  --surface-0:     #09090b;
-  --surface-1:     #111113;
-  --surface-2:     #1c1c1f;
-  --surface-3:     #27272a;
-  --surface-4:     #3f3f46;
-  --surface-hover: #1e1e22;
-  --surface-active:#252529;
+  /* ── Surfaces sombres — chaleur teal élégante ── */
+  --surface-0:     #080c0b;
+  --surface-1:     #0e1413;
+  --surface-2:     #161e1d;
+  --surface-3:     #202c2b;
+  --surface-4:     #354543;
+  --surface-hover: #121a19;
+  --surface-active:#1b2725;
 
   /* ── Texte ── */
   --text-primary:   #fafafa;
-  --text-secondary: #a1a1aa;
-  --text-muted:     #71717a;
-  --text-disabled:  #3f3f46;
+  --text-secondary: #a3b3b0;
+  --text-muted:     #738581;
+  --text-disabled:  #3e4d4a;
 
   /* ── Borders ── */
-  --border-subtle:  rgba(255, 255, 255, 0.06);
-  --border-default: rgba(255, 255, 255, 0.10);
-  --border-strong:  rgba(255, 255, 255, 0.18);
+  --border-subtle:  rgba(109, 213, 196, 0.06);
+  --border-default: rgba(109, 213, 196, 0.12);
+  --border-strong:  rgba(109, 213, 196, 0.20);
 
   /* ── Status ── */
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-error:   #f43f5e;
-  --color-info:    #6366f1;
+  --color-info:    #6dd5c4;
 
   /* ── Radius ── */
   --radius-xs: 4px;
@@ -80,39 +80,39 @@
   --shadow-md:    0 4px 16px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.3);
   --shadow-lg:    0 10px 40px rgba(0,0,0,0.6), 0 4px 8px rgba(0,0,0,0.3);
   --shadow-xl:    0 20px 60px rgba(0,0,0,0.7), 0 8px 16px rgba(0,0,0,0.3);
-  --shadow-brand: 0 0 30px rgba(99,102,241,0.25), 0 4px 16px rgba(0,0,0,0.4);
-  --shadow-glow:  0 0 0 1px rgba(99,102,241,0.3), 0 0 20px rgba(99,102,241,0.15);
+  --shadow-brand: 0 0 30px rgba(109,213,196,0.25), 0 4px 16px rgba(0,0,0,0.4);
+  --shadow-glow:  0 0 0 1px rgba(109,213,196,0.3), 0 0 20px rgba(109,213,196,0.15);
   --shadow-amber: 0 0 30px rgba(245,158,11,0.25), 0 4px 16px rgba(0,0,0,0.4);
   --shadow-success: 0 0 30px rgba(16,185,129,0.25), 0 4px 16px rgba(0,0,0,0.3);
 
   /* ── Overlays ── */
-  --overlay-subtle:        rgba(255,255,255,0.02);
-  --overlay-light:         rgba(255,255,255,0.04);
-  --overlay-medium:        rgba(255,255,255,0.08);
-  --overlay-border:        rgba(255,255,255,0.06);
-  --overlay-border-strong: rgba(255,255,255,0.14);
+  --overlay-subtle:        rgba(255,255,255,0.01);
+  --overlay-light:         rgba(255,255,255,0.03);
+  --overlay-medium:        rgba(255,255,255,0.06);
+  --overlay-border:        rgba(255,255,255,0.05);
+  --overlay-border-strong: rgba(255,255,255,0.12);
 
   /* ── Brand alphas ── */
-  --brand-alpha-05: rgba(99,102,241,0.05);
-  --brand-alpha-08: rgba(99,102,241,0.08);
-  --brand-alpha-10: rgba(99,102,241,0.10);
-  --brand-alpha-15: rgba(99,102,241,0.15);
-  --brand-alpha-20: rgba(99,102,241,0.20);
-  --brand-alpha-30: rgba(99,102,241,0.30);
+  --brand-alpha-05: rgba(109,213,196,0.05);
+  --brand-alpha-08: rgba(109,213,196,0.08);
+  --brand-alpha-10: rgba(109,213,196,0.10);
+  --brand-alpha-15: rgba(109,213,196,0.15);
+  --brand-alpha-20: rgba(109,213,196,0.20);
+  --brand-alpha-30: rgba(109,213,196,0.30);
 
   /* ── Sidebar tokens (toujours sombre) ── */
-  --sidebar-bg:           #0d0d10;
-  --sidebar-border:       rgba(255,255,255,0.06);
-  --sidebar-gradient-end: #07070a;
+  --sidebar-bg:           #070a09;
+  --sidebar-border:       rgba(109,213,196,0.06);
+  --sidebar-gradient-end: #030404;
 
   /* ── Composants ── */
   --progress-track-bg:    rgba(255,255,255,0.08);
-  --profile-dropdown-bg:  #18181b;
-  --focus-ring-color:     rgba(99,102,241,0.25);
-  --logo-gradient-from:   #6366f1;
-  --logo-gradient-to:     #4338ca;
-  --auth-grid-color:      rgba(99,102,241,0.03);
-  --auth-glow-color:      rgba(99,102,241,0.08);
+  --profile-dropdown-bg:  #0e1413;
+  --focus-ring-color:     rgba(109,213,196,0.25);
+  --logo-gradient-from:   #6dd5c4;
+  --logo-gradient-to:     #31a292;
+  --auth-grid-color:      rgba(109,213,196,0.03);
+  --auth-glow-color:      rgba(109,213,196,0.08);
   --recharts-grid-stroke: rgba(255,255,255,0.06);
 
   /* ── Transitions Spring ── */
@@ -129,28 +129,28 @@
   --font-display: 'Outfit', system-ui, sans-serif;
 
   /* ── Shadcn base tokens ── */
-  --background:           oklch(0.09 0.005 270);
+  --background:           oklch(0.09 0.005 170);
   --foreground:           oklch(0.98 0 0);
-  --card:                 oklch(0.12 0.005 270);
+  --card:                 oklch(0.12 0.005 170);
   --card-foreground:      oklch(0.98 0 0);
-  --popover:              oklch(0.12 0.005 270);
+  --popover:              oklch(0.12 0.005 170);
   --popover-foreground:   oklch(0.98 0 0);
-  --primary:              oklch(0.60 0.18 264);
-  --primary-foreground:   oklch(0.98 0 0);
-  --secondary:            oklch(0.18 0.005 270);
-  --secondary-foreground: oklch(0.85 0.005 270);
-  --muted:                oklch(0.18 0.005 270);
-  --muted-foreground:     oklch(0.55 0.01 270);
-  --accent:               oklch(0.18 0.005 270);
-  --accent-foreground:    oklch(0.85 0.005 270);
+  --primary:              oklch(0.80 0.14 170);
+  --primary-foreground:   oklch(0.09 0.005 170);
+  --secondary:            oklch(0.18 0.005 170);
+  --secondary-foreground: oklch(0.85 0.005 170);
+  --muted:                oklch(0.18 0.005 170);
+  --muted-foreground:     oklch(0.55 0.01 170);
+  --accent:               oklch(0.18 0.005 170);
+  --accent-foreground:    oklch(0.85 0.005 170);
   --destructive:          oklch(0.60 0.22 15);
-  --border:               oklch(0.22 0.01 270);
-  --input:                oklch(0.22 0.01 270);
-  --ring:                 oklch(0.60 0.18 264);
-  --chart-1:              oklch(0.60 0.18 264);
-  --chart-2:              oklch(0.70 0.18 55);
-  --chart-3:              oklch(0.60 0.20 300);
-  --chart-4:              oklch(0.70 0.18 150);
+  --border:               oklch(0.22 0.01 170);
+  --input:                oklch(0.22 0.01 170);
+  --ring:                 oklch(0.80 0.14 170);
+  --chart-1:              oklch(0.80 0.14 170);
+  --chart-2:              oklch(0.90 0.10 150);
+  --chart-3:              oklch(0.70 0.12 180);
+  --chart-4:              oklch(0.60 0.14 190);
   --chart-5:              oklch(0.60 0.22 15);
   --radius:               0.75rem;
 }
@@ -160,84 +160,84 @@
    Surfaces chaudes et légères, texte profond
    ═══════════════════════════════════════════════════════════════════ */
 .light {
-  /* ── Brand : Indigo vif ── */
-  --color-brand-50:  #eef2ff;
-  --color-brand-100: #e0e7ff;
-  --color-brand-200: #c7d2fe;
-  --color-brand-300: #a5b4fc;
-  --color-brand-400: #818cf8;
-  --color-brand-500: #4f46e5;
-  --color-brand-600: #4338ca;
-  --color-brand-700: #3730a3;
-  --color-brand-800: #312e81;
-  --color-brand-900: #1e1b4b;
+  /* ── Brand : Turquoise vif ── */
+  --color-brand-50:  #f0fbf9;
+  --color-brand-100: #dff6f0;
+  --color-brand-200: #b9edd9;
+  --color-brand-300: #8ce0cc;
+  --color-brand-400: #6dd5c4;
+  --color-brand-500: #4ebfae;
+  --color-brand-600: #31a292;
+  --color-brand-700: #228678;
+  --color-brand-800: #1c6b61;
+  --color-brand-900: #185750;
 
-  /* ── Accent Ambre ── */
-  --color-accent-400: #fbbf24;
-  --color-accent-500: #f59e0b;
-  --color-accent-600: #d97706;
+  /* ── Accent Turquoise ── */
+  --color-accent-400: #51c7b7;
+  --color-accent-500: #3ea39b;
+  --color-accent-600: #2eada2;
 
-  /* ── Surfaces chaudes ── */
-  --surface-0:     #fafaf9;
+  /* ── Surfaces claires — menthe pastel et douce ── */
+  --surface-0:     #f4f8f7;
   --surface-1:     #ffffff;
-  --surface-2:     #f4f4f5;
-  --surface-3:     #e4e4e7;
-  --surface-4:     #d4d4d8;
-  --surface-hover: #f0f0f2;
-  --surface-active:#eaeaec;
+  --surface-2:     #ebf3f1;
+  --surface-3:     #dce8e5;
+  --surface-4:     #ccdcd8;
+  --surface-hover: #e5edea;
+  --surface-active:#d8e2df;
 
   /* ── Texte ── */
-  --text-primary:   #09090b;
-  --text-secondary: #52525b;
-  --text-muted:     #71717a;
-  --text-disabled:  #a1a1aa;
+  --text-primary:   #091312;
+  --text-secondary: #40524f;
+  --text-muted:     #687a77;
+  --text-disabled:  #9daea9;
 
   /* ── Borders ── */
-  --border-subtle:  #e4e4e7;
-  --border-default: #d4d4d8;
-  --border-strong:  #a1a1aa;
+  --border-subtle:  #ebf3f1;
+  --border-default: #dce8e5;
+  --border-strong:  #ccdcd8;
 
   /* ── Status ── */
   --color-success: #059669;
   --color-warning: #d97706;
   --color-error:   #e11d48;
-  --color-info:    #4f46e5;
+  --color-info:    #3ea39b;
 
   /* ── Shadows légères ── */
-  --shadow-xs:    0 1px 2px rgba(0,0,0,0.04);
-  --shadow-sm:    0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md:    0 4px 16px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.04);
-  --shadow-lg:    0 10px 40px rgba(0,0,0,0.09), 0 4px 8px rgba(0,0,0,0.04);
-  --shadow-xl:    0 20px 60px rgba(0,0,0,0.11), 0 8px 16px rgba(0,0,0,0.04);
-  --shadow-brand: 0 0 30px rgba(79,70,229,0.15), 0 4px 16px rgba(0,0,0,0.06);
-  --shadow-glow:  0 0 0 1px rgba(79,70,229,0.2), 0 0 20px rgba(79,70,229,0.08);
+  --shadow-xs:    0 1px 2px rgba(109,213,196,0.04);
+  --shadow-sm:    0 1px 3px rgba(109,213,196,0.06), 0 1px 2px rgba(109,213,196,0.04);
+  --shadow-md:    0 4px 16px rgba(109,213,196,0.08), 0 2px 4px rgba(109,213,196,0.04);
+  --shadow-lg:    0 10px 40px rgba(109,213,196,0.10), 0 4px 8px rgba(109,213,196,0.04);
+  --shadow-xl:    0 20px 60px rgba(109,213,196,0.12), 0 8px 16px rgba(109,213,196,0.04);
+  --shadow-brand: 0 0 30px rgba(109,213,196,0.15), 0 4px 16px rgba(0,0,0,0.04);
+  --shadow-glow:  0 0 0 1px rgba(109,213,196,0.2), 0 0 20px rgba(109,213,196,0.08);
   --shadow-amber: 0 0 30px rgba(245,158,11,0.15), 0 4px 16px rgba(0,0,0,0.06);
   --shadow-success: 0 0 30px rgba(5,150,105,0.18), 0 4px 16px rgba(0,0,0,0.04);
 
   /* ── Overlays ── */
-  --overlay-subtle:        rgba(9,9,11,0.02);
-  --overlay-light:         rgba(9,9,11,0.04);
-  --overlay-medium:        rgba(9,9,11,0.06);
-  --overlay-border:        rgba(9,9,11,0.06);
-  --overlay-border-strong: rgba(9,9,11,0.12);
+  --overlay-subtle:        rgba(9,19,17,0.01);
+  --overlay-light:         rgba(9,19,17,0.02);
+  --overlay-medium:        rgba(9,19,17,0.04);
+  --overlay-border:        rgba(9,19,17,0.05);
+  --overlay-border-strong: rgba(9,19,17,0.10);
 
   /* ── Brand alphas ── */
-  --brand-alpha-05: rgba(79,70,229,0.05);
-  --brand-alpha-08: rgba(79,70,229,0.08);
-  --brand-alpha-10: rgba(79,70,229,0.10);
-  --brand-alpha-15: rgba(79,70,229,0.15);
-  --brand-alpha-20: rgba(79,70,229,0.20);
-  --brand-alpha-30: rgba(79,70,229,0.30);
+  --brand-alpha-05: rgba(109,213,196,0.05);
+  --brand-alpha-08: rgba(109,213,196,0.08);
+  --brand-alpha-10: rgba(109,213,196,0.10);
+  --brand-alpha-15: rgba(109,213,196,0.15);
+  --brand-alpha-20: rgba(109,213,196,0.20);
+  --brand-alpha-30: rgba(109,213,196,0.30);
 
   /* ── Composants ── */
-  --progress-track-bg:    rgba(9,9,11,0.08);
+  --progress-track-bg:    rgba(9,19,17,0.06);
   --profile-dropdown-bg:  #ffffff;
-  --focus-ring-color:     rgba(79,70,229,0.2);
-  --logo-gradient-from:   #4f46e5;
-  --logo-gradient-to:     #4338ca;
-  --auth-grid-color:      rgba(79,70,229,0.04);
-  --auth-glow-color:      rgba(79,70,229,0.06);
-  --recharts-grid-stroke: rgba(9,9,11,0.06);
+  --focus-ring-color:     rgba(109,213,196,0.2);
+  --logo-gradient-from:   #6dd5c4;
+  --logo-gradient-to:     #31a292;
+  --auth-grid-color:      rgba(109,213,196,0.04);
+  --auth-glow-color:      rgba(109,213,196,0.06);
+  --recharts-grid-stroke: rgba(9,19,17,0.05);
 
   /* ── Shadcn tokens light ── */
   --background:           oklch(0.98 0 0);

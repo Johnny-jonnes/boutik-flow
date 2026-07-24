@@ -225,8 +225,8 @@ export default function HomePage() {
             <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
               <defs>
                 <linearGradient id="nav-hex-grad" x1="0" y1="0" x2="40" y2="40">
-                  <stop stopColor="#818cf8" />
-                  <stop offset="1" stopColor="#4f46e5" />
+                  <stop stopColor="#6dd5c4" />
+                  <stop offset="1" stopColor="#31a292" />
                 </linearGradient>
                 <linearGradient id="nav-wave-amber" x1="0" y1="0" x2="40" y2="0">
                   <stop stopColor="#fbbf24" stopOpacity="0" />
@@ -240,7 +240,7 @@ export default function HomePage() {
               </defs>
               {/* Hexagon */}
               <path d="M20 2L36 11V29L20 38L4 29V11L20 2Z" fill="url(#nav-hex-grad)" opacity="0.95" />
-              <path d="M20 2L36 11V29L20 38L4 29V11L20 2Z" stroke="rgba(129,140,248,0.3)" strokeWidth="0.5" fill="none" />
+              <path d="M20 2L36 11V29L20 38L4 29V11L20 2Z" stroke="rgba(109,213,196,0.3)" strokeWidth="0.5" fill="none" />
               {/* Wave line 1 — top, white, subtle */}
               <path d="M8 15 Q14 12 20 15 Q26 18 32 15" stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" fill="none" strokeLinecap="round" />
               {/* Wave line 2 — middle, white bright */}
@@ -252,7 +252,7 @@ export default function HomePage() {
             </svg>
           </div>
           <span className="nav-logo-text">
-            <span style={{ color: 'var(--text-primary)', fontWeight: 800 }}>Boutik</span><span style={{ background: 'linear-gradient(135deg, #818cf8, #4f46e5)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 700 }}>Flow</span>
+            <span style={{ color: 'var(--text-primary)', fontWeight: 800 }}>Boutik</span><span style={{ background: 'linear-gradient(135deg, #6dd5c4, #31a292)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 700 }}>Flow</span>
           </span>
         </div>
         <div className="nav-actions">

@@ -32,6 +32,9 @@ import {
   ClipboardList,
   History,
   Zap,
+  Volume2,
+  Volume1,
+  VolumeX,
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -39,6 +42,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { ScrollToTop } from '@/components/ScrollToTop';
 import { PinLock } from '@/components/ui/PinLock';
 import { usePinLock } from '@/hooks/usePinLock';
+import { getSoundVolumePreference, setSoundVolumePreference, VolumeLevel } from '@/lib/audio';
 
 /* ─── Navigation data ───────────────────────────────────────────── */
 const NAV_GROUPS = [
@@ -125,7 +129,7 @@ function Logo({ size = 20 }: { size?: number }) {
         width={size} height={size} viewBox="0 0 40 40" fill="none"
         xmlns="http://www.w3.org/2000/svg"
         style={{
-          filter: `drop-shadow(0 0 ${isOnline ? '5px rgba(99,102,241,0.55)' : '5px rgba(245,158,11,0.45)'})`,
+          filter: `drop-shadow(0 0 ${isOnline ? '5px rgba(109,213,196,0.6)' : '5px rgba(245,158,11,0.45)'})`,
           transition: 'filter 0.4s ease',
           animation: 'logo-breathing 4s ease-in-out infinite'
         }}
@@ -134,8 +138,8 @@ function Logo({ size = 20 }: { size?: number }) {
           <linearGradient id="bf-g-dyn" x1="0" y1="0" x2="40" y2="40">
             {isOnline ? (
               <>
-                <stop stopColor="#818cf8" />
-                <stop offset="1" stopColor="#4f46e5" />
+                <stop stopColor="#6dd5c4" />
+                <stop offset="1" stopColor="#31a292" />
               </>
             ) : (
               <>
@@ -201,8 +205,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     role: 'owner',
     plan: 'freemium',
   });
+  const [soundVolume, setSoundVolume] = useState<VolumeLevel>('normal');
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const { language, setLanguage, t } = useLanguage();
+
+  // Charger le volume initial
+  useEffect(() => {
+    setSoundVolume(getSoundVolumePreference());
+  }, []);
+
+  const handleCycleVolume = () => {
+    const nextVolumeMap: Record<VolumeLevel, VolumeLevel> = {
+      'normal': 'discret',
+      'discret': 'muted',
+      'muted': 'normal'
+    };
+    const nextVol = nextVolumeMap[soundVolume];
+    setSoundVolume(nextVol);
+    setSoundVolumePreference(nextVol);
+  };
 
   /* Decode JWT */
   useEffect(() => {
@@ -265,28 +286,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <header className="mobile-bar">
         <div className="mobile-brand">
           <div className="logo-mark"><Logo size={18} /></div>
-          <span className="brand-text"><span style={{ color: 'var(--text-primary)', fontWeight: 800 }}>Boutik</span><span style={{ background: 'linear-gradient(135deg, #818cf8, #4f46e5)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 700 }}>Flow</span></span>
+          <span className="brand-text"><span style={{ color: 'var(--text-primary)', fontWeight: 800 }}>Boutik</span><span style={{ background: 'linear-gradient(135deg, #6dd5c4, #31a292)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 700 }}>Flow</span></span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button className="mobile-toggle" onClick={handleCycleVolume} aria-label="Volume" style={{ border: 'none', background: 'var(--surface-2)', width: '36px', height: '36px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)' }}>
+            {soundVolume === 'normal' && <Volume2 size={18} />}
+            {soundVolume === 'discret' && <Volume1 size={18} />}
+            {soundVolume === 'muted' && <VolumeX size={18} />}
+          </button>
           <ThemeToggle />
           <button className="mobile-toggle" onClick={() => setIsMobileMenuOpen(true)} aria-label="Menu">
             <Menu size={22} />
           </button>
         </div>
       </header>
-
+ 
       {/* ── Backdrop ───────────────────────────────── */}
       {isMobileMenuOpen && <div className="backdrop" onClick={() => setIsMobileMenuOpen(false)} />}
-
+ 
       {/* ══════════════════════════════════════════════
           SIDEBAR
           ══════════════════════════════════════════════ */}
       <aside className={`sidebar ${isMobileMenuOpen ? 'sidebar--open' : ''}`}>
-
+ 
         {/* Brand header */}
         <div className="sidebar__brand">
           <div className="logo-mark"><Logo size={20} /></div>
-          <span className="brand-text"><span style={{ color: 'var(--text-primary)', fontWeight: 800 }}>Boutik</span><span style={{ background: 'linear-gradient(135deg, #818cf8, #4f46e5)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 700 }}>Flow</span></span>
+          <span className="brand-text"><span style={{ color: 'var(--text-primary)', fontWeight: 800 }}>Boutik</span><span style={{ background: 'linear-gradient(135deg, #6dd5c4, #31a292)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 700 }}>Flow</span></span>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}>
             <ThemeToggle />
             <button className="sidebar-collapse-btn" onClick={() => setIsMobileMenuOpen(false)} aria-label="Fermer">
@@ -357,6 +383,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Globe size={13} />
             <span>{language === 'fr' ? 'Français' : 'English'}</span>
             <span className="lang-flag">{language === 'fr' ? '🇫🇷' : '🇬🇧'}</span>
+          </button>
+
+          <button className="lang-toggle sound-toggle-btn" onClick={handleCycleVolume} style={{ marginTop: '4px' }}>
+            {soundVolume === 'normal' && <Volume2 size={13} />}
+            {soundVolume === 'discret' && <Volume1 size={13} />}
+            {soundVolume === 'muted' && <VolumeX size={13} />}
+            <span>
+              {soundVolume === 'normal' && (language === 'fr' ? 'Son : Normal' : 'Sound: Normal')}
+              {soundVolume === 'discret' && (language === 'fr' ? 'Son : Discret' : 'Sound: Soft')}
+              {soundVolume === 'muted' && (language === 'fr' ? 'Son : Muet' : 'Sound: Muted')}
+            </span>
           </button>
 
           <div className="footer-separator" />

@@ -214,7 +214,42 @@ export default function DashboardPage() {
   }, [language, orderPage, ordersPerPage, periodFilter]);
 
   if (isLoading || !kpis) {
-    return <div className="p-8 flex justify-center"><div className="spinner"></div></div>;
+    return (
+      <div className="page" style={{ opacity: 0.7 }}>
+        {/* Header Skeleton */}
+        <div className="page-header" style={{ animation: 'shimmer 1.5s infinite linear' }}>
+          <div>
+            <div style={{ height: '28px', width: '220px', background: 'var(--surface-2)', borderRadius: '8px', marginBottom: '8px' }} />
+            <div style={{ height: '16px', width: '380px', background: 'var(--surface-2)', borderRadius: '6px' }} />
+          </div>
+          <div style={{ height: '44px', width: '150px', background: 'var(--surface-2)', borderRadius: '12px' }} />
+        </div>
+
+        {/* KPI Cards Skeletons */}
+        <div className="kpi-grid">
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} className="card" style={{ height: '102px', display: 'flex', flexDirection: 'column', gap: '8px', background: 'var(--surface-1)', border: '1px solid var(--border-subtle)', borderRadius: '20px', padding: '1.25rem 1.5rem', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+                  <div style={{ height: '12px', width: '60%', background: 'var(--surface-3)', borderRadius: '4px' }} />
+                  <div style={{ height: '24px', width: '80%', background: 'var(--surface-2)', borderRadius: '6px' }} />
+                </div>
+                <div style={{ width: '46px', height: '46px', background: 'var(--surface-3)', borderRadius: '12px' }} />
+              </div>
+              <div style={{ height: '12px', width: '40%', background: 'var(--surface-3)', borderRadius: '4px', marginTop: 'auto' }} />
+            </div>
+          ))}
+        </div>
+
+        {/* Chart Skeleton */}
+        <div className="card" style={{ height: '320px', display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--surface-1)', borderRadius: '20px', padding: '1.5rem' }}>
+          <div style={{ height: '20px', width: '180px', background: 'var(--surface-2)', borderRadius: '6px' }} />
+          <div style={{ flex: 1, background: 'var(--surface-2)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: '80%', height: '2px', background: 'var(--border-subtle)', position: 'relative' }} />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Reverse data points for chronological ordering
@@ -230,8 +265,8 @@ export default function DashboardPage() {
       title: language === 'fr' ? 'Chiffre d\'Affaires' : 'Revenue',
       value: kpis.total_revenue || 0,
       change: language === 'fr' ? 'Revenu total' : 'Total income',
-      icon: <CircleDollarSign size={20} style={{ color: '#10b981' }} />,
-      color: 'rgba(16,185,129,0.12)',
+      icon: <CircleDollarSign size={20} style={{ color: 'var(--color-brand-400)' }} />,
+      color: 'var(--brand-alpha-12, rgba(109,213,196,0.12))',
       isCurrency: true,
     },
     {
@@ -246,8 +281,8 @@ export default function DashboardPage() {
       title: language === 'fr' ? 'Bénéfice Net' : 'Net Profit',
       value: kpis.net_balance || 0,
       change: language === 'fr' ? 'Solde net' : 'Net balance',
-      icon: <Wallet size={20} style={{ color: '#818cf8' }} />,
-      color: 'rgba(99,102,241,0.12)',
+      icon: <Wallet size={20} style={{ color: '#3ea39b' }} />,
+      color: 'rgba(62,163,155,0.12)',
       isCurrency: true,
     },
     {
@@ -261,15 +296,15 @@ export default function DashboardPage() {
       title: t('dash.clients'),
       value: kpis.total_clients || 0,
       change: '+14.2%',
-      icon: <Users size={20} style={{ color: '#a78bfa' }} />,
-      color: 'rgba(167,139,250,0.12)',
+      icon: <Users size={20} style={{ color: '#51c7b7' }} />,
+      color: 'rgba(81,199,183,0.12)',
     },
     {
       title: t('dash.pending_orders'),
       value: kpis.pending_orders || 0,
       change: language === 'fr' ? 'à traiter' : 'pending',
-      icon: <Clock size={20} style={{ color: '#71717a' }} />,
-      color: 'rgba(113,113,122,0.12)',
+      icon: <Clock size={20} style={{ color: 'var(--text-secondary)' }} />,
+      color: 'var(--border-default)',
     },
   ];
 
@@ -344,8 +379,8 @@ export default function DashboardPage() {
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25}/>
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="var(--color-brand-400)" stopOpacity={0.25}/>
+                    <stop offset="95%" stopColor="var(--color-brand-400)" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
@@ -376,12 +411,12 @@ export default function DashboardPage() {
                 <Area
                   type="monotone"
                   dataKey="value"
-                  stroke="#6366f1"
+                  stroke="var(--color-brand-400)"
                   strokeWidth={2.5}
                   fillOpacity={1}
                   fill="url(#colorRevenue)"
                   dot={false}
-                  activeDot={{ r: 5, fill: '#818cf8', stroke: '#6366f1', strokeWidth: 2 }}
+                  activeDot={{ r: 5, fill: 'var(--color-brand-300)', stroke: 'var(--color-brand-500)', strokeWidth: 2 }}
                   animationDuration={1200}
                 />
               </AreaChart>

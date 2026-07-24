@@ -12,16 +12,9 @@ import { toast } from 'sonner';
 import { ReceiptModal } from '@/components/ui/ReceiptModal';
 import { Modal } from '@/components/ui/Modal';
 import { Product } from '@/types';
+import { SoundEffects, triggerHaptic } from '@/lib/audio';
 
 interface CartItem extends Product { cartQuantity: number; }
-
-/* ─── Emoji déterministe par nom de produit ──────────────────────── */
-const EMOJIS = ['🛍️','📦','👗','👟','💄','🍎','🥤','🫒','🧴','💊','📱','🔧','🎁','🪴','🧸','🍕','☕','🎽','💎','🖥️'];
-const getEmoji = (name: string) => {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
-  return EMOJIS[Math.abs(h) % EMOJIS.length];
-};
 
 const fmt = (n: number) => n.toLocaleString('fr-FR') + ' GNF';
 
@@ -106,25 +99,50 @@ export default function POSPage() {
 
   // ─── Panier ──────────────────────────────────────────────────────
   const addToCart = (product: Product) => {
-    if (product.stock <= 0) return;
+    if (product.stock <= 0) {
+      SoundEffects.playError();
+      triggerHaptic([100, 50, 100]);
+      return;
+    }
     setCart(prev => {
       const ex = prev.find(i => i.id === product.id);
       if (ex) {
-        if (ex.cartQuantity >= product.stock) { toast.error(language === 'fr' ? 'Stock insuffisant' : 'Insufficient stock'); return prev; }
+        if (ex.cartQuantity >= product.stock) {
+          SoundEffects.playError();
+          triggerHaptic([100, 50, 100]);
+          toast.error(language === 'fr' ? 'Stock insuffisant' : 'Insufficient stock');
+          return prev;
+        }
+        SoundEffects.playClick();
+        triggerHaptic(15);
         return prev.map(i => i.id === product.id ? { ...i, cartQuantity: i.cartQuantity + 1 } : i);
       }
+      SoundEffects.playClick();
+      triggerHaptic(15);
       return [...prev, { ...product, cartQuantity: 1 }];
     });
   };
 
-  const updateQty = (id: string, delta: number) =>
+  const updateQty = (id: string, delta: number) => {
     setCart(prev => prev.map(i => {
       if (i.id !== id) return i;
       const q = i.cartQuantity + delta;
-      if (q <= 0) return { ...i, cartQuantity: 1 };
-      if (q > i.stock) { toast.error(language === 'fr' ? 'Stock insuffisant' : 'Insufficient stock'); return i; }
+      if (q <= 0) {
+        SoundEffects.playClick();
+        triggerHaptic(10);
+        return { ...i, cartQuantity: 1 };
+      }
+      if (q > i.stock) {
+        SoundEffects.playError();
+        triggerHaptic([100, 50, 100]);
+        toast.error(language === 'fr' ? 'Stock insuffisant' : 'Insufficient stock');
+        return i;
+      }
+      SoundEffects.playClick();
+      triggerHaptic(10);
       return { ...i, cartQuantity: q };
     }));
+  };
 
   const setDirectQty = (id: string, qty: number) =>
     setCart(prev => prev.map(i => {
@@ -134,7 +152,11 @@ export default function POSPage() {
       return { ...i, cartQuantity: qty };
     }));
 
-  const removeFromCart = (id: string) => setCart(prev => prev.filter(i => i.id !== id));
+  const removeFromCart = (id: string) => {
+    SoundEffects.playClick();
+    triggerHaptic(10);
+    setCart(prev => prev.filter(i => i.id !== id));
+  };
 
   const subtotal   = cart.reduce((s, i) => s + i.price * i.cartQuantity, 0);
   const totalItems = cart.reduce((s, i) => s + i.cartQuantity, 0);
@@ -190,6 +212,8 @@ export default function POSPage() {
       }));
 
       // Animation succès
+      SoundEffects.playSuccess();
+      triggerHaptic([30, 50, 30]);
       setSuccessAnim(true);
       setTimeout(() => setSuccessAnim(false), 1400);
       if (!isDebt) toast.success(language === 'fr' ? '✓ Vente encaissée !' : '✓ Sale recorded!');
@@ -209,6 +233,8 @@ export default function POSPage() {
       setCart([]); setDiscount(0); setSelectedClientId('');
       setIsDebt(false); setDebtDescription(''); setDebtDueDate('');
     } catch (err: any) {
+      SoundEffects.playError();
+      triggerHaptic([100, 50, 100]);
       toast.error(err?.message || (language === 'fr' ? 'Erreur de validation' : 'Validation error'));
     } finally {
       setIsProcessing(false);
@@ -298,7 +324,6 @@ export default function POSPage() {
               filteredProducts.map((product, idx) => {
                 const disabled = product.stock <= 0;
                 const inCart   = cart.find(i => i.id === product.id);
-                const emoji    = getEmoji(product.name);
                 return (
                   <button
                     key={product.id}
@@ -315,7 +340,7 @@ export default function POSPage() {
                         <img src={product.images[0]} alt={product.name} className="p-card-img" />
                       ) : (
                         <div className="p-card-img-placeholder">
-                          <span className="p-card-emoji">{emoji}</span>
+                          <span className="p-card-emoji"><Package size={24} style={{ color: 'var(--color-brand-400)' }} /></span>
                         </div>
                       )}
                       <span className={`p-card-stock ${disabled ? 'out' : product.stock <= 5 ? 'low' : ''}`}>
@@ -377,7 +402,7 @@ export default function POSPage() {
               </div>
             ) : cart.map(item => (
               <div key={item.id} className="p-item">
-                <span className="p-item-emoji">{getEmoji(item.name)}</span>
+                <div style={{ background: 'var(--surface-2)', padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center' }}><Package size={14} style={{ color: 'var(--color-brand-400)' }} /></div>
                 <div className="p-item-info">
                   <span className="p-item-name">{item.name}</span>
                   <span className="p-item-total">{fmt(item.price * item.cartQuantity)}</span>
