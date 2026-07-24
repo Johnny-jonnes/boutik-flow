@@ -72,7 +72,7 @@ function KPICard({
 }) {
   const { language } = useLanguage();
   return (
-    <div className="kpi-card card animate-fade-in">
+    <div className="kpi-card card anim-slide-up">
       <div className="kpi-body">
         <div className="kpi-info">
           <span className="kpi-label">{title}</span>
@@ -84,24 +84,25 @@ function KPICard({
             <span className="kpi-change-label">{language === 'fr' ? 'sur la période' : 'in period'}</span>
           </div>
         </div>
-        <div className="kpi-icon-box" style={{ background: color, color: color.replace('0.15)', '1)').replace('0.1)', '1)') }}>
+        <div className="kpi-icon-box" style={{ background: color }}>
           {icon}
         </div>
       </div>
 
       <style jsx>{`
         .kpi-card { 
-          padding: 1.5rem;
+          padding: 1.25rem 1.5rem;
           background: var(--surface-1);
           border: 1px solid var(--border-subtle);
-          border-radius: 16px;
+          border-radius: var(--radius-xl);
           cursor: default; 
-          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: transform 200ms var(--ease-out), box-shadow 200ms ease, border-color 150ms ease;
+          will-change: transform;
         }
         .kpi-card:hover {
-          transform: translateY(-2px);
+          transform: translateY(-3px);
           border-color: var(--border-default);
-          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+          box-shadow: var(--shadow-md);
         }
         .kpi-body {
           display: flex;
@@ -112,19 +113,19 @@ function KPICard({
         .kpi-info {
           display: flex;
           flex-direction: column;
-          gap: 0.35rem;
+          gap: 0.3rem;
         }
         .kpi-label {
-          font-size: 0.8rem;
+          font-size: 0.72rem;
           color: var(--text-muted);
-          font-weight: 600;
+          font-weight: 700;
           text-transform: uppercase;
-          letter-spacing: 0.06em;
+          letter-spacing: 0.08em;
         }
         .kpi-icon-box {
-          width: 44px;
-          height: 44px;
-          border-radius: 12px;
+          width: 46px;
+          height: 46px;
+          border-radius: var(--radius-md);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -132,28 +133,29 @@ function KPICard({
         }
         .kpi-value {
           font-family: var(--font-display);
-          font-size: 1.65rem;
-          font-weight: 700;
+          font-size: 1.75rem;
+          font-weight: 800;
           color: var(--text-primary);
-          letter-spacing: -0.02em;
-          line-height: 1.2;
+          letter-spacing: -0.03em;
+          line-height: 1.15;
         }
         .kpi-change {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
-          margin-top: 0.25rem;
+          gap: 0.4rem;
+          margin-top: 0.2rem;
         }
         .kpi-change-badge {
-          font-size: 0.75rem;
-          font-weight: 600;
+          font-size: 0.7rem;
+          font-weight: 700;
           color: var(--color-brand-400);
           background: var(--brand-alpha-10);
-          padding: 0.15rem 0.5rem;
-          border-radius: 6px;
+          padding: 0.1rem 0.45rem;
+          border-radius: 99px;
+          border: 1px solid var(--brand-alpha-15);
         }
         .kpi-change-label {
-          font-size: 0.75rem;
+          font-size: 0.7rem;
           color: var(--text-muted);
         }
       `}</style>
@@ -225,49 +227,49 @@ export default function DashboardPage() {
 
   const kpiCards = [
     {
-      title: language === 'fr' ? 'Chiffre d\'Affaires' : 'Sales Revenue',
+      title: language === 'fr' ? 'Chiffre d\'Affaires' : 'Revenue',
       value: kpis.total_revenue || 0,
-      change: language === 'fr' ? 'Revenu ventes' : 'Sales income',
-      icon: <CircleDollarSign size={20} />,
-      color: 'rgba(16, 185, 129, 0.15)',
+      change: language === 'fr' ? 'Revenu total' : 'Total income',
+      icon: <CircleDollarSign size={20} style={{ color: '#10b981' }} />,
+      color: 'rgba(16,185,129,0.12)',
       isCurrency: true,
     },
     {
-      title: language === 'fr' ? 'Dépenses (Sorties)' : 'Expenses (Outflow)',
+      title: language === 'fr' ? 'Dépenses' : 'Expenses',
       value: kpis.total_expenses || 0,
-      change: language === 'fr' ? 'Charges boutique' : 'Shop expenses',
-      icon: <ArrowDownRight size={20} />,
-      color: 'rgba(239, 68, 68, 0.15)',
+      change: language === 'fr' ? 'Charges boutique' : 'Shop charges',
+      icon: <ArrowDownRight size={20} style={{ color: '#f43f5e' }} />,
+      color: 'rgba(244,63,94,0.12)',
       isCurrency: true,
     },
     {
-      title: language === 'fr' ? 'Bénéfice Net (Solde)' : 'Net Profit (Balance)',
+      title: language === 'fr' ? 'Bénéfice Net' : 'Net Profit',
       value: kpis.net_balance || 0,
       change: language === 'fr' ? 'Solde net' : 'Net balance',
-      icon: <Wallet size={20} />,
-      color: 'rgba(59, 130, 246, 0.15)',
+      icon: <Wallet size={20} style={{ color: '#818cf8' }} />,
+      color: 'rgba(99,102,241,0.12)',
       isCurrency: true,
     },
     {
       title: t('dash.orders'),
       value: kpis.total_orders || 0,
       change: '+8.1%',
-      icon: <ShoppingBag size={20} />,
-      color: 'rgba(139, 92, 246, 0.15)',
+      icon: <ShoppingBag size={20} style={{ color: '#f59e0b' }} />,
+      color: 'rgba(245,158,11,0.12)',
     },
     {
       title: t('dash.clients'),
       value: kpis.total_clients || 0,
       change: '+14.2%',
-      icon: <Users size={20} />,
-      color: 'rgba(245, 158, 11, 0.15)',
+      icon: <Users size={20} style={{ color: '#a78bfa' }} />,
+      color: 'rgba(167,139,250,0.12)',
     },
     {
       title: t('dash.pending_orders'),
       value: kpis.pending_orders || 0,
       change: language === 'fr' ? 'à traiter' : 'pending',
-      icon: <Clock size={20} />,
-      color: 'rgba(107, 114, 128, 0.15)',
+      icon: <Clock size={20} style={{ color: '#71717a' }} />,
+      color: 'rgba(113,113,122,0.12)',
     },
   ];
 
