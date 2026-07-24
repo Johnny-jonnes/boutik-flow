@@ -36,6 +36,8 @@ import { useState, useEffect, useRef } from 'react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useLanguage } from '@/context/LanguageContext';
 import { ScrollToTop } from '@/components/ScrollToTop';
+import { PinLock } from '@/components/ui/PinLock';
+import { usePinLock } from '@/hooks/usePinLock';
 
 const NAV_CATEGORIES = [
   {
@@ -75,7 +77,6 @@ const NAV_CATEGORIES = [
     icon: Megaphone,
     items: [
       { href: '/whatsapp', icon: MessageSquare, labelKey: 'nav.whatsapp', label: 'WhatsApp', id: 'nav-whatsapp' },
-      { href: '/campaigns', icon: Megaphone, labelKey: 'nav.campaigns', label: 'Campagnes', id: 'nav-campaigns' },
     ]
   },
   {
@@ -92,6 +93,7 @@ const NAV_CATEGORIES = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { isLocked, pinError, verifyPin, setPinError } = usePinLock();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
@@ -148,6 +150,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="shell">
+      {isLocked && <PinLock onVerify={verifyPin} error={pinError} onClearError={() => setPinError('')} />}
       {/* Mobile top bar */}
       <header className="mobile-bar">
         <div className="mobile-brand">
@@ -244,7 +247,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               icon: Megaphone,
               items: [
                 { href: '/whatsapp', icon: MessageSquare, labelKey: 'nav.whatsapp', label: 'WhatsApp', id: 'nav-whatsapp' },
-                { href: '/campaigns', icon: Megaphone, labelKey: 'nav.campaigns', label: 'Campagnes', id: 'nav-campaigns' },
               ]
             },
             {

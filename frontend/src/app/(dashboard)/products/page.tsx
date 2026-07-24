@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { Search, ImageIcon, Pencil, Trash2, Eye, Plus, Sparkles, Download, Printer, Camera } from 'lucide-react';
 import type { Product } from '@/types';
 import { api } from '@/lib/api/client';
@@ -11,6 +11,7 @@ import { SKUPrintModal } from '@/components/ui/SKUPrintModal';
 import { useLanguage } from '@/context/LanguageContext';
 import type { Category } from '@/types';
 import { compressImage } from '@/lib/utils/imageCompressor';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 function formatGNF(amount: number) {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' GNF';
@@ -18,8 +19,11 @@ function formatGNF(amount: number) {
 
 
 
-export default function ProductsPage() {
+function ProductsContent() {
   const { t } = useLanguage();
+  const searchParams = useSearchParams();
+  const categoryIdFromUrl = searchParams.get('category_id');
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -256,11 +260,13 @@ export default function ProductsPage() {
     printWindow.document.close();
   };
 
-  const filteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (p.barcode && p.barcode.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (p.barcode && p.barcode.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesCategory = !categoryIdFromUrl || p.category_id === categoryIdFromUrl;
+    return matchesSearch && matchesCategory;
+  });
 
   const renderProductForm = (
     form: typeof addForm,
@@ -464,6 +470,16 @@ export default function ProductsPage() {
           <input type="text" className="input search-input" placeholder={t('prod.search')}
             value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
         </div>
+        {categoryIdFromUrl && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0.75rem', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '8px', fontSize: '0.8rem', color: '#10b981' }}>
+            <span>Filtré par catégorie</span>
+            <button 
+              onClick={() => router.push('/products')} 
+              style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', lineHeight: 1, padding: '0 0.2rem' }}
+              title="Supprimer le filtre"
+            >×</button>
+          </div>
+        )}
         <button 
           className="btn btn-secondary" 
           onClick={() => { setActiveScanField('search'); setIsScannerOpen(true); }}
@@ -829,5 +845,13 @@ export default function ProductsPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center' }}>Chargement...</div>}>
+      <ProductsContent />
+    </Suspense>
   );
 }

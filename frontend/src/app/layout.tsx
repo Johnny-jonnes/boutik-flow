@@ -43,6 +43,11 @@ export default function RootLayout({
     // suppressHydrationWarning évite le warning lié à la classe .light/.dark
     // que next-themes injecte côté client sur <html>
     <html lang="fr" suppressHydrationWarning>
+      <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="mobile-web-app-capable" content="yes" />
+      </head>
       <body>
         <LanguageProvider>
           <ThemeProvider>

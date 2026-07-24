@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { UserPlus, Pencil, Trash2, Shield, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, Pencil, Trash2, Shield, AlertTriangle, Eye, EyeOff, KeyRound } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
@@ -39,6 +39,13 @@ export default function TeamPage() {
   // Delete modal
   const [deleteTarget, setDeleteTarget] = useState<TeamMember | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Password Modal
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordTarget, setPasswordTarget] = useState<TeamMember | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -129,6 +136,36 @@ export default function TeamPage() {
     }
   };
 
+  const handleChangePassword = async () => {
+    if (!passwordTarget) return;
+    // Client-side validation
+    if (newPassword.length < 8) {
+      toast.error('Le mot de passe doit contenir au moins 8 caractères.');
+      return;
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      toast.error('Le mot de passe doit contenir au moins une majuscule.');
+      return;
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      toast.error('Le mot de passe doit contenir au moins un chiffre.');
+      return;
+    }
+    setIsChangingPassword(true);
+    try {
+      await api.changeTeamMemberPassword(passwordTarget.id, newPassword);
+      toast.success(`Mot de passe de ${passwordTarget.full_name || passwordTarget.email} mis à jour.`);
+      setShowPasswordModal(false);
+      setNewPassword('');
+      setPasswordTarget(null);
+    } catch (err: any) {
+      const msg = err instanceof Error ? err.message : 'Erreur lors du changement de mot de passe';
+      toast.error(msg);
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
   const getRoleBadge = (role: string) => {
     switch (role) {
       case 'owner': return <span className="badge role-owner">{t('team.role_owner')}</span>;
@@ -207,6 +244,14 @@ export default function TeamPage() {
                       disabled={member.role === 'owner'}
                     >
                       <Pencil size={16} />
+                    </button>
+                    <button 
+                      className="btn btn-ghost btn-icon" 
+                      title="Changer le MDP" 
+                      onClick={() => { setPasswordTarget(member); setShowPasswordModal(true); }}
+                      disabled={member.role === 'owner'}
+                    >
+                      <KeyRound size={16} />
                     </button>
                     {member.role !== 'owner' && (
                       <button 
@@ -339,6 +384,46 @@ export default function TeamPage() {
           <button className="btn btn-danger" onClick={handleDelete} disabled={isDeleting}>
             {isDeleting ? t('common.deleting') : t('common.delete')}
           </button>
+        </div>
+      </Modal>
+
+      {/* Change Password Modal */}
+      <Modal 
+        isOpen={showPasswordModal} 
+        onClose={() => { setShowPasswordModal(false); setNewPassword(''); setPasswordTarget(null); }} 
+        title={`Changer le mot de passe — ${passwordTarget?.full_name || passwordTarget?.email || ''}`}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+            Définissez un nouveau mot de passe pour ce membre. Il devra le changer lors de sa prochaine connexion.
+          </p>
+          <div className="form-group">
+            <label className="form-label">Nouveau mot de passe</label>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <input
+                type={showNewPassword ? 'text' : 'password'}
+                className="input"
+                placeholder="Min. 8 caractères, 1 majuscule, 1 chiffre"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                style={{ paddingRight: '2.5rem', width: '100%' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                style={{ position: 'absolute', right: '0.75rem', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '0.25rem' }}
+              >
+                {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Min. 8 caractères, 1 majuscule, 1 chiffre</span>
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-ghost" onClick={() => { setShowPasswordModal(false); setNewPassword(''); setPasswordTarget(null); }}>Annuler</button>
+            <button type="button" className="btn btn-primary" onClick={handleChangePassword} disabled={isChangingPassword}>
+              {isChangingPassword ? 'Enregistrement...' : 'Enregistrer'}
+            </button>
+          </div>
         </div>
       </Modal>
 

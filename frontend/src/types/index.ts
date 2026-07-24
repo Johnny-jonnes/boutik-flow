@@ -498,4 +498,17 @@ export interface TransactionCreatePayload {
   reference?: string;
 }
 
+export interface ClientDebt {
+  id: string;
+  client_id: string;
+  client_name: string;
+  order_id?: string;
+  original_amount: number;
+  paid_amount: number;
+  remaining_amount: number;
+  status: 'pending' | 'partial' | 'paid';
+  description?: string;
+  due_date?: string;
+  created_at: string;
+}
 

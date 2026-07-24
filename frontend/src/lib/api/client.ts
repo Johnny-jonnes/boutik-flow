@@ -48,6 +48,7 @@ import type {
   FinanceSummary,
   TransactionListResponse,
   TransactionCreatePayload,
+  ClientDebt,
 } from '@/types';
 
 // ─── Configuration ──────────────────────────────────────────────────────────
@@ -346,6 +347,20 @@ export const api = {
     return request(`/clients/${id}`, { method: 'DELETE' });
   },
 
+  // ── CRM — Debts ───────────────────────────────────────────────────────
+  async createDebt(data: { client_id: string; order_id?: string; original_amount: number; description?: string; due_date?: string }): Promise<{ id: string; message: string; remaining_amount: number }> {
+    return request('/crm/debts', { method: 'POST', body: JSON.stringify(data) });
+  },
+  async getDebts(clientId?: string, statusFilter?: string): Promise<ClientDebt[]> {
+    const params = new URLSearchParams();
+    if (clientId) params.set('client_id', clientId);
+    if (statusFilter) params.set('status_filter', statusFilter);
+    return request(`/crm/debts?${params.toString()}`);
+  },
+  async recordDebtPayment(debtId: string, data: { amount: number; payment_method: string; notes?: string }): Promise<{ message: string; remaining_amount: number; status: string }> {
+    return request(`/crm/debts/${debtId}/pay`, { method: 'POST', body: JSON.stringify(data) });
+  },
+
   // ── CRM — Segments ────────────────────────────────────────────────────
   async getSegments(page = 1, perPage = 20) {
     const raw = await request<{ items: Segment[]; total: number; page: number; per_page: number }>(
@@ -564,6 +579,12 @@ export const api = {
   // ─── Team Management ─────────────────────────────────────────────────
   getTeamMembers: () => request<TeamMember[]>('/auth/team'),
   inviteTeamMember: (data: InviteUserRequest) => request<TeamMember>('/auth/team/invite', { method: 'POST', body: JSON.stringify(data) }),
+  changeTeamMemberPassword: async (userId: string, newPassword: string): Promise<{ message: string }> => {
+    return request<{ message: string }>(`/auth/team/${userId}/password`, {
+      method: 'PUT',
+      body: JSON.stringify({ new_password: newPassword }),
+    });
+  },
   updateTeamMemberRole: (userId: string, role: string) => request<TeamMember>(`/auth/team/${userId}/role`, { method: 'PUT', body: JSON.stringify({ role }) }),
   updateTeamMemberStatus: (userId: string, isActive: boolean) => request<TeamMember>(`/auth/team/${userId}/status`, { method: 'PUT', body: JSON.stringify({ is_active: isActive }) }),
   deleteTeamMember: (userId: string) => request<void>(`/auth/team/${userId}`, { method: 'DELETE' }),

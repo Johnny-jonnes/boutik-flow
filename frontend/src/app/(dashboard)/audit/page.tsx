@@ -9,9 +9,7 @@ import {
   ChevronLeft, 
   ChevronRight, 
   RefreshCw, 
-  Eye, 
   Activity,
-  FileText,
   Database,
   Filter
 } from 'lucide-react';
@@ -162,7 +160,6 @@ export default function AuditPage() {
 
   // Detail Modal
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
-  const [showTechnicalDetails, setShowTechnicalDetails] = useState<boolean>(false);
 
   const fetchAuditLogs = useCallback(async () => {
     setIsLoading(true);
@@ -289,7 +286,6 @@ export default function AuditPage() {
               <th>Action</th>
               <th>{language === 'fr' ? 'Entité' : 'Entity'}</th>
               <th>{language === 'fr' ? 'Détails' : 'Details'}</th>
-              <th className="text-right">{language === 'fr' ? 'Aperçu' : 'View'}</th>
             </tr>
           </thead>
           <tbody>
@@ -354,15 +350,6 @@ export default function AuditPage() {
                     <span className="details-text" title={log.details || ''}>
                       {log.details || '—'}
                     </span>
-                  </td>
-                  <td className="text-right" onClick={(e) => e.stopPropagation()}>
-                    <button 
-                      className="btn btn-ghost btn-icon" 
-                      title={language === 'fr' ? 'Voir les détails complets' : 'View full details'}
-                      onClick={() => setSelectedLog(log)}
-                    >
-                      <Eye size={16} />
-                    </button>
                   </td>
                 </tr>
               );
@@ -446,7 +433,7 @@ export default function AuditPage() {
       {/* Log Detail Modal */}
       <Modal 
         isOpen={!!selectedLog} 
-        onClose={() => { setSelectedLog(null); setShowTechnicalDetails(false); }} 
+        onClose={() => setSelectedLog(null)} 
         title={language === 'fr' ? "Détails de l'événement d'audit" : 'Audit Event Details'}
       >
         {selectedLog && (
@@ -505,32 +492,8 @@ export default function AuditPage() {
               </div>
             </div>
 
-            {/* Collapsible Technical Details */}
-            <div style={{ marginTop: '0.5rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem' }}>
-              <button 
-                type="button" 
-                className="btn btn-ghost btn-sm" 
-                style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: '0.25rem 0.5rem' }} 
-                onClick={() => setShowTechnicalDetails(!showTechnicalDetails)}
-              >
-                {showTechnicalDetails 
-                  ? (language === 'fr' ? '▲ Masquer les infos de débogage' : '▲ Hide debugging info')
-                  : (language === 'fr' ? '▼ Afficher les infos de débogage (Développeur)' : '▼ Show debugging info (Developer)')
-                }
-              </button>
-
-              {showTechnicalDetails && (
-                <div className="technical-panel" style={{ marginTop: '0.5rem', padding: '0.75rem', background: 'var(--surface-3)', borderRadius: '8px', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', fontFamily: 'monospace', color: 'var(--text-muted)' }}>
-                  <div><strong>Event ID:</strong> {selectedLog.id}</div>
-                  <div><strong>Action Code:</strong> {selectedLog.action}</div>
-                  {selectedLog.user_id && <div><strong>User ID:</strong> {selectedLog.user_id}</div>}
-                  {selectedLog.target_id && <div><strong>Target ID:</strong> {selectedLog.target_id}</div>}
-                </div>
-              )}
-            </div>
-
             <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-              <button className="btn btn-primary" onClick={() => { setSelectedLog(null); setShowTechnicalDetails(false); }}>
+              <button className="btn btn-primary" onClick={() => setSelectedLog(null)}>
                 {language === 'fr' ? 'Fermer' : 'Close'}
               </button>
             </div>

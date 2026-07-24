@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { useLanguage } from '@/context/LanguageContext';
 import { Printer } from 'lucide-react';
+import { toast } from 'sonner';
 import './ReceiptModal.css';
 
 interface ReceiptModalProps {
@@ -52,24 +53,15 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   };
 
   const handlePrint = () => {
-    // 1. Create a temporary iframe for printing
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'absolute';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = 'none';
-    iframe.style.visibility = 'hidden';
-    document.body.appendChild(iframe);
-
-    // 2. Extract the ticket HTML
+    // Get the receipt paper HTML
     const paperElement = document.querySelector(`.receipt-paper.${format}`);
     if (!paperElement) {
-      window.print();
+      toast.error(language === 'fr' ? 'Impossible de trouver le ticket à imprimer.' : 'Could not find the receipt to print.');
       return;
     }
     const paperHtml = paperElement.outerHTML;
 
-    // 3. Collect active CSS stylesheets
+    // Collect all CSS
     let stylesHtml = '';
     for (let i = 0; i < document.styleSheets.length; i++) {
       const sheet = document.styleSheets[i];
@@ -79,38 +71,39 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           cssRules += sheet.cssRules[j].cssText + '\n';
         }
         stylesHtml += `<style>${cssRules}</style>`;
-      } catch (e) {
-        if (sheet.href) {
-          stylesHtml += `<link rel="stylesheet" href="${sheet.href}">`;
-        }
+      } catch {
+        if (sheet.href) stylesHtml += `<link rel="stylesheet" href="${sheet.href}">`;
       }
     }
 
-    // 4. Open document in iframe and inject markup
-    const doc = iframe.contentWindow?.document || iframe.contentDocument;
-    if (!doc) {
-      window.print();
+    // Open a new popup window
+    const popup = window.open('', '_blank', `width=600,height=800,toolbar=0,scrollbars=1,status=0,resizable=1`);
+    if (!popup) {
+      toast.error(language === 'fr' ? 'Le navigateur a bloqué la fenêtre d\'impression. Autorisez les popups pour ce site.' : 'Browser blocked the print popup. Please allow popups for this site.');
       return;
     }
 
-    doc.open();
-    doc.write(`
+    const isA4 = format === 'a4';
+    popup.document.open();
+    popup.document.write(`
       <!DOCTYPE html>
       <html>
         <head>
-          <title>${language === 'fr' ? 'Impression Reçu' : 'Print Receipt'}</title>
+          <meta charset="UTF-8">
+          <title>${language === 'fr' ? 'Reçu de vente' : 'Sales Receipt'}</title>
           ${stylesHtml}
           <style>
             @page {
-              size: ${format === 'thermal' ? '80mm auto' : 'A4'};
+              size: ${isA4 ? 'A4' : '80mm auto'};
               margin: 0;
             }
             * { box-sizing: border-box !important; }
-            body {
+            html, body {
               background: #fff !important;
               color: #000 !important;
               margin: 0 !important;
               padding: 0 !important;
+              width: 100% !important;
             }
             .receipt-paper {
               margin: 0 auto !important;
@@ -118,7 +111,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               border: none !important;
               background: #fff !important;
               color: #000 !important;
-              overflow: hidden !important;
+              overflow: visible !important;
             }
             .receipt-paper.thermal {
               width: 80mm !important;
@@ -130,52 +123,66 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               line-height: 1.35 !important;
             }
             .receipt-paper.a4 {
-              width: 210mm !important;
+              width: 100% !important;
               max-width: 210mm !important;
-              padding: 10mm 15mm !important;
+              padding: 12mm 15mm !important;
               font-family: system-ui, -apple-system, sans-serif !important;
             }
-            /* Thermal item list */
             .thermal-items { width: 100%; }
             .thermal-item { margin-bottom: 0.3rem; border-bottom: 1px dotted #d1d5db; padding-bottom: 0.25rem; }
             .thermal-item-name { font-weight: 600; font-size: 0.92em; margin-bottom: 0.1rem; word-break: break-word; }
             .thermal-item-detail { display: flex; justify-content: space-between; font-size: 0.88em; }
             .thermal-item-detail span:last-child { font-weight: 700; white-space: nowrap; margin-left: 0.3rem; }
-            /* Totals */
             .total-row { display: flex; justify-content: space-between; margin-bottom: 0.22rem; }
             .total-row span:last-child { white-space: nowrap; }
             .grand-total { font-weight: 800; }
+            .discount-row { color: #dc2626; }
+            .payment-method { color: #4b5563; font-style: italic; font-size: 0.88em; }
             .meta-row { display: flex; justify-content: space-between; margin-bottom: 0.18rem; gap: 0.4rem; }
             .receipt-line-solid { border: none; border-bottom: 1px solid #111827; margin: 0.35rem 0; width: 100%; }
             .receipt-line-dash { border: none; border-bottom: 1px dashed #9ca3af; margin: 0.35rem 0; width: 100%; }
+            .receipt-header { text-align: center; margin-bottom: 0.6rem; }
+            .shop-name { font-weight: 800; text-transform: uppercase; margin: 0 0 0.15rem 0; }
+            .receipt-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+            .receipt-totals { padding: 0.3rem 0; }
+            .receipt-footer { text-align: center; padding-top: 0.35rem; }
+            .thanks-msg { font-weight: 700; margin: 0.35rem 0 0 0; }
+            .thanks-sub { font-size: 0.78em; color: #6b7280; margin: 0.08rem 0 0.35rem 0; }
+            .powered-by { font-size: 0.68em; color: #9ca3af; margin: 0.15rem 0 0 0; font-weight: 600; }
+            .powered-url { font-size: 0.62em; color: #9ca3af; margin: 0; }
+            .shop-logo-placeholder { width: 28px; height: 28px; margin: 0 auto 0.35rem auto; background: #047857; color: white; font-weight: 800; font-size: 0.75rem; border-radius: 5px; display: flex; align-items: center; justify-content: center; }
+            .shop-detail { margin: 0; color: #4b5563; font-size: 0.82em; }
+            .strong { font-weight: 700; }
+            .items-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+            .items-table th { text-align: left; font-weight: 700; padding: 0.3rem 0.2rem; border-bottom: 1px solid #111827; font-size: 0.78em; text-transform: uppercase; }
+            .items-table td { padding: 0.3rem 0.2rem; border-bottom: 1px dotted #d1d5db; font-size: 0.9em; word-break: break-word; }
+            .col-desc { width: 44%; } .col-qty { width: 10%; text-align: center; } .col-price { width: 23%; text-align: right; } .col-total { width: 23%; text-align: right; font-weight: 600; }
           </style>
         </head>
         <body>
           ${paperHtml}
-          <script>
-            window.onload = function() {
-              setTimeout(function() {
-                window.focus();
-                window.print();
-              }, 300);
-            };
-          </script>
         </body>
       </html>
     `);
-    doc.close();
+    popup.document.close();
 
-    // 5. Trigger print from iframe focus
+    // Wait for popup to load then print
+    popup.onload = () => {
+      setTimeout(() => {
+        popup.focus();
+        popup.print();
+        setTimeout(() => popup.close(), 1000);
+      }, 200);
+    };
+
+    // Fallback if onload doesn't fire
     setTimeout(() => {
-      try {
-        iframe.contentWindow?.focus();
-        setTimeout(() => {
-          document.body.removeChild(iframe);
-        }, 10000); // Clean up after 10s
-      } catch (e) {
-        window.print();
+      if (!popup.closed) {
+        popup.focus();
+        popup.print();
+        setTimeout(() => { if (!popup.closed) popup.close(); }, 2000);
       }
-    }, 500);
+    }, 800);
   };
 
   if (!order) return null;

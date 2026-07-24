@@ -52,6 +52,11 @@ export default function OrdersPage() {
     client_id: '', items: [{ product_id: '', quantity: 1 }], notes: '',
   });
 
+  const [isDebt, setIsDebt] = useState(false);
+  const [debtAmount, setDebtAmount] = useState(0);
+  const [debtDescription, setDebtDescription] = useState('');
+  const [debtDueDate, setDebtDueDate] = useState('');
+
   // View modal
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
 
@@ -184,16 +189,43 @@ export default function OrdersPage() {
       toast.error('Veuillez remplir tous les champs obligatoires');
       return;
     }
+    
+    let finalDebtAmount = debtAmount;
+    if (isDebt && finalDebtAmount <= 0) {
+       const total = createForm.items.reduce((acc, item) => {
+         const product = products.find(p => p.id === item.product_id);
+         return acc + (product ? product.price * item.quantity : 0);
+       }, 0);
+       finalDebtAmount = total;
+    }
+
     setIsSubmitting(true);
     try {
-      await api.createOrder({
+      const order = await api.createOrder({
         client_id: createForm.client_id,
         items: createForm.items,
         notes: createForm.notes || undefined,
       });
-      toast.success('Commande créée avec succès');
+      
+      if (isDebt && finalDebtAmount > 0) {
+        await api.createDebt({
+          client_id: createForm.client_id,
+          order_id: order.id,
+          original_amount: finalDebtAmount,
+          description: debtDescription || undefined,
+          due_date: debtDueDate ? new Date(debtDueDate).toISOString() : undefined,
+        });
+        toast.success('Commande et dette créées avec succès');
+      } else {
+        toast.success('Commande créée avec succès');
+      }
+
       setIsCreateOpen(false);
       setCreateForm({ client_id: '', items: [{ product_id: '', quantity: 1 }], notes: '' });
+      setIsDebt(false);
+      setDebtAmount(0);
+      setDebtDescription('');
+      setDebtDueDate('');
       fetchOrders();
     } catch (err: any) {
       toast.error(err.message || 'Erreur lors de la création');
@@ -601,6 +633,49 @@ export default function OrdersPage() {
             <label className="form-label">Notes (optionnel)</label>
             <textarea className="input" rows={2} placeholder="Ex: Livraison urgente" value={createForm.notes} onChange={e => setCreateForm({ ...createForm, notes: e.target.value })} />
           </div>
+
+          {createForm.client_id && (
+            <div className="form-group" style={{ marginTop: '1rem', padding: '1rem', background: 'var(--surface-2)', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: isDebt ? '1rem' : 0 }}>
+                <input type="checkbox" id="debt-check" checked={isDebt} onChange={e => setIsDebt(e.target.checked)} />
+                <label htmlFor="debt-check" style={{ fontWeight: 600 }}>Enregistrer comme dette client (Vente à crédit)</label>
+              </div>
+              
+              {isDebt && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div>
+                    <label className="form-label">Montant de la dette (GNF)</label>
+                    <input 
+                      type="number" 
+                      className="input" 
+                      placeholder="Laissez vide pour le total" 
+                      value={debtAmount || ''} 
+                      onChange={e => setDebtAmount(Number(e.target.value))} 
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Description / Motif</label>
+                    <input 
+                      type="text" 
+                      className="input" 
+                      placeholder="Ex: Reste à payer" 
+                      value={debtDescription} 
+                      onChange={e => setDebtDescription(e.target.value)} 
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Date d'échéance (optionnelle)</label>
+                    <input 
+                      type="date" 
+                      className="input" 
+                      value={debtDueDate} 
+                      onChange={e => setDebtDueDate(e.target.value)} 
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           
           <div className="modal-actions">
             <button type="button" className="btn btn-ghost" onClick={() => setIsCreateOpen(false)}>Annuler</button>

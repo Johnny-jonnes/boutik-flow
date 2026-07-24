@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Search, Eye, Pencil, Trash2, UserPlus } from 'lucide-react';
-import type { Client, ClientStatus } from '@/types';
+import { Search, Eye, Pencil, Trash2, UserPlus, CreditCard, DollarSign } from 'lucide-react';
+import type { Client, ClientStatus, ClientDebt } from '@/types';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
@@ -16,7 +16,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function CRMPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [clients, setClients] = useState<Client[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -30,6 +30,13 @@ export default function CRMPage() {
 
   // View modal
   const [viewClient, setViewClient] = useState<Client | null>(null);
+  const [clientDebts, setClientDebts] = useState<ClientDebt[]>([]);
+  const [isLoadingDebts, setIsLoadingDebts] = useState(false);
+
+  // Payment modal
+  const [payDebt, setPayDebt] = useState<ClientDebt | null>(null);
+  const [payForm, setPayForm] = useState({ amount: '', paymentMethod: 'cash', notes: '' });
+  const [isPayingDebt, setIsPayingDebt] = useState(false);
 
   // Edit modal
   const [editClient, setEditClient] = useState<Client | null>(null);
@@ -50,6 +57,56 @@ export default function CRMPage() {
       toast.error('Erreur lors de la récupération des clients');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchClientDebts = async (clientId: string) => {
+    setIsLoadingDebts(true);
+    try {
+      const data = await api.getDebts(clientId);
+      setClientDebts(data);
+    } catch (error) {
+      console.error('Error fetching client debts:', error);
+    } finally {
+      setIsLoadingDebts(false);
+    }
+  };
+
+  const openView = (client: Client) => {
+    setViewClient(client);
+    setClientDebts([]);
+    fetchClientDebts(client.id);
+  };
+
+  const handlePaySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!payDebt) return;
+    const amountNum = parseFloat(payForm.amount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      toast.error('Veuillez entrer un montant valide supérieur à 0.');
+      return;
+    }
+    if (amountNum > payDebt.remaining_amount) {
+      toast.error(`Le montant dépasse le solde restant (${payDebt.remaining_amount} GNF)`);
+      return;
+    }
+    setIsPayingDebt(true);
+    try {
+      await api.recordDebtPayment(payDebt.id, {
+        amount: amountNum,
+        payment_method: payForm.paymentMethod,
+        notes: payForm.notes || undefined,
+      });
+      toast.success(language === 'fr' ? 'Règlement enregistré avec succès !' : 'Payment recorded successfully!');
+      setPayDebt(null);
+      setPayForm({ amount: '', paymentMethod: 'cash', notes: '' });
+      if (viewClient) {
+        fetchClientDebts(viewClient.id);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Erreur lors du règlement');
+    } finally {
+      setIsPayingDebt(false);
     }
   };
 
@@ -197,7 +254,7 @@ export default function CRMPage() {
                 </td>
                 <td className="text-right">
                   <div className="actions-flex">
-                    <button className="btn btn-ghost btn-icon" title="Voir" onClick={() => setViewClient(client)}>
+                    <button className="btn btn-ghost btn-icon" title="Voir" onClick={() => openView(client)}>
                       <Eye size={16} />
                     </button>
                     <button className="btn btn-ghost btn-icon" title="Modifier" onClick={() => openEdit(client)}>
@@ -263,15 +320,15 @@ export default function CRMPage() {
       </Modal>
 
       {/* Modal Voir */}
-      <Modal isOpen={!!viewClient} onClose={() => setViewClient(null)} title="Détails du client">
+      <Modal isOpen={!!viewClient} onClose={() => { setViewClient(null); setClientDebts([]); }} title={language === 'fr' ? 'Détails du client' : 'Customer Details'}>
         {viewClient && (
           <div className="detail-grid">
             <div className="detail-row">
-              <span className="detail-label">Nom</span>
+              <span className="detail-label">{language === 'fr' ? 'Nom' : 'Name'}</span>
               <span className="detail-value">{viewClient.name}</span>
             </div>
             <div className="detail-row">
-              <span className="detail-label">Téléphone</span>
+              <span className="detail-label">{language === 'fr' ? 'Téléphone' : 'Phone'}</span>
               <span className="detail-value">{viewClient.phone}</span>
             </div>
             <div className="detail-row">
@@ -279,24 +336,128 @@ export default function CRMPage() {
               <span className="detail-value">{viewClient.email || '—'}</span>
             </div>
             <div className="detail-row">
-              <span className="detail-label">Statut</span>
+              <span className="detail-label">{language === 'fr' ? 'Statut' : 'Status'}</span>
               <span className={`badge ${STATUS_COLORS[viewClient.status]}`}>{viewClient.status.toUpperCase()}</span>
             </div>
             <div className="detail-row">
-              <span className="detail-label">Notes</span>
+              <span className="detail-label">{language === 'fr' ? 'Notes' : 'Notes'}</span>
               <span className="detail-value">{viewClient.notes || '—'}</span>
             </div>
             <div className="detail-row">
-              <span className="detail-label">Créé le</span>
-              <span className="detail-value">{new Date(viewClient.created_at).toLocaleDateString('fr-FR')}</span>
+              <span className="detail-label">{language === 'fr' ? 'Créé le' : 'Created'}</span>
+              <span className="detail-value">{new Date(viewClient.created_at).toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US')}</span>
             </div>
+
+            {/* Section Dettes */}
+            <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem', marginTop: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <CreditCard size={16} style={{ color: '#f59e0b' }} />
+                <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                  {language === 'fr' ? 'Dettes & Règlements' : 'Debts & Payments'}
+                </span>
+              </div>
+
+              {isLoadingDebts ? (
+                <div style={{ textAlign: 'center', padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                  {language === 'fr' ? 'Chargement...' : 'Loading...'}
+                </div>
+              ) : clientDebts.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                  {language === 'fr' ? 'Aucune dette enregistrée.' : 'No debts recorded.'}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {clientDebts.map(debt => (
+                    <div key={debt.id} style={{
+                      background: debt.status === 'paid' ? 'rgba(16,185,129,0.07)' : 'rgba(245,158,11,0.07)',
+                      border: `1px solid ${debt.status === 'paid' ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'}`,
+                      borderRadius: '8px', padding: '0.65rem 0.85rem',
+                      display: 'flex', flexDirection: 'column', gap: '0.3rem'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                          {debt.description || (language === 'fr' ? 'Vente à crédit' : 'Credit sale')}
+                        </span>
+                        <span style={{
+                          fontSize: '0.72rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: '4px',
+                          background: debt.status === 'paid' ? 'rgba(16,185,129,0.15)' : debt.status === 'partial' ? 'rgba(59,130,246,0.15)' : 'rgba(245,158,11,0.15)',
+                          color: debt.status === 'paid' ? '#10b981' : debt.status === 'partial' ? '#3b82f6' : '#f59e0b'
+                        }}>
+                          {debt.status === 'paid' ? (language === 'fr' ? 'Réglé' : 'Paid') : debt.status === 'partial' ? (language === 'fr' ? 'Partiel' : 'Partial') : (language === 'fr' ? 'En attente' : 'Pending')}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>
+                          {language === 'fr' ? 'Montant initial' : 'Original'}: <strong>{debt.original_amount.toLocaleString()} GNF</strong>
+                        </span>
+                        <span style={{ color: debt.remaining_amount > 0 ? '#ef4444' : '#10b981', fontWeight: 700 }}>
+                          {language === 'fr' ? 'Reste' : 'Left'}: {debt.remaining_amount.toLocaleString()} GNF
+                        </span>
+                      </div>
+                      {debt.remaining_amount > 0 && (
+                        <button
+                          className="btn btn-primary"
+                          style={{ marginTop: '0.3rem', padding: '0.35rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                          onClick={() => { setPayDebt(debt); setPayForm({ amount: String(debt.remaining_amount), paymentMethod: 'cash', notes: '' }); }}
+                        >
+                          <DollarSign size={13} /> {language === 'fr' ? 'Enregistrer un règlement' : 'Record payment'}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="modal-actions">
-              <button className="btn btn-ghost" onClick={() => setViewClient(null)}>Fermer</button>
-              <button className="btn btn-primary" onClick={() => { setViewClient(null); openEdit(viewClient); }}>
-                <Pencil size={14} /> Modifier
+              <button className="btn btn-ghost" onClick={() => { setViewClient(null); setClientDebts([]); }}>{language === 'fr' ? 'Fermer' : 'Close'}</button>
+              <button className="btn btn-primary" onClick={() => { setViewClient(null); setClientDebts([]); openEdit(viewClient); }}>
+                <Pencil size={14} /> {language === 'fr' ? 'Modifier' : 'Edit'}
               </button>
             </div>
           </div>
+        )}
+      </Modal>
+
+      {/* Modal Règlement de dette */}
+      <Modal isOpen={!!payDebt} onClose={() => { setPayDebt(null); setPayForm({ amount: '', paymentMethod: 'cash', notes: '' }); }} title={language === 'fr' ? 'Enregistrer un règlement' : 'Record Payment'}>
+        {payDebt && (
+          <form onSubmit={handlePaySubmit} className="modal-form">
+            <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '8px', padding: '0.75rem', marginBottom: '1rem', fontSize: '0.85rem' }}>
+              <strong style={{ color: '#f59e0b' }}>{language === 'fr' ? 'Solde restant' : 'Remaining balance'} :</strong>
+              <span style={{ marginLeft: '0.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>{payDebt.remaining_amount.toLocaleString()} GNF</span>
+            </div>
+            <div className="form-group">
+              <label className="form-label">{language === 'fr' ? 'Montant du versement (GNF) *' : 'Payment Amount (GNF) *'}</label>
+              <input
+                type="number" className="input" required min="1" max={payDebt.remaining_amount}
+                value={payForm.amount}
+                onChange={e => setPayForm({ ...payForm, amount: e.target.value })}
+                placeholder={`Max: ${payDebt.remaining_amount.toLocaleString()} GNF`}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">{language === 'fr' ? 'Mode de paiement' : 'Payment Method'}</label>
+              <select className="input" value={payForm.paymentMethod} onChange={e => setPayForm({ ...payForm, paymentMethod: e.target.value })}>
+                <option value="cash">{language === 'fr' ? 'Espèces' : 'Cash'}</option>
+                <option value="orange_money">Orange Money</option>
+                <option value="mtn_money">MTN Money</option>
+                <option value="wave">Wave</option>
+                <option value="card">{language === 'fr' ? 'Carte bancaire' : 'Bank card'}</option>
+                <option value="transfer">{language === 'fr' ? 'Virement bancaire' : 'Bank transfer'}</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">{language === 'fr' ? 'Notes (optionnel)' : 'Notes (optional)'}</label>
+              <input type="text" className="input" value={payForm.notes} onChange={e => setPayForm({ ...payForm, notes: e.target.value })} />
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-ghost" onClick={() => { setPayDebt(null); setPayForm({ amount: '', paymentMethod: 'cash', notes: '' }); }}>{language === 'fr' ? 'Annuler' : 'Cancel'}</button>
+              <button type="submit" className="btn btn-primary" disabled={isPayingDebt}>
+                {isPayingDebt ? (language === 'fr' ? 'Enregistrement...' : 'Saving...') : (language === 'fr' ? 'Confirmer le règlement' : 'Confirm Payment')}
+              </button>
+            </div>
+          </form>
         )}
       </Modal>
 

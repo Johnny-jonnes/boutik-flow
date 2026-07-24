@@ -22,6 +22,7 @@ from app.modules.admin.router import router as admin_router
 from app.modules.suppliers.router import router as suppliers_router
 from app.modules.audit.router import router as audit_router
 from app.modules.finance.router import router as finance_router
+from app.modules.crm.debt_router import router as debt_router
 
 app = FastAPI(
     title="BoutikFlow API",
@@ -63,6 +64,7 @@ app.include_router(admin_router, prefix=API_PREFIX)
 app.include_router(suppliers_router, prefix=API_PREFIX)
 app.include_router(audit_router, prefix=API_PREFIX)
 app.include_router(finance_router, prefix=API_PREFIX)
+app.include_router(debt_router, prefix=API_PREFIX)
 
 
 # ─── Health Check ───────────────────────────────────────────────────────────
@@ -103,6 +105,7 @@ def on_startup():
     # Import ALL models so they are registered with Base.metadata
     from app.modules.auth.models import Tenant, User, AdminNotification  # noqa: F401
     from app.modules.crm.models import Client  # noqa: F401
+    from app.modules.crm.debt_models import ClientDebt, DebtPayment  # noqa: F401
     from app.modules.products.models import Product, InventoryLog, Order, OrderItem, OrderLog, WhatsAppMessage, AILog, Subscription  # noqa: F401
     from app.modules.marketing.models import Campaign  # noqa: F401
     from app.modules.suppliers.models import Supplier  # noqa: F401

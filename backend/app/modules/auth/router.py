@@ -44,6 +44,7 @@ from app.modules.auth.schemas import (
     UpdateUserRoleRequest,
     UpdateUserStatusRequest,
     TeamMemberResponse,
+    ChangePasswordRequest,
 )
 
 logger = logging.getLogger(__name__)
@@ -597,3 +598,30 @@ def delete_team_member(
     
     user.deleted_at = datetime.now(timezone.utc)
     db.commit()
+
+
+@router.put("/team/{user_id}/password", tags=["Team"])
+def update_team_member_password(
+    user_id: uuid.UUID,
+    payload: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(require_owner_or_manager),
+) -> dict:
+    """Change le mot de passe d'un membre de l'équipe (réservé owner/manager)."""
+    member = (
+        db.query(User)
+        .filter(
+            User.id == user_id,
+            User.tenant_id == current_user.tenant_id,
+            User.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if not member:
+        raise HTTPException(status_code=404, detail="Membre introuvable")
+    if member.role == "owner" and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Impossible de modifier le mot de passe du propriétaire")
+    member.hashed_password = hash_password(payload.new_password)
+    db.commit()
+    return {"message": "Mot de passe mis à jour avec succès"}
+
