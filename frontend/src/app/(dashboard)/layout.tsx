@@ -3,18 +3,18 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { 
-  LayoutDashboard, 
-  Users, 
-  Package, 
+import {
+  LayoutDashboard,
+  Users,
+  Package,
   ShoppingBag,
   ShoppingCart,
-  MessageSquare, 
+  MessageSquare,
   Menu,
-  X, 
-  Store, 
-  ChevronDown, 
-  ChevronLeft, 
+  X,
+  Store,
+  ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Rocket,
   BarChart3,
@@ -30,7 +30,8 @@ import {
   LogOut,
   Wallet,
   ClipboardList,
-  History
+  History,
+  Zap,
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -39,89 +40,122 @@ import { ScrollToTop } from '@/components/ScrollToTop';
 import { PinLock } from '@/components/ui/PinLock';
 import { usePinLock } from '@/hooks/usePinLock';
 
-const NAV_CATEGORIES = [
+/* ─── Navigation data ───────────────────────────────────────────── */
+const NAV_GROUPS = [
   {
-    titleKey: 'nav.dashboard',
     title: 'Tableau de Bord',
+    titleKey: 'nav.dashboard',
     icon: LayoutDashboard,
     items: [
-      { href: '/dashboard', icon: LayoutDashboard, labelKey: 'nav.dashboard', label: "Vue d'ensemble", id: 'nav-dashboard' },
-      { href: '/analytics', icon: BarChart3, labelKey: 'nav.analytics', label: 'Analytique', id: 'nav-analytics' },
-    ]
+      { href: '/dashboard',  icon: LayoutDashboard, labelKey: 'nav.dashboard', label: "Vue d'ensemble", id: 'nav-dashboard' },
+      { href: '/analytics',  icon: BarChart3,        labelKey: 'nav.analytics', label: 'Analytique',     id: 'nav-analytics' },
+    ],
   },
   {
-    titleKey: 'nav.crm',
     title: 'CRM',
+    titleKey: 'nav.crm',
     icon: Users,
     items: [
-      { href: '/crm', icon: Users, labelKey: 'nav.crm', label: 'Clients', id: 'nav-crm' },
-      { href: '/segments', icon: Tags, labelKey: 'nav.segments', label: 'Segments', id: 'nav-segments' },
-    ]
+      { href: '/crm',      icon: Users, labelKey: 'nav.crm',      label: 'Clients',  id: 'nav-crm' },
+      { href: '/segments', icon: Tags,  labelKey: 'nav.segments',  label: 'Segments', id: 'nav-segments' },
+    ],
   },
   {
-    titleKey: 'nav.products',
     title: 'Ventes',
+    titleKey: 'nav.products',
     icon: ShoppingBag,
     items: [
-      { href: '/pos', icon: ShoppingCart, labelKey: 'nav.pos', label: 'Caisse', id: 'nav-pos' },
-      { href: '/sales', icon: History, labelKey: 'nav.sales', label: 'Historique Ventes', id: 'nav-sales' },
-      { href: '/orders', icon: ClipboardList, labelKey: 'nav.orders', label: 'Suivi Commandes', id: 'nav-orders' },
-      { href: '/products', icon: Package, labelKey: 'nav.products', label: 'Produits', id: 'nav-products' },
-      { href: '/categories', icon: FolderTree, labelKey: 'nav.categories', label: 'Catégories', id: 'nav-categories' },
-      { href: '/suppliers', icon: Truck, labelKey: 'nav.suppliers', label: 'Fournisseurs', id: 'nav-suppliers' },
-    ]
+      { href: '/pos',        icon: ShoppingCart, labelKey: 'nav.pos',        label: 'Caisse',             id: 'nav-pos' },
+      { href: '/sales',      icon: History,      labelKey: 'nav.sales',      label: 'Historique Ventes',  id: 'nav-sales' },
+      { href: '/orders',     icon: ClipboardList,labelKey: 'nav.orders',     label: 'Suivi Commandes',    id: 'nav-orders' },
+      { href: '/products',   icon: Package,      labelKey: 'nav.products',   label: 'Produits',           id: 'nav-products' },
+      { href: '/categories', icon: FolderTree,   labelKey: 'nav.categories', label: 'Catégories',         id: 'nav-categories' },
+      { href: '/suppliers',  icon: Truck,        labelKey: 'nav.suppliers',  label: 'Fournisseurs',       id: 'nav-suppliers' },
+    ],
   },
   {
-    titleKey: 'nav.campaigns',
     title: 'Marketing',
+    titleKey: 'nav.campaigns',
     icon: Megaphone,
     items: [
       { href: '/whatsapp', icon: MessageSquare, labelKey: 'nav.whatsapp', label: 'WhatsApp', id: 'nav-whatsapp' },
-    ]
+    ],
   },
   {
-    titleKey: 'nav.management',
     title: 'Gestion',
+    titleKey: 'nav.management',
     icon: Settings,
     items: [
-      { href: '/team', icon: UserCog, labelKey: 'nav.team', label: 'Équipe', id: 'nav-team' },
-      { href: '/finance', icon: Wallet, labelKey: 'nav.finance', label: 'Finance', id: 'nav-finance' },
-      { href: '/audit', icon: ClipboardList, labelKey: 'nav.audit', label: 'Audit', id: 'nav-audit' },
-    ]
-  }
+      { href: '/team',    icon: UserCog,      labelKey: 'nav.team',    label: 'Équipe',   id: 'nav-team' },
+      { href: '/finance', icon: Wallet,       labelKey: 'nav.finance', label: 'Finance',  id: 'nav-finance' },
+      { href: '/audit',   icon: ClipboardList,labelKey: 'nav.audit',   label: 'Audit',    id: 'nav-audit' },
+    ],
+  },
 ];
 
+/* Bottom nav — 5 raccourcis mobiles les plus fréquents */
+const BOTTOM_NAV = [
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Accueil' },
+  { href: '/pos',       icon: ShoppingCart,    label: 'Caisse' },
+  { href: '/products',  icon: Package,         label: 'Produits' },
+  { href: '/crm',       icon: Users,           label: 'Clients' },
+  { href: '/finance',   icon: Wallet,          label: 'Finance' },
+];
+
+/* ─── Logo SVG indigo ───────────────────────────────────────────── */
+function Logo({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+      <path d="M14 2L26 8V20L14 26L2 20V8L14 2Z" fill="url(#bf-g)" />
+      <path d="M9 14L12.5 17.5L19 11" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <defs>
+        <linearGradient id="bf-g" x1="2" y1="2" x2="26" y2="26">
+          <stop stopColor="#818cf8" />
+          <stop offset="1" stopColor="#4f46e5" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   LAYOUT
+   ═══════════════════════════════════════════════════════════════════ */
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { isLocked, pinError, verifyPin, setPinError } = usePinLock();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     'Tableau de Bord': true,
     'CRM': true,
     'Ventes': true,
     'Marketing': true,
     'Gestion': true,
-    'Administration': true
+    'Administration': true,
   });
-  const [userInfo, setUserInfo] = useState({ boutiqueName: 'Ma Boutique', email: '', role: 'Admin', plan: 'freemium' });
+  const [userInfo, setUserInfo] = useState({
+    boutiqueName: 'Ma Boutique',
+    email: '',
+    role: 'owner',
+    plan: 'freemium',
+  });
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const { language, setLanguage, t } = useLanguage();
 
+  /* Decode JWT */
   useEffect(() => {
-    // Decode user info from JWT token
     try {
       const token = localStorage.getItem('boutikflow_access_token');
       if (token) {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserInfo({
           boutiqueName: payload.tenant_name || 'Ma Boutique',
-          email: payload.email || payload.sub || '',
-          role: payload.role || 'Admin',
-          plan: payload.tenant_plan || 'freemium',
+          email:        payload.email || payload.sub || '',
+          role:         payload.role  || 'owner',
+          plan:         payload.tenant_plan || 'freemium',
         });
       } else {
-        // Rediriger vers le login si le token est manquant
         window.location.href = '/login';
       }
     } catch {
@@ -129,15 +163,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, []);
 
-  // Close dropdown on outside click
+  /* Close dropdown on outside click */
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
+    function onClickOutside(e: MouseEvent) {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(e.target as Node)) {
         setIsProfileDropdownOpen(false);
       }
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
   }, []);
 
   const handleLogout = () => {
@@ -145,22 +179,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     window.location.href = '/login';
   };
 
-  const userInitial = userInfo.email ? userInfo.email.charAt(0).toUpperCase() : 'N';
-  const userName = userInfo.email ? userInfo.email.split('@')[0] : 'Nom de l\'utilisateur';
+  const userInitial = userInfo.email ? userInfo.email.charAt(0).toUpperCase() : 'U';
+  const userName    = userInfo.email ? userInfo.email.split('@')[0] : 'Utilisateur';
+
+  /* All nav groups including optional admin */
+  const allGroups = [
+    ...NAV_GROUPS,
+    ...(userInfo.role?.toLowerCase() === 'admin' ? [{
+      title: 'Administration',
+      titleKey: 'nav.admin',
+      icon: Shield,
+      items: [
+        { href: '/admin',         icon: LayoutDashboard, labelKey: 'nav.dashboard', label: "Vue d'ensemble",   id: 'nav-admin-dashboard' },
+        { href: '/admin/tenants', icon: Store,            labelKey: 'nav.tenants',   label: 'Gestion Boutiques', id: 'nav-admin-tenants' },
+      ],
+    }] : []),
+  ];
 
   return (
     <div className="shell">
       {isLocked && <PinLock onVerify={verifyPin} error={pinError} onClearError={() => setPinError('')} />}
-      {/* Mobile top bar */}
+
+      {/* ── Mobile top bar ─────────────────────────── */}
       <header className="mobile-bar">
         <div className="mobile-brand">
-          <div className="logo-mark">
-            <svg width="18" height="18" viewBox="0 0 28 28" fill="none">
-              <path d="M14 2L26 8V20L14 26L2 20V8L14 2Z" fill="url(#g1)" />
-              <path d="M9 14L12.5 17.5L19 11" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              <defs><linearGradient id="g1" x1="2" y1="2" x2="26" y2="26"><stop stopColor="#10b981" /><stop offset="1" stopColor="#047857" /></linearGradient></defs>
-            </svg>
-          </div>
+          <div className="logo-mark"><Logo size={18} /></div>
           <span className="brand-text">BoutikFlow</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -171,134 +214,72 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </header>
 
-      {/* Backdrop */}
+      {/* ── Backdrop ───────────────────────────────── */}
       {isMobileMenuOpen && <div className="backdrop" onClick={() => setIsMobileMenuOpen(false)} />}
 
-      {/* Sidebar */}
+      {/* ══════════════════════════════════════════════
+          SIDEBAR
+          ══════════════════════════════════════════════ */}
       <aside className={`sidebar ${isMobileMenuOpen ? 'sidebar--open' : ''}`}>
-        {/* Header Section */}
+
+        {/* Brand header */}
         <div className="sidebar__brand">
-          <div className="logo-mark">
-            <svg width="20" height="20" viewBox="0 0 28 28" fill="none">
-              <path d="M14 2L26 8V20L14 26L2 20V8L14 2Z" fill="url(#g2)" />
-              <path d="M9 14L12.5 17.5L19 11" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              <defs><linearGradient id="g2" x1="2" y1="2" x2="26" y2="26"><stop stopColor="#10b981" /><stop offset="1" stopColor="#047857" /></linearGradient></defs>
-            </svg>
-          </div>
+          <div className="logo-mark"><Logo size={20} /></div>
           <span className="brand-text">BoutikFlow</span>
-          
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}>
             <ThemeToggle />
-            <button className="sidebar-collapse-btn" onClick={() => setIsMobileMenuOpen(false)} aria-label="Fermer la sidebar">
-              <ChevronLeft size={16} />
+            <button className="sidebar-collapse-btn" onClick={() => setIsMobileMenuOpen(false)} aria-label="Fermer">
+              <X size={15} />
             </button>
           </div>
         </div>
 
-        {/* Boutique Card */}
+        {/* Boutique pill */}
         <div className="boutique-card">
-          <div className="boutique-icon">
-            <Store size={18} />
-          </div>
+          <div className="boutique-icon"><Store size={16} /></div>
           <div className="boutique-details">
             <span className="boutique-name">{userInfo.boutiqueName}</span>
-            <span className="boutique-badge">Plan Freemium</span>
+            <span className="boutique-badge">
+              {userInfo.plan === 'freemium' ? '✦ Freemium' : userInfo.plan === 'lifetime' ? '⚡ Lifetime' : '✓ Pro'}
+            </span>
           </div>
-          <ChevronDown size={14} className="boutique-chevron" />
         </div>
 
         {/* Navigation */}
         <nav className="sidebar__nav">
-          {[
-            {
-              titleKey: 'nav.dashboard',
-              title: 'Tableau de Bord',
-              icon: LayoutDashboard,
-              items: [
-                { href: '/dashboard', icon: LayoutDashboard, labelKey: 'nav.dashboard', label: 'Vue d\'ensemble', id: 'nav-dashboard' },
-                { href: '/analytics', icon: BarChart3, labelKey: 'nav.analytics', label: 'Analytique', id: 'nav-analytics' },
-              ]
-            },
-            {
-              titleKey: 'nav.crm',
-              title: 'CRM',
-              icon: Users,
-              items: [
-                { href: '/crm', icon: Users, labelKey: 'nav.crm', label: 'Clients', id: 'nav-crm' },
-                { href: '/segments', icon: Tags, labelKey: 'nav.segments', label: 'Segments', id: 'nav-segments' },
-              ]
-            },
-            {
-              titleKey: 'nav.products',
-              title: 'Ventes',
-              icon: ShoppingBag,
-              items: [
-                { href: '/pos', icon: ShoppingCart, labelKey: 'nav.pos', label: 'Caisse', id: 'nav-pos' },
-                { href: '/sales', icon: History, labelKey: 'nav.sales', label: 'Historique Ventes', id: 'nav-sales' },
-                { href: '/orders', icon: ClipboardList, labelKey: 'nav.orders', label: 'Suivi Commandes', id: 'nav-orders' },
-                { href: '/products', icon: Package, labelKey: 'nav.products', label: 'Produits', id: 'nav-products' },
-                { href: '/categories', icon: FolderTree, labelKey: 'nav.categories', label: 'Catégories', id: 'nav-categories' },
-                { href: '/suppliers', icon: Truck, labelKey: 'nav.suppliers', label: 'Fournisseurs', id: 'nav-suppliers' },
-              ]
-            },
-            {
-              titleKey: 'nav.campaigns',
-              title: 'Marketing',
-              icon: Megaphone,
-              items: [
-                { href: '/whatsapp', icon: MessageSquare, labelKey: 'nav.whatsapp', label: 'WhatsApp', id: 'nav-whatsapp' },
-              ]
-            },
-            {
-              titleKey: 'nav.management',
-              title: 'Gestion',
-              icon: Settings,
-              items: [
-                { href: '/team', icon: UserCog, labelKey: 'nav.team', label: 'Équipe', id: 'nav-team' },
-                { href: '/finance', icon: Wallet, labelKey: 'nav.finance', label: 'Finance', id: 'nav-finance' },
-                { href: '/audit', icon: ClipboardList, labelKey: 'nav.audit', label: 'Audit', id: 'nav-audit' },
-              ]
-            },
-            ...(userInfo.role && userInfo.role.toLowerCase() === 'admin' ? [{
-              titleKey: 'nav.admin',
-              title: 'Administration',
-              icon: Shield,
-              items: [
-                { href: '/admin', icon: LayoutDashboard, labelKey: 'nav.dashboard', label: 'Vue d\'ensemble', id: 'nav-admin-dashboard' },
-                { href: '/admin/tenants', icon: Store, labelKey: 'nav.tenants', label: 'Gestion Boutiques', id: 'nav-admin-tenants' },
-              ]
-            }] : [])
-          ].map((category) => {
-            const CategoryIcon = category.icon;
-            const isExpanded = expandedCategories[category.title];
+          {allGroups.map((group) => {
+            const GroupIcon = group.icon;
+            const isExpanded = expandedGroups[group.title] !== false;
             return (
-              <div key={category.title} className="nav-group">
-                <button 
-                  className="nav-section-title" 
-                  onClick={() => setExpandedCategories(prev => ({ ...prev, [category.title]: !prev[category.title] }))}
+              <div key={group.title} className="nav-group">
+                <button
+                  className="nav-section-title"
+                  onClick={() => setExpandedGroups(prev => ({ ...prev, [group.title]: !isExpanded }))}
                 >
                   <div className="nav-section-title-left">
-                    <CategoryIcon size={16} />
-                    <span>{t(category.titleKey)}</span>
+                    <GroupIcon size={13} />
+                    <span>{t(group.titleKey)}</span>
                   </div>
-                  {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                 </button>
-                
+
                 {isExpanded && (
                   <div className="nav-items-wrapper">
-                    {category.items.map((item) => {
+                    {group.items.map((item) => {
                       const isDashboard = item.href === '/dashboard';
                       const active = isDashboard ? pathname === item.href : pathname.startsWith(item.href);
                       const ItemIcon = item.icon;
                       return (
-                        <Link key={item.href} href={item.href} id={item.id}
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          id={item.id}
                           className={`nav-link ${active ? 'nav-link--active' : ''}`}
-                          onClick={() => setIsMobileMenuOpen(false)}>
-                          {active && <span className="nav-indicator" />}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
-                            <ItemIcon size={16} className="nav-icon" />
-                            <span className="nav-text">{t(item.labelKey)}</span>
-                          </div>
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          <ItemIcon size={15} className="nav-icon" />
+                          <span className="nav-text">{t(item.labelKey)}</span>
+                          {item.id === 'nav-pos' && <span className="nav-pill-pos">POS</span>}
                           {item.id === 'nav-whatsapp' && <span className="wa-dot" />}
                         </Link>
                       );
@@ -310,34 +291,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           })}
         </nav>
 
-        {/* Persistent Bottom Section */}
+        {/* Footer */}
         <div className="sidebar__footer">
-
-          {/* Language Selector */}
           <button className="lang-toggle" onClick={() => setLanguage(language === 'fr' ? 'en' : 'fr')}>
-            <Globe size={14} />
+            <Globe size={13} />
             <span>{language === 'fr' ? 'Français' : 'English'}</span>
+            <span className="lang-flag">{language === 'fr' ? '🇫🇷' : '🇬🇧'}</span>
           </button>
 
           <div className="footer-separator" />
 
-          {/* User profile dropdown container */}
+          {/* Profile */}
           <div className="profile-container" ref={profileDropdownRef}>
-            <div 
+            <div
               className={`profile-card ${isProfileDropdownOpen ? 'profile-card--open' : ''}`}
               onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
             >
-              <div className="profile-avatar">
-                {userInitial}
-              </div>
+              <div className="profile-avatar">{userInitial}</div>
               <div className="profile-info">
                 <span className="profile-name">{userName}</span>
-                <span className="profile-role">{userInfo.role === 'admin' ? 'Admin' : (language === 'fr' ? 'Propriétaire' : 'Owner')}</span>
+                <span className="profile-role">
+                  {userInfo.role === 'admin' ? 'Super Admin' : userInfo.role === 'owner' ? (language === 'fr' ? 'Propriétaire' : 'Owner') : userInfo.role}
+                </span>
               </div>
-              <ChevronDown size={14} className={`profile-chevron ${isProfileDropdownOpen ? 'profile-chevron--rotated' : ''}`} />
+              <ChevronDown size={13} className={`profile-chevron ${isProfileDropdownOpen ? 'profile-chevron--rotated' : ''}`} />
             </div>
 
-            {/* Dropdown Menu */}
             {isProfileDropdownOpen && (
               <div className="profile-dropdown">
                 <div className="dropdown-item dropdown-item--logout" onClick={handleLogout}>
@@ -350,21 +329,42 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      {/* Content */}
+      {/* ── Main content ───────────────────────────── */}
       <main className="main">
-        <div className="main__inner">{children}</div>
+        <div className="main__inner main-content">{children}</div>
         <ScrollToTop />
       </main>
 
+      {/* ══════════════════════════════════════════════
+          BOTTOM NAV — Mobile uniquement
+          ══════════════════════════════════════════════ */}
+      <nav className="bottom-nav">
+        <div className="bottom-nav-items">
+          {BOTTOM_NAV.map((item) => {
+            const Icon = item.icon;
+            const isDash = item.href === '/dashboard';
+            const active = isDash ? pathname === item.href : pathname.startsWith(item.href);
+            return (
+              <Link key={item.href} href={item.href} className={`bottom-nav-item ${active ? 'active' : ''}`}>
+                <div className="bottom-nav-icon">
+                  <Icon size={22} />
+                </div>
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+
       <style jsx>{`
-        /* ─── Shell ─────────────────────────────────── */
+        /* ══ Shell ══════════════════════════════════ */
         .shell {
           display: flex;
           min-height: 100vh;
           background: var(--surface-0);
         }
 
-        /* ─── Mobile bar ───────────────────────────── */
+        /* ══ Mobile top bar ════════════════════════ */
         .mobile-bar {
           display: none;
           position: fixed; top: 0; left: 0; right: 0;
@@ -375,136 +375,148 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           align-items: center;
           justify-content: space-between;
           z-index: 40;
+          backdrop-filter: blur(20px);
         }
         .mobile-brand { display: flex; align-items: center; gap: 0.5rem; }
         .mobile-toggle {
-          background: none; border: none;
-          color: var(--text-primary); cursor: pointer;
-          padding: 0.25rem;
-        }
-
-        /* ─── Logo ─────────────────────────────────── */
-        .logo-mark {
-          width: 32px; height: 32px;
+          background: var(--surface-2); border: 1px solid var(--border-subtle);
           border-radius: 8px;
-          background: var(--brand-alpha-10);
-          border: 1px solid var(--brand-alpha-20);
+          color: var(--text-primary); cursor: pointer;
+          width: 36px; height: 36px;
+          display: flex; align-items: center; justify-content: center;
+          transition: all 0.15s ease;
+        }
+        .mobile-toggle:hover { background: var(--surface-3); }
+
+        /* ══ Logo ══════════════════════════════════ */
+        .logo-mark {
+          width: 34px; height: 34px;
+          border-radius: 10px;
+          background: rgba(99,102,241,0.15);
+          border: 1px solid rgba(99,102,241,0.25);
           display: flex; align-items: center; justify-content: center;
           flex-shrink: 0;
+          transition: transform 0.2s var(--ease-spring);
         }
+        .logo-mark:hover { transform: scale(1.06) rotate(-3deg); }
         .brand-text {
           font-family: var(--font-display);
-          font-size: 1.2rem; font-weight: 700;
-          background: linear-gradient(135deg, var(--logo-gradient-from), var(--logo-gradient-to));
+          font-size: 1.15rem; font-weight: 800;
+          background: linear-gradient(135deg, #818cf8 0%, #6366f1 50%, #4f46e5 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
+          letter-spacing: -0.02em;
         }
 
-        /* ─── Sidebar ──────────────────────────────── */
+        /* ══ SIDEBAR ════════════════════════════════ */
         .sidebar {
-          width: 260px;
+          width: 256px;
           height: 100vh;
           position: sticky; top: 0;
           display: flex; flex-direction: column;
-          /* Mélange haut de gamme de vert forêt émeraude mi-clair */
-          background: linear-gradient(180deg, #123d30 0%, #081d16 100%);
-          backdrop-filter: blur(16px);
-          border-right: 1px solid rgba(52, 211, 153, 0.15);
+          background: linear-gradient(180deg, #0f0f14 0%, #0a0a0e 50%, #070709 100%);
+          border-right: 1px solid rgba(99,102,241,0.12);
           flex-shrink: 0;
           z-index: 50;
           overflow-y: auto;
           overflow-x: hidden;
           padding-bottom: 1rem;
+          scrollbar-width: thin;
+          scrollbar-color: rgba(255,255,255,0.08) transparent;
         }
-        
+
         @media (min-width: 1440px) {
-          .sidebar {
-            width: 280px;
-          }
+          .sidebar { width: 272px; }
         }
 
         .sidebar__brand {
           display: flex; align-items: center; gap: 0.625rem;
-          padding: 1.5rem 1.25rem 1rem;
-          position: relative;
+          padding: 1.25rem 1rem 0.875rem;
+          position: sticky; top: 0;
+          background: inherit;
+          z-index: 1;
+          border-bottom: 1px solid rgba(255,255,255,0.04);
+          margin-bottom: 0.5rem;
         }
 
         .sidebar-collapse-btn {
-          background: rgba(255, 255, 255, 0.04);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          color: #a7b8b0;
-          border-radius: 6px;
-          width: 26px; height: 26px;
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.08);
+          color: #9898a8;
+          border-radius: 7px;
+          width: 28px; height: 28px;
           display: flex; align-items: center; justify-content: center;
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all 0.15s ease;
+          padding: 0;
         }
         .sidebar-collapse-btn:hover {
-          background: rgba(255, 255, 255, 0.08);
-          color: #f0fdf4;
+          background: rgba(255,255,255,0.1);
+          color: #f4f4f6;
         }
 
-        /* ─── Boutique Card ────────────────────────── */
+        /* ── Boutique card ────────────────────────── */
         .boutique-card {
-          display: flex; align-items: center; gap: 0.75rem;
-          margin: 0.25rem 0.75rem 1.25rem;
-          padding: 0.75rem;
+          display: flex; align-items: center; gap: 0.625rem;
+          margin: 0 0.75rem 1rem;
+          padding: 0.625rem 0.75rem;
           border-radius: 12px;
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid rgba(255, 255, 255, 0.05);
+          background: rgba(99,102,241,0.06);
+          border: 1px solid rgba(99,102,241,0.15);
           transition: all 0.2s ease;
           cursor: pointer;
         }
         .boutique-card:hover {
-          background: rgba(255, 255, 255, 0.05);
-          border-color: rgba(255, 255, 255, 0.08);
+          background: rgba(99,102,241,0.1);
+          border-color: rgba(99,102,241,0.25);
         }
         .boutique-icon {
-          width: 36px; height: 36px;
+          width: 34px; height: 34px;
           border-radius: 8px;
-          background: rgba(52, 211, 153, 0.12);
-          color: #34d399;
+          background: rgba(99,102,241,0.15);
+          color: #818cf8;
           display: flex; align-items: center; justify-content: center;
           flex-shrink: 0;
         }
         .boutique-details {
           display: flex; flex-direction: column;
-          min-width: 0;
-          flex: 1;
+          min-width: 0; flex: 1;
         }
         .boutique-name {
-          font-size: 0.85rem; font-weight: 600;
-          color: #f0fdf4;
+          font-size: 0.83rem; font-weight: 700;
+          color: #f4f4f6;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .boutique-badge {
-          font-size: 0.7rem;
-          color: #34d399;
-          font-weight: 500;
+          font-size: 0.68rem;
+          color: #818cf8;
+          font-weight: 600;
           margin-top: 1px;
         }
-        .boutique-chevron {
-          color: #8fa399;
-          flex-shrink: 0;
-        }
 
-        /* ─── Nav ──────────────────────────────────── */
+        /* ── Navigation ───────────────────────────── */
         .sidebar__nav {
           flex: 1;
           display: flex; flex-direction: column;
-          gap: 0.5rem;
-          padding: 0 0.75rem;
-          margin-bottom: 1.5rem;
+          gap: 0.25rem;
+          padding: 0 0.625rem;
+          margin-bottom: 1rem;
         }
-        
-        .nav-section-title {
-          font-size: 0.75rem; font-weight: 600;
-          color: #8fa399;
-          text-transform: none;
-          letter-spacing: normal;
-          padding: 0.5rem 0.75rem;
+
+        .nav-group {
+          display: flex;
+          flex-direction: column;
           margin-bottom: 0.25rem;
+        }
+
+        .nav-section-title {
+          font-size: 0.7rem; font-weight: 700;
+          color: rgba(255,255,255,0.28);
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          padding: 0.5rem 0.625rem 0.25rem;
+          margin-top: 0.5rem;
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -512,342 +524,226 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           border: none;
           width: 100%;
           cursor: pointer;
-          transition: color 0.2s;
-          white-space: nowrap;
+          transition: color 0.15s ease;
         }
-
-        .nav-section-title:hover {
-          color: #f0fdf4;
-        }
-
+        .nav-section-title:hover { color: rgba(255,255,255,0.55); }
         .nav-section-title-left {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
-          flex-wrap: nowrap;
-        }
-
-        .nav-group {
-          margin-bottom: 0.75rem;
-          display: flex;
-          flex-direction: column;
+          gap: 0.4rem;
         }
 
         .nav-items-wrapper {
           display: flex;
           flex-direction: column;
-          gap: 0.125rem;
+          gap: 1px;
         }
 
         .nav-link {
-          display: flex; align-items: center; gap: 0.5rem;
-          flex-wrap: nowrap;
-          padding: 0.5rem 0.75rem 0.5rem 1rem;
-          border-radius: 8px;
+          display: flex; align-items: center; gap: 0.625rem;
+          padding: 0.55rem 0.75rem;
+          border-radius: 10px;
           text-decoration: none;
-          color: #a7b8b0;
-          font-size: 0.85rem; font-weight: 500;
+          color: rgba(255,255,255,0.45);
+          font-size: 0.84rem; font-weight: 500;
           position: relative;
-          transition: all 0.2s ease;
-          border: none; background: transparent;
-          width: 100%; text-align: left;
-          cursor: pointer;
+          transition: all 0.15s ease;
+          border: 1px solid transparent;
+          background: transparent;
+          width: 100%;
           white-space: nowrap;
+          overflow: hidden;
         }
-        
         .nav-link:hover {
-          background: rgba(255, 255, 255, 0.05);
-          color: #f0fdf4;
+          color: rgba(255,255,255,0.85);
+          background: rgba(255,255,255,0.05);
+          border-color: rgba(255,255,255,0.06);
         }
-        
+        .nav-link:active { transform: scale(0.98); }
+
         .nav-link--active {
-          background: rgba(52, 211, 153, 0.12);
-          color: #34d399;
+          color: #a5b4fc;
+          background: rgba(99,102,241,0.14);
+          border-color: rgba(99,102,241,0.22);
           font-weight: 600;
         }
-        
-        .nav-icon { flex-shrink: 0; color: inherit; width: 16px; height: 16px; display: inline-block; }
-        
+        .nav-link--active:hover {
+          background: rgba(99,102,241,0.18);
+          color: #c7d2fe;
+        }
+
+        .nav-icon {
+          flex-shrink: 0;
+          color: inherit;
+          width: 15px; height: 15px;
+          display: inline-block;
+          opacity: 0.8;
+        }
+        .nav-link--active .nav-icon { opacity: 1; }
+
         .nav-text {
           flex: 1;
-          white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block;
-        }
-        
-        .nav-indicator {
-          position: absolute; left: 0; top: 0;
-          width: 3px; height: 100%;
-          background: #34d399;
-          border-radius: 0 4px 4px 0;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
 
-        /* ─── Badges ───────────────────────────────── */
-        .badge {
-          font-size: 0.7rem;
-          font-weight: 600;
-          padding: 0.125rem 0.375rem;
-          border-radius: 10px;
-          min-width: 18px;
-          text-align: center;
+        /* POS badge */
+        .nav-pill-pos {
+          font-size: 0.6rem; font-weight: 800;
+          background: rgba(99,102,241,0.25);
+          color: #818cf8;
+          padding: 0.1rem 0.35rem;
+          border-radius: 4px;
+          letter-spacing: 0.05em;
           flex-shrink: 0;
         }
-        .badge--red {
-          background: rgba(239, 68, 68, 0.15);
-          color: #f87171;
+
+        /* WhatsApp live dot */
+        .wa-dot {
+          width: 7px; height: 7px;
+          background: #22c55e;
+          border-radius: 50%;
+          flex-shrink: 0;
+          box-shadow: 0 0 6px rgba(34,197,94,0.6);
+          animation: pulse-wa 2s infinite;
         }
-        .badge--green {
-          background: rgba(16, 185, 129, 0.15);
-          color: #34d399;
+        @keyframes pulse-wa {
+          0%,100% { opacity: 1; }
+          50% { opacity: 0.5; }
         }
 
-        /* ─── Footer / Plan / Profile ──────────────── */
+        /* ── Footer ───────────────────────────────── */
         .sidebar__footer {
           padding: 0 0.75rem;
           display: flex; flex-direction: column;
           margin-top: auto;
         }
 
-        .plan-usage-block {
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: 12px;
-          padding: 0.75rem;
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-          margin-bottom: 0.5rem;
-        }
-
-        .plan-status-badge {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-size: 0.75rem;
-          font-weight: 600;
-          padding: 0.375rem 0.625rem;
-          border-radius: 8px;
-        }
-        .plan-status-badge--trial {
-          background: rgba(251, 191, 36, 0.12);
-          color: #fbbf24;
-        }
-        .plan-status-badge--monthly {
-          background: rgba(52, 211, 153, 0.12);
-          color: #34d399;
-        }
-        .plan-status-badge--lifetime {
-          background: rgba(168, 85, 247, 0.12);
-          color: #c084fc;
-        }
-        .plan-status-text {
-          font-size: 0.7rem;
-          color: #8fa399;
-          padding: 0 0.25rem;
-        }
-
-        /* ─── Language Toggle ─────────────────────────── */
         .lang-toggle {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 0.75rem;
-          border-radius: 8px;
+          display: flex; align-items: center; gap: 0.5rem;
+          padding: 0.5rem 0.625rem;
+          border-radius: 9px;
           background: transparent;
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          color: #a7b8b0;
-          font-size: 0.8rem;
-          font-weight: 500;
+          border: 1px solid rgba(255,255,255,0.07);
+          color: rgba(255,255,255,0.38);
+          font-size: 0.78rem; font-weight: 500;
           cursor: pointer;
-          transition: all 0.2s ease;
-          margin-bottom: 0.25rem;
+          transition: all 0.15s ease;
+          margin-bottom: 0.375rem;
           width: 100%;
         }
         .lang-toggle:hover {
-          background: rgba(255, 255, 255, 0.05);
-          color: #f0fdf4;
+          background: rgba(255,255,255,0.05);
+          color: rgba(255,255,255,0.7);
+          border-color: rgba(255,255,255,0.12);
         }
-        .lang-flag {
-          margin-left: auto;
-          font-size: 1rem;
-        }
-        }
-
-        .upgrade-btn {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.5rem;
-          width: 100%;
-          background: linear-gradient(135deg, #10b981, #059669);
-          color: white;
-          border: 2px solid rgba(255, 255, 255, 0.25);
-          border-radius: 10px;
-          padding: 0.625rem 0.75rem;
-          font-size: 0.85rem;
-          font-weight: 700;
-          letter-spacing: 0.02em;
-          text-decoration: none;
-          cursor: pointer;
-          transition: all 0.25s ease;
-          text-transform: uppercase;
-          box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
-        }
-
-        .upgrade-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-          border-color: rgba(255, 255, 255, 0.45);
-          background: linear-gradient(135deg, #34d399, #10b981);
-        }
+        .lang-flag { margin-left: auto; font-size: 0.9rem; }
 
         .footer-separator {
           height: 1px;
-          background: rgba(255, 255, 255, 0.06);
-          margin: 0.5rem 0.25rem 0.75rem;
+          background: rgba(255,255,255,0.06);
+          margin: 0.375rem 0.25rem 0.625rem;
         }
 
-        /* ─── Profile ──────────────────────────────── */
-        .profile-container {
-          position: relative;
-          width: 100%;
-        }
+        /* ── Profile ──────────────────────────────── */
+        .profile-container { position: relative; width: 100%; }
 
         .profile-card {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          padding: 0.5rem;
+          display: flex; align-items: center; gap: 0.625rem;
+          padding: 0.5rem 0.625rem;
           border-radius: 10px;
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all 0.15s ease;
+          border: 1px solid transparent;
         }
-
         .profile-card:hover, .profile-card--open {
-          background: rgba(255, 255, 255, 0.05);
+          background: rgba(255,255,255,0.05);
+          border-color: rgba(255,255,255,0.08);
         }
 
         .profile-avatar {
-          width: 32px; height: 32px;
+          width: 34px; height: 34px;
           border-radius: 50%;
-          background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255, 255, 255, 0.15);
-          color: #f0fdf4;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 600;
-          font-size: 0.85rem;
+          background: linear-gradient(135deg, #6366f1, #4f46e5);
+          border: 2px solid rgba(99,102,241,0.4);
+          color: white;
+          display: flex; align-items: center; justify-content: center;
+          font-weight: 700; font-size: 0.85rem;
           flex-shrink: 0;
+          box-shadow: 0 0 0 0 rgba(99,102,241,0.4);
+          transition: box-shadow 0.2s ease;
+        }
+        .profile-card:hover .profile-avatar {
+          box-shadow: 0 0 0 3px rgba(99,102,241,0.2);
         }
 
-        .profile-info {
-          display: flex;
-          flex-direction: column;
-          min-width: 0;
-          flex: 1;
-        }
+        .profile-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+        .profile-name { font-size: 0.8rem; font-weight: 600; color: #f4f4f6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .profile-role { font-size: 0.68rem; color: rgba(255,255,255,0.38); margin-top: 1px; }
 
-        .profile-name {
-          font-size: 0.8rem;
-          font-weight: 600;
-          color: #f0fdf4;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .profile-role {
-          font-size: 0.7rem;
-          color: #8fa399;
-        }
-
-        .profile-chevron {
-          color: #8fa399;
-          transition: transform 0.2s ease;
-          flex-shrink: 0;
-        }
-
-        .profile-chevron--rotated {
-          transform: rotate(180deg);
-        }
+        .profile-chevron { color: rgba(255,255,255,0.3); transition: transform 0.2s ease; flex-shrink: 0; }
+        .profile-chevron--rotated { transform: rotate(180deg); }
 
         .profile-dropdown {
           position: absolute;
           bottom: calc(100% + 8px);
           left: 0; right: 0;
-          background: #0f172a;
-          border: 1px solid rgba(255, 255, 255, 0.18);
+          background: #1a1a20;
+          border: 1px solid rgba(255,255,255,0.12);
           border-radius: 12px;
           padding: 0.35rem;
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+          box-shadow: 0 16px 40px rgba(0,0,0,0.7);
           z-index: 60;
+          animation: scaleIn 0.18s var(--ease-spring);
         }
 
         .dropdown-item {
-          display: flex;
-          align-items: center;
-          gap: 0.6rem;
-          padding: 0.65rem 0.8rem;
+          display: flex; align-items: center; gap: 0.6rem;
+          padding: 0.625rem 0.75rem;
           border-radius: 8px;
-          font-size: 0.85rem;
-          font-weight: 500;
-          color: #f8fafc;
-          text-decoration: none;
+          font-size: 0.84rem; font-weight: 500;
+          color: #e4e4e6;
           cursor: pointer;
-          transition: all 0.15s ease;
-          border: none;
-          background: rgba(255, 255, 255, 0.05);
+          transition: all 0.12s ease;
+          border: none; background: transparent;
         }
+        .dropdown-item:hover { background: rgba(255,255,255,0.07); color: white; }
+        .dropdown-item--logout { color: #fca5a5; }
+        .dropdown-item--logout:hover { background: rgba(244,63,94,0.15); color: #fff; }
 
-        .dropdown-item:hover {
-          background: rgba(16, 185, 129, 0.2);
-          color: #34d399;
-        }
-
-        .dropdown-item--logout {
-          color: #fca5a5;
-          background: rgba(239, 68, 68, 0.1);
-        }
-        .dropdown-item--logout:hover {
-          background: rgba(239, 68, 68, 0.25);
-          color: #ffffff;
-        }
-
-        /* ─── Main Content ──────────────────────────── */
-        .main {
-          flex: 1; min-width: 0;
-          overflow-y: auto;
-        }
+        /* ══ Main content ═══════════════════════════ */
+        .main { flex: 1; min-width: 0; overflow-y: auto; }
         .main__inner {
-          max-width: 1400px;
+          max-width: 1440px;
           padding: 2rem 2.5rem;
           margin: 0 auto;
         }
 
-        /* ─── Backdrop ─────────────────────────────── */
+        /* ══ Backdrop ═══════════════════════════════ */
         .backdrop {
           display: none;
           position: fixed; inset: 0;
-          background: rgba(0, 0, 0, 0.45);
-          backdrop-filter: blur(4px);
+          background: rgba(0,0,0,0.55);
+          backdrop-filter: blur(6px);
           z-index: 45;
         }
 
-        /* ─── Responsive ───────────────────────────── */
+        /* ══ Responsive ═════════════════════════════ */
         @media (max-width: 768px) {
           .mobile-bar { display: flex; }
-          .main__inner { padding: 1.25rem 1rem; padding-top: calc(56px + 1.25rem); }
+          .main__inner { padding: 1.25rem 1rem; padding-top: calc(56px + 1rem); }
 
           .sidebar {
-            position: fixed; left: 0;
+            position: fixed; left: 0; top: 0; bottom: 0;
             transform: translateX(-100%);
-            transition: transform 0.25s ease;
+            transition: transform 0.28s var(--ease-out);
+            z-index: 50;
           }
           .sidebar--open { transform: translateX(0); }
           .backdrop { display: block; }
-          .sidebar-collapse-btn { display: block; }
+        }
+
+        @media (min-width: 769px) {
+          .sidebar-collapse-btn { display: none; }
         }
       `}</style>
     </div>

@@ -1,44 +1,57 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Minus, Trash2, CreditCard, Banknote, Smartphone, ShoppingCart, Printer, ArrowUpRight } from 'lucide-react';
+import {
+  Search, Plus, Minus, Trash2, CreditCard, Banknote,
+  Smartphone, ShoppingCart, ArrowUpRight, CheckCircle, X, Receipt,
+} from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { ReceiptModal } from '@/components/ui/ReceiptModal';
 import { Modal } from '@/components/ui/Modal';
-
 import { Product } from '@/types';
 
-interface CartItem extends Product {
-  cartQuantity: number;
+interface CartItem extends Product { cartQuantity: number; }
+
+/* ─── Icône produit ─────────────────────────────────────────────── */
+const PRODUCT_EMOJIS = ['🛍️','📦','👗','👟','💄','🍎','🥤','🫒','🧴','💊','📱','🔧','🎁','🪴','🧸'];
+function productEmoji(name: string) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return PRODUCT_EMOJIS[Math.abs(h) % PRODUCT_EMOJIS.length];
 }
+
+/* ─── Formatage GNF ─────────────────────────────────────────────── */
+const fmt = (n: number) => n.toLocaleString('fr-FR') + ' GNF';
 
 export default function POSPage() {
   const { language, t } = useLanguage();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [clients, setClients] = useState<{ id: string; name: string; phone?: string }[]>([]);
-  const [selectedClientId, setSelectedClientId] = useState<string>('');
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [discount, setDiscount] = useState<number>(0);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'orange_money' | 'transfer'>('cash');
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts]         = useState<Product[]>([]);
+  const [clients, setClients]           = useState<{ id: string; name: string; phone?: string }[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState('');
+  const [cart, setCart]                 = useState<CartItem[]>([]);
+  const [searchQuery, setSearchQuery]   = useState('');
+  const [discount, setDiscount]         = useState(0);
+  const [paymentMethod, setPaymentMethod] = useState<'cash'|'card'|'orange_money'|'transfer'>('cash');
+  const [loading, setLoading]           = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
-  
-  // Debt states
-  const [isDebt, setIsDebt] = useState(false);
+  const [successAnim, setSuccessAnim]   = useState(false);
+
+  // Debt
+  const [isDebt, setIsDebt]               = useState(false);
   const [debtDescription, setDebtDescription] = useState('');
-  const [debtDueDate, setDebtDueDate] = useState('');
+  const [debtDueDate, setDebtDueDate]     = useState('');
 
-  const [receiptData, setReceiptData] = useState<any>(null);
+  // Receipt
+  const [receiptData, setReceiptData]         = useState<any>(null);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
-  const [shopName, setShopName] = useState('BoutikFlow');
-  const [sellerName, setSellerName] = useState('');
+  const [shopName, setShopName]           = useState('BoutikFlow');
+  const [sellerName, setSellerName]       = useState('');
 
-  // States for cash outflow (sortie de caisse)
+  // Expense modal
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
-  const [expenseAmount, setExpenseAmount] = useState('');
+  const [expenseAmount, setExpenseAmount]     = useState('');
   const [expenseCategory, setExpenseCategory] = useState('other_expense');
   const [expenseDescription, setExpenseDescription] = useState('');
   const [isSubmittingExpense, setIsSubmittingExpense] = useState(false);
@@ -49,193 +62,124 @@ export default function POSPage() {
     try {
       const token = localStorage.getItem('boutikflow_access_token');
       if (token) {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        if (payload.tenant_name) setShopName(payload.tenant_name);
-        if (payload.email) {
-          const namePart = payload.email.split('@')[0];
-          setSellerName(namePart.charAt(0).toUpperCase() + namePart.slice(1));
-        } else if (payload.sub) {
-          const namePart = payload.sub.split('@')[0];
-          setSellerName(namePart.charAt(0).toUpperCase() + namePart.slice(1));
+        const p = JSON.parse(atob(token.split('.')[1]));
+        if (p.tenant_name) setShopName(p.tenant_name);
+        const raw = p.email || p.sub || '';
+        if (raw) {
+          const n = raw.split('@')[0];
+          setSellerName(n.charAt(0).toUpperCase() + n.slice(1));
         }
       }
-    } catch (e) {
-      console.error(e);
-    }
+    } catch {}
   }, []);
 
   const fetchClients = async () => {
-    try {
-      const res = await api.getClients(1, 100);
-      setClients(res.items || []);
-    } catch (e) {
-      console.error('Fetch clients error:', e);
-    }
+    try { const r = await api.getClients(1, 100); setClients(r.items || []); } catch {}
   };
 
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const data = await api.getProducts(1, 100);
-      if (Array.isArray(data)) {
-        setProducts(data);
-      } else if (data && Array.isArray(data.items)) {
-        setProducts(data.items);
-      } else {
-        setProducts([]);
-      }
-    } catch (error) {
-      console.error('Fetch products error:', error);
-      setProducts([]);
-    } finally {
-      setLoading(false);
-    }
+      const data = await api.getProducts(1, 200);
+      setProducts(Array.isArray(data) ? data : data?.items || []);
+    } catch { setProducts([]); }
+    finally { setLoading(false); }
   };
 
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredProducts = products.filter(p =>
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const addToCart = (product: Product) => {
     if (product.stock <= 0) return;
-    
     setCart(prev => {
-      const existing = prev.find(item => item.id === product.id);
-      if (existing) {
-        if (existing.cartQuantity >= product.stock) {
-          toast.error(language === 'fr' ? 'Stock insuffisant' : 'Insufficient stock');
-          return prev;
-        }
-        return prev.map(item => 
-          item.id === product.id ? { ...item, cartQuantity: item.cartQuantity + 1 } : item
-        );
+      const ex = prev.find(i => i.id === product.id);
+      if (ex) {
+        if (ex.cartQuantity >= product.stock) { toast.error(language === 'fr' ? 'Stock insuffisant' : 'Insufficient stock'); return prev; }
+        return prev.map(i => i.id === product.id ? { ...i, cartQuantity: i.cartQuantity + 1 } : i);
       }
       return [...prev, { ...product, cartQuantity: 1 }];
     });
   };
 
-  const updateQuantity = (id: string, delta: number) => {
-    setCart(prev => {
-      return prev.map(item => {
-        if (item.id === id) {
-          const newQty = item.cartQuantity + delta;
-          if (newQty <= 0) return item;
-          if (newQty > item.stock) {
-            toast.error(language === 'fr' ? 'Stock insuffisant' : 'Insufficient stock');
-            return item;
-          }
-          return { ...item, cartQuantity: newQty };
-        }
-        return item;
-      }).filter(item => item.cartQuantity > 0);
-    });
-  };
+  const updateQty = (id: string, delta: number) =>
+    setCart(prev => prev.map(i => {
+      if (i.id !== id) return i;
+      const q = i.cartQuantity + delta;
+      if (q <= 0) return i;
+      if (q > i.stock) { toast.error(language === 'fr' ? 'Stock insuffisant' : 'Insufficient stock'); return i; }
+      return { ...i, cartQuantity: q };
+    }).filter(i => i.cartQuantity > 0));
 
-  const setDirectQuantity = (id: string, qty: number) => {
-    setCart(prev => {
-      return prev.map(item => {
-        if (item.id === id) {
-          if (qty <= 0) return { ...item, cartQuantity: 1 };
-          if (qty > item.stock) {
-            toast.error(language === 'fr' ? 'Stock insuffisant' : 'Insufficient stock');
-            return { ...item, cartQuantity: item.stock };
-          }
-          return { ...item, cartQuantity: qty };
-        }
-        return item;
-      });
-    });
-  };
+  const setDirectQty = (id: string, qty: number) =>
+    setCart(prev => prev.map(i => {
+      if (i.id !== id) return i;
+      if (qty <= 0) return { ...i, cartQuantity: 1 };
+      if (qty > i.stock) { toast.error(language === 'fr' ? 'Stock insuffisant' : 'Insufficient stock'); return { ...i, cartQuantity: i.stock }; }
+      return { ...i, cartQuantity: qty };
+    }));
 
-  const removeFromCart = (id: string) => {
-    setCart(prev => prev.filter(item => item.id !== id));
-  };
+  const removeFromCart = (id: string) => setCart(prev => prev.filter(i => i.id !== id));
 
-  const subtotal = cart.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
-  const total = Math.max(0, subtotal - discount);
+  const subtotal   = cart.reduce((s, i) => s + i.price * i.cartQuantity, 0);
+  const totalItems = cart.reduce((s, i) => s + i.cartQuantity, 0);
+  const total      = Math.max(0, subtotal - discount);
 
   const handleValidateSale = async () => {
     if (cart.length === 0) return;
     setIsProcessing(true);
     try {
-      const orderItems = cart.map(item => ({
-        product_id: item.id,
-        quantity: item.cartQuantity,
-      }));
-      
       const payload: any = {
         status: 'delivered',
-        items: orderItems,
-        notes: isDebt 
-          ? `[Vente à crédit] Mode de paiement initial: ${paymentMethod} | Remise: ${discount} GNF` 
-          : `Mode de paiement: ${paymentMethod} | Remise: ${discount} GNF`
+        items: cart.map(i => ({ product_id: i.id, quantity: i.cartQuantity })),
+        notes: isDebt
+          ? `[Vente à crédit] Paiement: ${paymentMethod} | Remise: ${discount} GNF`
+          : `Paiement: ${paymentMethod} | Remise: ${discount} GNF`,
       };
-      
-      if (selectedClientId) {
-        payload.client_id = selectedClientId;
-      }
+      if (selectedClientId) payload.client_id = selectedClientId;
 
       const order = await api.createOrder(payload);
 
-      // Create debt if checked and client is selected
       if (isDebt && selectedClientId) {
         try {
           await api.createDebt({
             client_id: selectedClientId,
             order_id: order.id,
             original_amount: total,
-            description: debtDescription.trim() || (language === 'fr' ? 'Achat caisse à crédit' : 'POS credit purchase'),
-            due_date: debtDueDate || undefined
+            description: debtDescription.trim() || (language === 'fr' ? 'Achat à crédit' : 'Credit purchase'),
+            due_date: debtDueDate || undefined,
           });
-          toast.success(language === 'fr' ? 'Dette client enregistrée avec succès' : 'Client debt recorded successfully');
-        } catch (debtErr: any) {
-          console.error('Failed to create debt:', debtErr);
-          toast.error(language === 'fr' ? 'Erreur lors de l\'enregistrement de la dette' : 'Failed to record debt');
-        }
+          toast.success(language === 'fr' ? 'Dette enregistrée ✓' : 'Debt recorded ✓');
+        } catch { toast.error(language === 'fr' ? 'Erreur lors de la dette' : 'Failed to record debt'); }
       }
-      
-      toast.success(language === 'fr' ? 'Vente validée avec succès' : 'Sale validated successfully');
-      
-      // Update local stock immediately for better UX
+
+      // Mise à jour stock local
       setProducts(prev => prev.map(p => {
-        const cartItem = cart.find(c => c.id === p.id);
-        if (cartItem) {
-          return { ...p, stock: p.stock - cartItem.cartQuantity };
-        }
-        return p;
+        const ci = cart.find(c => c.id === p.id);
+        return ci ? { ...p, stock: p.stock - ci.cartQuantity } : p;
       }));
 
-      const selectedClientObj = clients.find(c => c.id === selectedClientId);
-      
-      // Build receipt data matching ReceiptModal props
+      // Animation succès
+      setSuccessAnim(true);
+      setTimeout(() => setSuccessAnim(false), 1200);
+      toast.success(language === 'fr' ? '✓ Vente validée !' : '✓ Sale validated!');
+
+      const client = clients.find(c => c.id === selectedClientId);
       setReceiptData({
-        id: order.id,
-        total: total,
-        notes: isDebt 
-          ? `[Vente à crédit] Mode de paiement initial: ${paymentMethod} | Remise: ${discount} GNF` 
-          : `Mode de paiement: ${paymentMethod} | Remise: ${discount} GNF`,
-        items: cart.map(item => ({
-          product_id: item.id,
-          quantity: item.cartQuantity,
-          unit_price: item.price,
-          product: { name: item.name }
-        })),
-        client: selectedClientObj ? { name: selectedClientObj.name, phone: selectedClientObj.phone || '' } : { name: language === 'fr' ? 'Client passant' : 'Walk-in customer', phone: '' },
+        id: order.id, total,
+        notes: payload.notes,
+        items: cart.map(i => ({ product_id: i.id, quantity: i.cartQuantity, unit_price: i.price, product: { name: i.name } })),
+        client: client ? { name: client.name, phone: client.phone || '' } : { name: language === 'fr' ? 'Client passant' : 'Walk-in', phone: '' },
         created_at: order.created_at || new Date().toISOString(),
-        status: 'confirmed'
+        status: 'confirmed',
       });
       setIsReceiptModalOpen(true);
-      
-      // Clear cart and states
-      setCart([]);
-      setDiscount(0);
-      setSelectedClientId('');
-      setIsDebt(false);
-      setDebtDescription('');
-      setDebtDueDate('');
-    } catch (error: any) {
-      toast.error(error?.message || (language === 'fr' ? 'Erreur lors de la validation' : 'Error validating sale'));
+
+      setCart([]); setDiscount(0); setSelectedClientId('');
+      setIsDebt(false); setDebtDescription(''); setDebtDueDate('');
+    } catch (err: any) {
+      toast.error(err?.message || (language === 'fr' ? 'Erreur de validation' : 'Validation error'));
     } finally {
       setIsProcessing(false);
     }
@@ -243,108 +187,104 @@ export default function POSPage() {
 
   const handleCreateExpense = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!expenseAmount || Number(expenseAmount) <= 0) {
-      toast.error(language === 'fr' ? 'Indiquez un montant valide' : 'Please provide a valid amount');
-      return;
-    }
-    if (!expenseDescription.trim()) {
-      toast.error(language === 'fr' ? 'Indiquez le motif de la sortie' : 'Please provide a description');
-      return;
-    }
+    if (!expenseAmount || Number(expenseAmount) <= 0) { toast.error(language === 'fr' ? 'Montant invalide' : 'Invalid amount'); return; }
+    if (!expenseDescription.trim()) { toast.error(language === 'fr' ? 'Motif obligatoire' : 'Description required'); return; }
     setIsSubmittingExpense(true);
     try {
       await api.createFinanceTransaction({
-        type: 'expense',
-        category: expenseCategory as any,
+        type: 'expense', category: expenseCategory as any,
         amount: Number(expenseAmount),
         description: expenseDescription.trim(),
         payment_method: 'cash',
-        reference: language === 'fr' ? 'Sortie Caisse' : 'POS Outflow'
+        reference: language === 'fr' ? 'Sortie Caisse' : 'POS Outflow',
       });
-      toast.success(language === 'fr' ? 'Sortie de caisse enregistrée' : 'Cash outflow recorded');
-      setIsExpenseModalOpen(false);
-      setExpenseAmount('');
-      setExpenseDescription('');
-      setExpenseCategory('other_expense');
-    } catch (error: any) {
-      toast.error(error?.message || (language === 'fr' ? 'Erreur lors de l\'enregistrement' : 'Error recording outflow'));
-    } finally {
-      setIsSubmittingExpense(false);
-    }
+      toast.success(language === 'fr' ? 'Sortie enregistrée ✓' : 'Outflow recorded ✓');
+      setIsExpenseModalOpen(false); setExpenseAmount(''); setExpenseDescription(''); setExpenseCategory('other_expense');
+    } catch (err: any) {
+      toast.error(err?.message || (language === 'fr' ? 'Erreur' : 'Error'));
+    } finally { setIsSubmittingExpense(false); }
   };
 
+  /* ─── Render ────────────────────────────────────────────────────── */
   return (
-    <div className="pos-container">
-      <div className="pos-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+    <div className="pos-root">
+      {/* ── Top header ── */}
+      <div className="pos-topbar">
         <div>
-          <h1 className="pos-title">{language === 'fr' ? 'Caisse Rapide' : 'Quick Checkout'}</h1>
-          <p className="pos-subtitle">{language === 'fr' ? 'Enregistrez vos ventes en magasin.' : 'Record your in-store sales.'}</p>
+          <h1 className="pos-title">
+            <ShoppingCart size={22} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.5rem', opacity: 0.7 }} />
+            {language === 'fr' ? 'Caisse' : 'Checkout'}
+          </h1>
+          <p className="pos-subtitle">{language === 'fr' ? 'Enregistrez vos ventes rapidement.' : 'Record your sales quickly.'}</p>
         </div>
-        <div>
-          <button 
-            type="button" 
-            className="btn btn-ghost" 
-            style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.2)', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', height: 'auto', fontSize: '0.9rem' }}
-            onClick={() => setIsExpenseModalOpen(true)}
-          >
-            <ArrowUpRight size={16} />
-            {language === 'fr' ? 'Sortie de Caisse (-)' : 'Cash Outflow (-)'}
-          </button>
-        </div>
+        <button
+          className="btn btn-ghost expense-btn"
+          onClick={() => setIsExpenseModalOpen(true)}
+        >
+          <ArrowUpRight size={16} />
+          {language === 'fr' ? 'Sortie de caisse' : 'Cash Outflow'}
+        </button>
       </div>
 
+      {/* ── Main grid ── */}
       <div className="pos-grid">
-        {/* Products Panel */}
-        <div className="products-panel">
-          <div className="search-bar">
-            <Search className="search-icon" size={20} />
-            <input 
-              type="text" 
-              placeholder={language === 'fr' ? 'Rechercher un produit...' : 'Search product...'} 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-input"
-            />
+
+        {/* ══ Products zone ══════════════════════════════════════════ */}
+        <div className="pos-products-zone">
+          {/* Search bar */}
+          <div className="pos-header">
+            <div className="pos-search">
+              <Search className="pos-search-icon" size={18} />
+              <input
+                type="text"
+                className="input pos-search-input"
+                placeholder={language === 'fr' ? 'Rechercher un produit…' : 'Search product…'}
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <span className="products-count">
+              {filteredProducts.length} {language === 'fr' ? 'produits' : 'products'}
+            </span>
           </div>
-          
-          <div className="products-grid">
+
+          {/* Products grid */}
+          <div className="pos-products-grid">
             {loading ? (
-              <div className="loading-state">{t('common.loading')}</div>
+              Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="skeleton skeleton-card product-skeleton" />
+              ))
             ) : filteredProducts.length === 0 ? (
-              <div className="empty-state">{t('prod.no_product')}</div>
+              <div className="pos-empty" style={{ gridColumn: '1/-1' }}>
+                <ShoppingCart size={40} opacity={0.2} />
+                <p>{language === 'fr' ? 'Aucun produit trouvé' : 'No products found'}</p>
+              </div>
             ) : (
               filteredProducts.map(product => {
-                const disabled = product.stock <= 0;
+                const disabled  = product.stock <= 0;
+                const inCart    = cart.find(i => i.id === product.id);
+                const emoji     = productEmoji(product.name);
                 return (
-                  <div 
-                    key={product.id} 
-                    className={`product-card ${disabled ? 'product-card--disabled' : ''}`}
+                  <div
+                    key={product.id}
+                    className={`product-card ${disabled ? 'product-card--disabled' : ''} ${inCart ? 'product-card--in-cart' : ''}`}
                     onClick={() => !disabled && addToCart(product)}
                   >
-                    <div className="product-card-top">
-                      {product.images && product.images[0] ? (
-                        <img src={product.images[0]} alt={product.name} className="product-thumb" />
-                      ) : (
-                        <div className="product-thumb-placeholder"><ShoppingCart size={22} /></div>
-                      )}
-                      <div className={`stock-pill ${disabled ? 'stock-pill-out' : 'stock-pill-ok'}`}>
-                        {product.stock} {t('prod.in_stock')}
-                      </div>
-                    </div>
-
-                    <div className="product-info">
-                      <h3 className="product-name">{product.name}</h3>
-                      {product.sku && <span className="product-sku">SKU: {product.sku}</span>}
-                      <div className="product-price">{product.price.toLocaleString('fr-FR')} GNF</div>
-                    </div>
-
-                    <button 
-                      className="btn-add-fast"
-                      disabled={disabled}
-                      onClick={(e) => { e.stopPropagation(); if (!disabled) addToCart(product); }}
-                    >
-                      <Plus size={15} /> {language === 'fr' ? 'Ajouter' : 'Add'}
-                    </button>
+                    {/* Qty badge */}
+                    {inCart && (
+                      <div className="product-cart-badge">{inCart.cartQuantity}</div>
+                    )}
+                    {/* Image / emoji */}
+                    {product.images && product.images[0] ? (
+                      <img src={product.images[0]} alt={product.name} className="product-img" />
+                    ) : (
+                      <div className="product-emoji">{emoji}</div>
+                    )}
+                    <span className="product-name">{product.name}</span>
+                    <span className="product-price">{product.price.toLocaleString('fr-FR')} <small>GNF</small></span>
+                    <span className={`product-stock ${disabled ? 'product-stock--out' : product.stock <= 5 ? 'product-stock--low' : ''}`}>
+                      {disabled ? (language === 'fr' ? 'Épuisé' : 'Out of stock') : `${product.stock} ${language === 'fr' ? 'en stock' : 'in stock'}`}
+                    </span>
                   </div>
                 );
               })
@@ -352,135 +292,132 @@ export default function POSPage() {
           </div>
         </div>
 
-        {/* Cart Panel */}
+        {/* ══ Cart panel ══════════════════════════════════════════════ */}
         <div className="cart-panel">
+          {/* Header */}
           <div className="cart-header">
-            <h2>{language === 'fr' ? 'Panier' : 'Cart'}</h2>
-            <div className="cart-count">{cart.reduce((a, b) => a + b.cartQuantity, 0)}</div>
+            <span className="cart-title">{language === 'fr' ? 'Panier' : 'Cart'}</span>
+            {totalItems > 0 && (
+              <span className="cart-count">{totalItems}</span>
+            )}
+            {cart.length > 0 && (
+              <button
+                onClick={() => { setCart([]); setDiscount(0); }}
+                className="btn btn-ghost btn--sm"
+                style={{ marginLeft: 'auto', color: 'var(--color-error)', fontSize: '0.75rem' }}
+                title={language === 'fr' ? 'Vider le panier' : 'Clear cart'}
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
 
-          {/* Client Selector */}
-          <div className="client-selector-box" style={{ padding: '0.75rem 1rem 0.25rem 1rem' }}>
-            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>
-              {language === 'fr' ? 'Client :' : 'Customer:'}
-            </label>
+          {/* Client selector */}
+          <div className="client-selector-box">
+            <label className="form-label">{language === 'fr' ? 'Client' : 'Customer'}</label>
             <select
               className="input"
-              style={{ width: '100%', padding: '0.4rem 0.6rem', fontSize: '0.85rem', background: 'var(--surface-0)' }}
               value={selectedClientId}
-              onChange={(e) => {
+              onChange={e => {
                 setSelectedClientId(e.target.value);
                 if (!e.target.value) { setIsDebt(false); setDebtDescription(''); setDebtDueDate(''); }
               }}
             >
-              <option value="">{language === 'fr' ? '— Client passant (Comptoir) —' : '— Walk-in customer —'}</option>
+              <option value="">{language === 'fr' ? '— Client passant —' : '— Walk-in customer —'}</option>
               {clients.map(c => (
-                <option key={c.id} value={c.id}>{c.name} {c.phone ? `(${c.phone})` : ''}</option>
+                <option key={c.id} value={c.id}>{c.name}{c.phone ? ` · ${c.phone}` : ''}</option>
               ))}
             </select>
           </div>
-          
+
+          {/* Cart items */}
           <div className="cart-items">
             {cart.length === 0 ? (
               <div className="cart-empty">
-                <ShoppingCart size={48} className="empty-icon" />
-                <p>{language === 'fr' ? 'Aucun produit dans le panier' : 'No products in cart'}</p>
+                <ShoppingCart size={44} className="empty-icon" />
+                <p style={{ fontSize: '0.85rem' }}>{language === 'fr' ? 'Sélectionnez des produits' : 'Select products to start'}</p>
               </div>
             ) : (
               cart.map(item => (
                 <div key={item.id} className="cart-item">
+                  <div className="item-emoji">{productEmoji(item.name)}</div>
                   <div className="item-details">
                     <span className="item-name">{item.name}</span>
-                    <span className="item-price">{(item.price * item.cartQuantity).toLocaleString('fr-FR')} GNF</span>
+                    <span className="item-price">{fmt(item.price * item.cartQuantity)}</span>
                   </div>
                   <div className="item-controls">
-                    <button onClick={() => updateQuantity(item.id, -1)} className="qty-btn" title="Diminuer"><Minus size={16}/></button>
-                    <input 
-                      type="number" 
-                      className="qty-input" 
-                      value={item.cartQuantity} 
-                      min="1" 
-                      max={item.stock}
-                      onChange={(e) => setDirectQuantity(item.id, parseInt(e.target.value) || 1)}
+                    <button onClick={() => updateQty(item.id, -1)} className="qty-btn"><Minus size={13}/></button>
+                    <input
+                      type="number" className="qty-input"
+                      value={item.cartQuantity} min="1" max={item.stock}
+                      onChange={e => setDirectQty(item.id, parseInt(e.target.value) || 1)}
                     />
-                    <button onClick={() => updateQuantity(item.id, 1)} className="qty-btn" title="Augmenter"><Plus size={16}/></button>
-                    <button onClick={() => removeFromCart(item.id)} className="remove-btn" title="Supprimer"><Trash2 size={16}/></button>
+                    <button onClick={() => updateQty(item.id, 1)} className="qty-btn"><Plus size={13}/></button>
+                    <button onClick={() => removeFromCart(item.id)} className="remove-btn"><Trash2 size={13}/></button>
                   </div>
                 </div>
               ))
             )}
           </div>
-          
+
+          {/* Summary + validation */}
           <div className="cart-summary">
+            {/* Totaux */}
             <div className="summary-row">
               <span>{language === 'fr' ? 'Sous-total' : 'Subtotal'}</span>
-              <span>{subtotal.toLocaleString('fr-FR')} GNF</span>
+              <span>{fmt(subtotal)}</span>
             </div>
-            
             <div className="summary-row discount-row">
-              <span>{language === 'fr' ? 'Remise' : 'Discount'} (GNF)</span>
-              <input 
-                type="number" 
-                value={discount || ''} 
-                onChange={(e) => setDiscount(Number(e.target.value))}
-                className="discount-input"
-                min="0"
-                max={subtotal}
+              <span>{language === 'fr' ? 'Remise (GNF)' : 'Discount (GNF)'}</span>
+              <input
+                type="number" className="discount-input"
+                value={discount || ''} min="0" max={subtotal}
+                onChange={e => setDiscount(Number(e.target.value))}
+                placeholder="0"
               />
             </div>
-            
             <div className="summary-row total-row">
               <span>Total</span>
-              <span>{total.toLocaleString('fr-FR')} GNF</span>
+              <span>{fmt(total)}</span>
             </div>
-            
+
+            {/* Modes de paiement */}
             <div className="payment-methods">
-              <label className={`pay-btn ${paymentMethod === 'cash' ? 'active' : ''}`}>
-                <input type="radio" name="payment" value="cash" checked={paymentMethod === 'cash'} onChange={() => setPaymentMethod('cash')} className="hidden" />
-                <Banknote size={20} />
-                <span>{language === 'fr' ? 'Espèces' : 'Cash'}</span>
-              </label>
-              <label className={`pay-btn ${paymentMethod === 'orange_money' ? 'active' : ''}`}>
-                <input type="radio" name="payment" value="orange_money" checked={paymentMethod === 'orange_money'} onChange={() => setPaymentMethod('orange_money')} className="hidden" />
-                <Smartphone size={20} />
-                <span>Orange M.</span>
-              </label>
-              <label className={`pay-btn ${paymentMethod === 'card' ? 'active' : ''}`}>
-                <input type="radio" name="payment" value="card" checked={paymentMethod === 'card'} onChange={() => setPaymentMethod('card')} className="hidden" />
-                <CreditCard size={20} />
-                <span>{language === 'fr' ? 'Carte' : 'Card'}</span>
-              </label>
+              {([
+                { value: 'cash',         label: language === 'fr' ? 'Espèces' : 'Cash',   Icon: Banknote },
+                { value: 'orange_money', label: 'Orange M.',                              Icon: Smartphone },
+                { value: 'card',         label: language === 'fr' ? 'Carte' : 'Card',     Icon: CreditCard },
+              ] as const).map(({ value, label, Icon }) => (
+                <label key={value} className={`pay-btn ${paymentMethod === value ? 'active' : ''}`}>
+                  <input type="radio" name="payment" value={value} checked={paymentMethod === value} onChange={() => setPaymentMethod(value)} className="hidden" />
+                  <Icon size={18} />
+                  <span>{label}</span>
+                </label>
+              ))}
             </div>
-            
-            {/* Option vente à crédit — visible uniquement si client sélectionné */}
+
+            {/* Option dette — uniquement si client sélectionné */}
             {selectedClientId && (
-              <div style={{ padding: '0.6rem', background: 'rgba(239,68,68,0.06)', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.15)', marginTop: '0.25rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div className="debt-box">
+                <label className="debt-checkbox-label">
                   <input
-                    type="checkbox"
-                    id="pos-debt-chk"
+                    type="checkbox" id="pos-debt-chk"
                     checked={isDebt}
                     onChange={e => setIsDebt(e.target.checked)}
-                    style={{ cursor: 'pointer', accentColor: '#ef4444' }}
+                    style={{ accentColor: 'var(--color-error)', width: 16, height: 16, cursor: 'pointer', flexShrink: 0 }}
                   />
-                  <label htmlFor="pos-debt-chk" style={{ fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', color: '#ef4444' }}>
-                    {language === 'fr' ? '📋 Vente à crédit (dette)' : '📋 Credit sale (debt)'}
-                  </label>
-                </div>
+                  <span>{language === 'fr' ? '📋 Vente à crédit (dette)' : '📋 Credit sale (debt)'}</span>
+                </label>
                 {isDebt && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.5rem' }}>
+                  <div className="debt-fields">
                     <input
-                      type="text"
-                      className="input"
-                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                      type="text" className="input"
                       placeholder={language === 'fr' ? 'Motif (optionnel)' : 'Reason (optional)'}
                       value={debtDescription}
                       onChange={e => setDebtDescription(e.target.value)}
                     />
                     <input
-                      type="date"
-                      className="input"
-                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                      type="date" className="input"
                       value={debtDueDate}
                       onChange={e => setDebtDueDate(e.target.value)}
                     />
@@ -489,23 +426,31 @@ export default function POSPage() {
               </div>
             )}
 
+            {/* BOUTON VALIDER */}
             <button
-              className="validate-btn"
+              className={`validate-btn ${successAnim ? 'validate-btn--success' : ''} ${isDebt ? 'validate-btn--debt' : ''}`}
               disabled={cart.length === 0 || isProcessing}
               onClick={handleValidateSale}
-              style={isDebt ? { background: '#dc2626' } : {}}
             >
-              {isProcessing
-                ? t('common.loading')
-                : isDebt
-                  ? (language === 'fr' ? '📋 Valider (à crédit)' : '📋 Validate (credit)')
-                  : (language === 'fr' ? 'Valider la vente' : 'Validate Sale')
-              }
+              {isProcessing ? (
+                <><span className="spinner" /> {language === 'fr' ? 'Traitement…' : 'Processing…'}</>
+              ) : successAnim ? (
+                <><CheckCircle size={22} /> {language === 'fr' ? 'Vente validée !' : 'Sale confirmed!'}</>
+              ) : (
+                <>
+                  {isDebt
+                    ? `📋 ${language === 'fr' ? 'Valider à crédit' : 'Validate credit'}`
+                    : `✓ ${language === 'fr' ? 'Valider la vente' : 'Validate sale'}`
+                  }
+                  {cart.length > 0 && <span className="validate-total">{fmt(total)}</span>}
+                </>
+              )}
             </button>
           </div>
         </div>
       </div>
-      
+
+      {/* ── Receipt modal ── */}
       {receiptData && (
         <ReceiptModal
           isOpen={isReceiptModalOpen}
@@ -516,543 +461,510 @@ export default function POSPage() {
         />
       )}
 
-      {/* Modal de Sortie de Caisse */}
+      {/* ── Expense modal ── */}
       <Modal
         isOpen={isExpenseModalOpen}
         onClose={() => setIsExpenseModalOpen(false)}
-        title={language === 'fr' ? 'Déclarer une Sortie de Caisse' : 'Record Cash Outflow'}
+        title={language === 'fr' ? 'Sortie de Caisse' : 'Cash Outflow'}
       >
         <form onSubmit={handleCreateExpense} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-              {language === 'fr' ? 'Catégorie de charge *' : 'Expense Category *'}
-            </label>
-            <select
-              className="input"
-              style={{ width: '100%', padding: '0.5rem', background: 'var(--surface-0)' }}
-              value={expenseCategory}
-              onChange={(e) => setExpenseCategory(e.target.value)}
-              required
-            >
-              <option value="supplier_purchase">{language === 'fr' ? 'Achat fournisseur / Approvisionnement' : 'Supplier purchase / Stock procurement'}</option>
-              <option value="salary">{language === 'fr' ? 'Salaire / Rémunération équipe' : 'Salary / Team remuneration'}</option>
-              <option value="rent">{language === 'fr' ? 'Loyer & Charges boutique' : 'Rent & Shop charges'}</option>
-              <option value="utilities">{language === 'fr' ? 'Facture (Électricité, Eau, Internet)' : 'Bill (Electricity, Water, Internet)'}</option>
-              <option value="refund">{language === 'fr' ? 'Remboursement client (Retour)' : 'Customer refund (Return)'}</option>
-              <option value="other_expense">{language === 'fr' ? 'Autre dépense / Divers' : 'Other expense / Misc'}</option>
+          <div className="input-group">
+            <label className="form-label">{language === 'fr' ? 'Catégorie *' : 'Category *'}</label>
+            <select className="input" value={expenseCategory} onChange={e => setExpenseCategory(e.target.value)} required>
+              <option value="supplier_purchase">{language === 'fr' ? 'Achat fournisseur' : 'Supplier purchase'}</option>
+              <option value="salary">{language === 'fr' ? 'Salaire équipe' : 'Staff salary'}</option>
+              <option value="rent">{language === 'fr' ? 'Loyer & charges' : 'Rent & charges'}</option>
+              <option value="utilities">{language === 'fr' ? 'Factures (eau, électricité…)' : 'Bills (water, electricity…)'}</option>
+              <option value="refund">{language === 'fr' ? 'Remboursement client' : 'Customer refund'}</option>
+              <option value="other_expense">{language === 'fr' ? 'Autre dépense' : 'Other expense'}</option>
             </select>
           </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-              {language === 'fr' ? 'Montant (GNF) *' : 'Amount (GNF) *'}
-            </label>
-            <input
-              type="number"
-              min={1}
-              className="input"
-              style={{ width: '100%', padding: '0.5rem', background: 'var(--surface-0)', fontWeight: 'bold' }}
-              placeholder="ex: 50000"
-              value={expenseAmount}
-              onChange={(e) => setExpenseAmount(e.target.value)}
-              required
-            />
+          <div className="input-group">
+            <label className="form-label">{language === 'fr' ? 'Montant (GNF) *' : 'Amount (GNF) *'}</label>
+            <input type="number" min={1} className="input" placeholder="ex: 50 000" value={expenseAmount} onChange={e => setExpenseAmount(e.target.value)} required />
           </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-              {language === 'fr' ? 'Motif de la sortie / Description *' : 'Outflow reason / Description *'}
-            </label>
-            <textarea
-              className="input"
-              rows={3}
-              style={{ width: '100%', padding: '0.5rem', background: 'var(--surface-0)' }}
-              placeholder={language === 'fr' ? 'Ex: Achat fournitures, Paiement livreur...' : 'Ex: Office supplies, Delivery boy payment...'}
-              value={expenseDescription}
-              onChange={(e) => setExpenseDescription(e.target.value)}
-              required
-            />
+          <div className="input-group">
+            <label className="form-label">{language === 'fr' ? 'Motif *' : 'Reason *'}</label>
+            <textarea className="input" rows={3} placeholder={language === 'fr' ? 'Ex: Paiement livreur, fournitures…' : 'Ex: Delivery payment, supplies…'} value={expenseDescription} onChange={e => setExpenseDescription(e.target.value)} required />
           </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setIsExpenseModalOpen(false)}
-              disabled={isSubmittingExpense}
-            >
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '0.25rem' }}>
+            <button type="button" className="btn btn-ghost" onClick={() => setIsExpenseModalOpen(false)} disabled={isSubmittingExpense}>
               {language === 'fr' ? 'Annuler' : 'Cancel'}
             </button>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              style={{ background: '#ef4444' }}
-              disabled={isSubmittingExpense}
-            >
-              {isSubmittingExpense ? (language === 'fr' ? 'Enregistrement...' : 'Saving...') : (language === 'fr' ? 'Valider la sortie' : 'Validate Outflow')}
+            <button type="submit" className="btn btn-danger" disabled={isSubmittingExpense}>
+              {isSubmittingExpense ? (language === 'fr' ? 'Enregistrement…' : 'Saving…') : (language === 'fr' ? 'Valider la sortie' : 'Record outflow')}
             </button>
           </div>
         </form>
       </Modal>
 
       <style jsx>{`
-        .pos-container {
+        /* ── Layout racine ── */
+        .pos-root {
           display: flex;
           flex-direction: column;
-          height: 100%;
-          gap: 1.5rem;
-          padding-bottom: 1.5rem;
+          gap: 1.25rem;
+          height: calc(100vh - 4.5rem);
+          max-height: calc(100vh - 4.5rem);
+          overflow: hidden;
         }
-        
-        .pos-header {
+
+        /* ── Top bar ── */
+        .pos-topbar {
           display: flex;
           justify-content: space-between;
           align-items: center;
+          gap: 1rem;
+          flex-shrink: 0;
         }
-        
         .pos-title {
+          font-family: var(--font-display);
           font-size: 1.5rem;
-          font-weight: 700;
+          font-weight: 800;
           color: var(--text-primary);
-          margin-bottom: 0.25rem;
+          letter-spacing: -0.03em;
         }
-        
         .pos-subtitle {
+          font-size: 0.85rem;
+          color: var(--text-muted);
+          margin-top: 2px;
+        }
+        .expense-btn {
+          color: var(--color-error);
+          border-color: rgba(244,63,94,0.2);
+          font-size: 0.82rem;
+        }
+        .expense-btn:hover {
+          background: rgba(244,63,94,0.08);
+          border-color: rgba(244,63,94,0.3);
+        }
+
+        /* ── Main grid ── */
+        .pos-grid {
+          display: grid;
+          grid-template-columns: 1fr 380px;
+          gap: 0;
+          flex: 1;
+          min-height: 0;
+          border-radius: var(--radius-xl);
+          border: 1px solid var(--border-subtle);
+          overflow: hidden;
+          background: var(--surface-1);
+          box-shadow: var(--shadow-md);
+        }
+
+        @media (max-width: 1100px) {
+          .pos-grid { grid-template-columns: 1fr 340px; }
+        }
+
+        @media (max-width: 900px) {
+          .pos-root { height: auto; max-height: none; overflow: visible; }
+          .pos-grid { grid-template-columns: 1fr; border-radius: var(--radius-lg); }
+        }
+
+        /* ── Products zone ── */
+        .pos-products-zone {
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          border-right: 1px solid var(--border-subtle);
+        }
+
+        /* Search header */
+        .pos-header {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 0.875rem 1rem;
+          border-bottom: 1px solid var(--border-subtle);
+          flex-shrink: 0;
+          background: var(--surface-2);
+        }
+        .pos-search {
+          flex: 1;
+          position: relative;
+        }
+        .pos-search-icon {
+          position: absolute;
+          left: 0.75rem;
+          top: 50%;
+          transform: translateY(-50%);
+          color: var(--text-muted);
+          pointer-events: none;
+        }
+        .pos-search-input {
+          padding-left: 2.5rem !important;
+          min-height: 42px;
+          border-radius: var(--radius-md);
+          background: var(--surface-1) !important;
+        }
+        .products-count {
+          font-size: 0.75rem;
+          color: var(--text-muted);
+          font-weight: 600;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+
+        /* Products grid */
+        .pos-products-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+          gap: 0.625rem;
+          padding: 0.875rem;
+          overflow-y: auto;
+          flex: 1;
+          align-content: start;
+        }
+
+        @media (max-width: 768px) {
+          .pos-products-grid {
+            grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+            gap: 0.5rem;
+            padding: 0.625rem;
+          }
+        }
+
+        /* Product card */
+        .product-card {
+          background: var(--surface-0);
+          border: 1.5px solid var(--border-subtle);
+          border-radius: var(--radius-lg);
+          padding: 0.75rem 0.625rem;
+          cursor: pointer;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.35rem;
+          text-align: center;
+          position: relative;
+          overflow: hidden;
+          transition:
+            border-color 120ms ease,
+            background 120ms ease,
+            transform 200ms var(--ease-spring),
+            box-shadow 150ms ease;
+          user-select: none;
+          -webkit-user-select: none;
+        }
+        .product-card:hover:not(.product-card--disabled) {
+          border-color: var(--color-brand-400);
+          background: var(--surface-1);
+          transform: translateY(-2px);
+          box-shadow: var(--shadow-md);
+        }
+        .product-card:active:not(.product-card--disabled) {
+          transform: scale(0.94);
+          box-shadow: none;
+        }
+        .product-card--in-cart {
+          border-color: rgba(99,102,241,0.4);
+          background: rgba(99,102,241,0.04);
+        }
+        .product-card--disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+
+        .product-cart-badge {
+          position: absolute;
+          top: 5px; right: 5px;
+          background: var(--color-brand-500);
+          color: white;
+          font-size: 0.62rem;
+          font-weight: 800;
+          width: 18px; height: 18px;
+          border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          animation: bounceIn 0.25s var(--ease-spring);
+        }
+        .product-img {
+          width: 52px; height: 52px;
+          border-radius: var(--radius-md);
+          object-fit: cover;
+        }
+        .product-emoji {
+          font-size: 2rem;
+          line-height: 1;
+          width: 52px; height: 52px;
+          display: flex; align-items: center; justify-content: center;
+          background: var(--surface-2);
+          border-radius: var(--radius-md);
+          transition: transform 200ms var(--ease-spring);
+        }
+        .product-card:hover .product-emoji { transform: scale(1.1); }
+
+        .product-name {
+          font-size: 0.73rem;
+          font-weight: 600;
+          color: var(--text-primary);
+          line-height: 1.3;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          width: 100%;
+        }
+        .product-price {
+          font-size: 0.78rem;
+          font-weight: 800;
+          color: var(--color-brand-400);
+          font-family: var(--font-display);
+        }
+        .product-price small { font-size: 0.62rem; font-weight: 600; opacity: 0.7; }
+        .product-stock { font-size: 0.63rem; font-weight: 600; color: var(--text-muted); }
+        .product-stock--low { color: var(--color-warning); }
+        .product-stock--out { color: var(--color-error); }
+
+        /* Skeleton */
+        .product-skeleton { height: 150px; }
+
+        /* Empty */
+        .pos-empty {
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          padding: 3rem 1rem;
+          gap: 0.75rem;
           color: var(--text-muted);
           font-size: 0.875rem;
         }
-              .pos-grid {
-          display: grid;
-          grid-template-columns: 1fr 420px;
-          gap: 1.5rem;
-          align-items: start;
-        }
 
-        @media (max-width: 1023px) {
-          .pos-grid {
-            grid-template-columns: 1fr;
-          }
-        }
-        
-        .products-panel {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
+        /* ── Cart panel ── */
+        .cart-panel {
           background: var(--surface-1);
-          border-radius: 12px;
-          border: 1px solid var(--border-subtle);
-          padding: 1.25rem;
-          min-height: 500px;
-        }
-
-        .products-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-          gap: 1rem;
-        }
-
-        .product-card {
-          background: var(--surface-0);
-          border: 1px solid var(--border-subtle);
-          border-radius: 10px;
-          padding: 0.85rem;
           display: flex;
           flex-direction: column;
-          gap: 0.5rem;
-          cursor: pointer;
-          transition: all 0.2s;
-          position: relative;
+          height: 100%;
+          overflow: hidden;
         }
 
-        .product-card:hover:not(.product-card--disabled) {
-          border-color: var(--color-brand-500);
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-
-        .product-card--disabled {
-          opacity: 0.45;
-          cursor: not-allowed;
-        }
-
-        .product-card-top {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-        }
-
-        .product-thumb {
-          width: 48px;
-          height: 48px;
-          border-radius: 8px;
-          object-fit: cover;
-        }
-
-        .product-thumb-placeholder {
-          width: 44px;
-          height: 44px;
-          border-radius: 8px;
-          background: var(--surface-2);
+        .cart-header {
+          padding: 0.875rem 1rem;
+          border-bottom: 1px solid var(--border-subtle);
           display: flex;
           align-items: center;
-          justify-content: center;
-          color: var(--text-muted);
+          gap: 0.5rem;
+          flex-shrink: 0;
+          background: var(--surface-2);
         }
-
-        .stock-pill {
-          font-size: 0.7rem;
-          font-weight: 700;
-          padding: 0.15rem 0.45rem;
-          border-radius: 999px;
-        }
-
-        .stock-pill-ok {
-          background: rgba(16, 185, 129, 0.15);
-          color: #10b981;
-        }
-
-        .stock-pill-out {
-          background: rgba(239, 68, 68, 0.15);
-          color: #ef4444;
-        }
-
-        .product-info {
-          display: flex;
-          flex-direction: column;
-          gap: 0.2rem;
-          flex: 1;
-        }
-
-        .product-name {
-          font-size: 0.9rem;
-          font-weight: 700;
-          color: var(--text-primary);
-          line-height: 1.25;
-        }
-
-        .product-sku {
-          font-size: 0.72rem;
-          color: var(--text-muted);
-          font-family: monospace;
-        }
-
-        .product-price {
+        .cart-title {
+          font-family: var(--font-display);
           font-size: 0.95rem;
           font-weight: 800;
-          color: var(--color-brand-500);
-          margin-top: 0.25rem;
-        }
-
-        .btn-add-fast {
-          margin-top: 0.25rem;
-          padding: 0.4rem;
-          border-radius: 6px;
-          border: none;
-          background: var(--color-brand-500);
-          color: white;
-          font-size: 0.8rem;
-          font-weight: 600;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.3rem;
-          cursor: pointer;
-          transition: background 0.2s;
-        }
-
-        .btn-add-fast:hover:not(:disabled) {
-          filter: brightness(1.1);
-        }
-
-        /* Cart Panel Sticky & Compact */
-        .cart-panel {
-          display: flex;
-          flex-direction: column;
-          background: var(--surface-1);
-          border-radius: 12px;
-          border: 1px solid var(--border-subtle);
-          overflow: hidden;
-          position: sticky;
-          top: 1rem;
-          max-height: calc(100vh - 5rem);
-        }
-        
-        .cart-items {
-          max-height: 520px;
-          overflow-y: auto;
-          padding: 1rem;
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-        }
-
-        @media (max-width: 767px) {
-          .cart-panel {
-            position: relative;
-            top: auto;
-            bottom: auto;
-            max-height: none;
-            z-index: 10;
-            box-shadow: none;
-            border-top: 1px solid var(--border-subtle);
-            margin-top: 1.5rem;
-          }
-          .cart-items {
-            max-height: none;
-            overflow-y: visible;
-          }
-        }
-        
-        .cart-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 1.25rem;
-          border-bottom: 1px solid var(--border-subtle);
-          background: var(--surface-0);
-        }
-        
-        .cart-header h2 {
-          font-size: 1.1rem;
-          font-weight: 600;
           color: var(--text-primary);
-          margin: 0;
         }
-        
         .cart-count {
           background: var(--color-brand-500);
           color: white;
-          font-size: 0.75rem;
-          font-weight: 700;
-          padding: 0.125rem 0.5rem;
-          border-radius: 999px;
+          font-size: 0.68rem; font-weight: 700;
+          min-width: 20px; height: 20px;
+          border-radius: 99px;
+          display: flex; align-items: center; justify-content: center;
+          padding: 0 0.3rem;
+          animation: scaleIn 0.2s var(--ease-spring);
         }
-        
-        .cart-items {
-          flex: 1;
-          overflow-y: auto;
-          padding: 1.25rem;
+
+        /* Client selector */
+        .client-selector-box {
+          padding: 0.625rem 0.875rem;
+          border-bottom: 1px solid var(--border-subtle);
+          background: var(--surface-2);
+          flex-shrink: 0;
           display: flex;
           flex-direction: column;
-          gap: 1rem;
+          gap: 0.3rem;
         }
-        
+
+        /* Items */
+        .cart-items { flex: 1; overflow-y: auto; padding: 0.25rem 0; }
         .cart-empty {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          height: 100%;
-          color: var(--text-muted);
-          gap: 1rem;
-          text-align: center;
+          display: flex; flex-direction: column;
+          align-items: center; justify-content: center;
+          height: 100%; gap: 0.75rem;
+          color: var(--text-muted); padding: 2rem;
         }
-        
-        .empty-icon {
-          opacity: 0.2;
-        }
-        
+        .cart-empty .empty-icon { opacity: 0.2; }
+
         .cart-item {
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-          padding-bottom: 1rem;
-          border-bottom: 1px dashed var(--border-subtle);
+          display: flex; align-items: center; gap: 0.5rem;
+          padding: 0.625rem 0.875rem;
+          border-bottom: 1px solid var(--border-subtle);
+          transition: background 120ms ease;
+          animation: slideUp 0.2s var(--ease-out) both;
         }
-        
-        .cart-item:last-child {
-          border-bottom: none;
-          padding-bottom: 0;
+        .cart-item:hover { background: var(--surface-2); }
+        .cart-item:last-child { border-bottom: none; }
+
+        .item-emoji {
+          font-size: 1.25rem;
+          flex-shrink: 0;
+          width: 30px; text-align: center;
         }
-        
-        .item-details {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          gap: 1rem;
-        }
-        
+        .item-details { flex: 1; min-width: 0; }
         .item-name {
-          font-weight: 500;
+          display: block;
+          font-size: 0.78rem; font-weight: 600;
           color: var(--text-primary);
-          font-size: 0.9rem;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        
         .item-price {
-          font-weight: 600;
-          color: var(--text-primary);
-          white-space: nowrap;
-          font-size: 0.9rem;
+          display: block;
+          font-size: 0.72rem; font-weight: 700;
+          color: var(--color-brand-400);
+          font-family: var(--font-display);
+          margin-top: 1px;
         }
-        
-        .item-controls {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
-        
+
+        .item-controls { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
         .qty-btn {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 36px;
-          height: 36px;
-          border-radius: 8px;
-          background: var(--surface-0);
-          border: 1px solid var(--border-subtle);
-          color: var(--text-primary);
-          cursor: pointer;
-          font-size: 1.1rem;
+          width: 26px; height: 26px;
+          background: var(--surface-2);
+          border: 1px solid var(--border-default);
+          border-radius: var(--radius-sm);
+          color: var(--text-secondary);
+          cursor: pointer; display: flex; align-items: center; justify-content: center;
+          transition: all 120ms ease; flex-shrink: 0; padding: 0;
         }
-        
-        .qty-btn:hover {
-          background: rgba(255,255,255,0.05);
-        }
-        
+        .qty-btn:hover { background: var(--color-brand-500); border-color: var(--color-brand-600); color: white; transform: scale(1.08); }
+        .qty-btn:active { transform: scale(0.9); }
+
         .qty-input {
-          width: 64px;
-          height: 36px;
-          text-align: center;
-          font-weight: 700;
-          font-size: 1rem;
+          width: 34px; height: 26px;
           background: var(--surface-0);
-          border: 1px solid var(--border-subtle);
-          border-radius: 8px;
+          border: 1px solid var(--border-default);
+          border-radius: var(--radius-sm);
           color: var(--text-primary);
-          padding: 0 4px;
+          font-size: 0.75rem; font-weight: 700;
+          text-align: center; outline: none;
+          transition: border-color 120ms ease;
         }
-        
-        .qty-input:focus {
-          outline: none;
-          border-color: var(--color-brand-500);
-        }
-        
+        .qty-input:focus { border-color: var(--color-brand-500); }
+        .qty-input::-webkit-outer-spin-button,
+        .qty-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
         .remove-btn {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 36px;
-          height: 36px;
-          border-radius: 8px;
-          background: rgba(239, 68, 68, 0.1);
-          color: #ef4444;
-          border: none;
-          cursor: pointer;
-          margin-left: auto;
+          width: 26px; height: 26px;
+          background: transparent; border: none;
+          border-radius: var(--radius-sm);
+          color: var(--text-disabled);
+          cursor: pointer; display: flex; align-items: center; justify-content: center;
+          transition: all 120ms ease; flex-shrink: 0; padding: 0;
         }
-        
-        .remove-btn:hover {
-          background: rgba(239, 68, 68, 0.2);
-        }
-        
+        .remove-btn:hover { background: rgba(244,63,94,0.1); color: var(--color-error); transform: scale(1.1); }
+
+        /* Summary */
         .cart-summary {
-          background: var(--surface-0);
-          padding: 1.25rem;
+          padding: 0.75rem 0.875rem;
           border-top: 1px solid var(--border-subtle);
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
+          flex-shrink: 0;
+          display: flex; flex-direction: column; gap: 0.5rem;
+          background: var(--surface-1);
         }
-        
+
         .summary-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          color: var(--text-primary);
-          font-size: 0.95rem;
+          display: flex; justify-content: space-between; align-items: center;
+          font-size: 0.82rem; color: var(--text-secondary);
         }
-        
-        .discount-row {
-          color: var(--text-muted);
-        }
-        
-        .discount-input {
-          width: 100px;
-          padding: 0.4rem;
-          background: var(--surface-1);
-          border: 1px solid var(--border-subtle);
-          border-radius: 6px;
-          color: var(--text-primary);
-          text-align: right;
-        }
-        
+        .summary-row span:last-child { font-weight: 600; }
         .total-row {
-          font-size: 1.2rem;
-          font-weight: 700;
-          margin-top: 0.5rem;
-          padding-top: 0.5rem;
-          border-top: 1px dashed var(--border-subtle);
+          padding-top: 0.4rem;
+          border-top: 1px solid var(--border-subtle);
+          font-size: 0.95rem; font-weight: 800;
+          color: var(--text-primary);
+          font-family: var(--font-display);
         }
-        
-        .payment-methods {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 0.5rem;
-          margin-top: 1rem;
+        .total-row span:last-child { color: var(--color-brand-400); font-size: 1rem; }
+
+        .discount-input {
+          width: 90px; height: 28px;
+          background: var(--surface-2); border: 1px solid var(--border-default);
+          border-radius: var(--radius-sm); color: var(--text-primary);
+          font-size: 0.78rem; text-align: right; padding: 0 0.5rem; outline: none;
+          transition: border-color 120ms ease;
         }
-        
-        .hidden { display: none; }
-        
+        .discount-input:focus { border-color: var(--color-brand-500); }
+        .discount-input::-webkit-outer-spin-button,
+        .discount-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+        /* Payment methods */
+        .payment-methods { display: grid; grid-template-columns: repeat(3,1fr); gap: 0.375rem; }
         .pay-btn {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 0.5rem;
-          padding: 0.75rem 0.5rem;
-          border-radius: 8px;
-          border: 1px solid var(--border-subtle);
-          background: var(--surface-1);
-          color: var(--text-muted);
-          cursor: pointer;
-          transition: all 0.2s;
-          font-size: 0.8rem;
-          font-weight: 500;
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          gap: 0.25rem; padding: 0.5rem 0.25rem;
+          background: var(--surface-2); border: 1.5px solid var(--border-default);
+          border-radius: var(--radius-md); cursor: pointer;
+          font-size: 0.65rem; font-weight: 700; color: var(--text-muted);
+          transition: all 120ms ease; min-height: 48px; user-select: none;
+          text-transform: uppercase; letter-spacing: 0.03em;
         }
-        
-        .pay-btn.active {
-          border-color: var(--color-brand-500);
-          color: var(--color-brand-500);
-          background: rgba(16, 185, 129, 0.1);
+        .pay-btn:hover { border-color: var(--color-brand-400); color: var(--text-primary); background: var(--brand-alpha-08); transform: translateY(-1px); }
+        .pay-btn.active { border-color: var(--color-brand-500); background: var(--brand-alpha-15); color: var(--color-brand-400); box-shadow: 0 0 0 1px var(--color-brand-500); }
+
+        /* Debt box */
+        .debt-box {
+          background: rgba(244,63,94,0.06);
+          border: 1px solid rgba(244,63,94,0.18);
+          border-radius: var(--radius-md);
+          padding: 0.625rem;
+          display: flex; flex-direction: column; gap: 0.4rem;
         }
-        
+        .debt-checkbox-label {
+          display: flex; align-items: center; gap: 0.5rem;
+          font-size: 0.78rem; font-weight: 700;
+          color: var(--color-error); cursor: pointer;
+        }
+        .debt-fields { display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.125rem; }
+        .debt-fields .input { font-size: 0.78rem !important; min-height: 36px !important; }
+
+        /* Validate button */
         .validate-btn {
-          margin-top: 1rem;
           width: 100%;
-          padding: 1rem;
-          border-radius: 8px;
-          background: var(--color-brand-500);
+          min-height: 54px;
+          background: linear-gradient(135deg, var(--color-brand-500), var(--color-brand-600));
           color: white;
-          font-weight: 700;
-          font-size: 1rem;
-          border: none;
+          font-family: var(--font-display);
+          font-size: 0.95rem; font-weight: 800;
+          border: none; border-radius: var(--radius-lg);
           cursor: pointer;
-          transition: opacity 0.2s;
-          min-height: 44px; /* touch-friendly */
+          letter-spacing: 0.01em;
+          transition: all 200ms var(--ease-out);
+          box-shadow: 0 4px 16px rgba(99,102,241,0.3), inset 0 1px 0 rgba(255,255,255,0.15);
+          display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+          position: relative; overflow: hidden;
         }
-        
+        .validate-btn::before {
+          content: '';
+          position: absolute; top: 0; left: 0; right: 0; height: 50%;
+          background: rgba(255,255,255,0.06);
+          border-radius: inherit;
+          pointer-events: none;
+        }
         .validate-btn:hover:not(:disabled) {
-          opacity: 0.9;
+          transform: translateY(-2px);
+          box-shadow: 0 8px 24px rgba(99,102,241,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+          background: linear-gradient(135deg, var(--color-brand-400), var(--color-brand-500));
         }
-        
-        .validate-btn:disabled {
-          background: var(--border-subtle);
-          color: var(--text-muted);
-          cursor: not-allowed;
+        .validate-btn:active:not(:disabled) { transform: scale(0.97); box-shadow: none; }
+        .validate-btn:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; transform: none; }
+        .validate-btn--success { background: linear-gradient(135deg, #10b981, #059669) !important; animation: pulseSuccess 0.6s ease-out; box-shadow: var(--shadow-success) !important; }
+        .validate-btn--debt { background: linear-gradient(135deg, #f43f5e, #e11d48) !important; box-shadow: 0 4px 16px rgba(244,63,94,0.3) !important; }
+
+        .validate-total {
+          font-size: 0.75rem;
+          opacity: 0.8;
+          font-weight: 600;
+          margin-left: 0.25rem;
+          background: rgba(255,255,255,0.15);
+          padding: 0.1rem 0.4rem;
+          border-radius: var(--radius-sm);
         }
-        
-        .loading-state {
-          grid-column: 1 / -1;
-          text-align: center;
-          padding: 2rem;
-          color: var(--text-muted);
-        }
-        
-        .empty-state {
-          grid-column: 1 / -1;
-          text-align: center;
-          padding: 2rem;
-          color: var(--text-muted);
+
+        /* Hidden radio */
+        .hidden { display: none; }
+
+        @media (max-width: 768px) {
+          .pos-topbar { flex-wrap: wrap; }
+          .pos-grid { min-height: 0; }
+          .pos-products-zone { min-height: 360px; }
         }
       `}</style>
     </div>
