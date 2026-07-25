@@ -504,17 +504,22 @@ function handleOfflineRequest<T>(path: string, options: RequestInit = {}): Promi
       });
     }
 
+    // Le graphique couvre la même fenêtre que les KPI (mode hors ligne) :
+    // sans cela, la sélection de période n'affichait toujours que 7 jours.
+    const rangeEnd = endDate ? new Date(endDate + 'T00:00:00') : new Date();
+    const rangeStart = startDate ? new Date(startDate + 'T00:00:00') : new Date(rangeEnd.getTime() - 6 * 86400000);
+    const dayCount = Math.max(1, Math.min(90, Math.round((rangeEnd.getTime() - rangeStart.getTime()) / 86400000) + 1));
+
     const revenue_data = [] as any[];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
+    for (let i = 0; i < dayCount; i++) {
+      const d = new Date(rangeStart.getTime() + i * 86400000);
       const dateStr = d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
       const dateKey = d.toISOString().split('T')[0];
 
       const dayTotal = transactions
         .filter(t => t.type === 'income' && t.created_at.startsWith(dateKey))
         .reduce((sum, t) => sum + t.amount, 0);
-      
+
       revenue_data.push({ name: dateStr, value: dayTotal });
     }
     return Promise.resolve({ revenue_data } as any as T);

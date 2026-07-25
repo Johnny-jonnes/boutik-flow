@@ -411,7 +411,7 @@ export default function POSPage() {
                   <span className="p-item-total">{fmt(item.price * item.cartQuantity)}</span>
                 </div>
                 <div className="p-item-ctrl">
-                  <button className="p-qty-btn" onClick={() => updateQty(item.id, -1)}><Minus size={12}/></button>
+                  <button className="p-qty-btn" onClick={() => updateQty(item.id, -1)}><Minus size={17}/></button>
                   <input
                     className="p-qty-input"
                     type="text"
@@ -431,8 +431,8 @@ export default function POSPage() {
                       if (!item.cartQuantity || item.cartQuantity <= 0) setDirectQty(item.id, 1);
                     }}
                   />
-                  <button className="p-qty-btn" onClick={() => updateQty(item.id, 1)}><Plus size={12}/></button>
-                  <button className="p-remove-btn" onClick={() => removeFromCart(item.id)}><Trash2 size={12}/></button>
+                  <button className="p-qty-btn" onClick={() => updateQty(item.id, 1)}><Plus size={17}/></button>
+                  <button className="p-remove-btn" onClick={() => removeFromCart(item.id)} title={language === 'fr' ? 'Retirer' : 'Remove'}><Trash2 size={15}/></button>
                 </div>
               </div>
             ))}
@@ -596,7 +596,7 @@ export default function POSPage() {
         /* ─── Grid ──────────────────────────────────────────────── */
         .p-grid {
           display: grid;
-          grid-template-columns: minmax(0, 1fr) 380px;
+          grid-template-columns: minmax(0, 1fr) 440px;
           gap: 0;
           flex: 1;
           min-height: 0;
@@ -606,7 +606,10 @@ export default function POSPage() {
           box-shadow: var(--shadow-lg);
         }
 
-        @media (max-width: 1200px) { .p-grid { grid-template-columns: minmax(0, 1fr) 340px; } }
+        /* Panier encore plus large sur les grands écrans : plus d'aisance
+           pour cliquer avec la souris sans réduire l'espace produits. */
+        @media (min-width: 1600px) { .p-grid { grid-template-columns: minmax(0, 1fr) 500px; } }
+        @media (max-width: 1200px) { .p-grid { grid-template-columns: minmax(0, 1fr) 380px; } }
         @media (max-width: 860px) {
           .p-grid {
             grid-template-columns: 1fr;
@@ -802,27 +805,27 @@ export default function POSPage() {
         }
 
         .p-cart-header {
-          display: flex; align-items: center; gap: 0.5rem;
-          padding: 0.75rem 0.875rem;
+          display: flex; align-items: center; gap: 0.6rem;
+          padding: 1rem 1.15rem;
           border-bottom: 1px solid var(--border-subtle);
           background: var(--surface-2); flex-shrink: 0;
         }
         .p-cart-title {
-          font-family: var(--font-display); font-size: 0.88rem; font-weight: 800;
-          color: var(--text-primary); display: flex; align-items: center; gap: 0.4rem;
+          font-family: var(--font-display); font-size: 1rem; font-weight: 800;
+          color: var(--text-primary); display: flex; align-items: center; gap: 0.45rem;
         }
         .p-cart-badge {
           background: var(--color-brand-500); color: #fff;
-          font-size: 0.65rem; font-weight: 800;
-          min-width: 20px; height: 20px; border-radius: 99px;
+          font-size: 0.7rem; font-weight: 800;
+          min-width: 22px; height: 22px; border-radius: 99px;
           display: flex; align-items: center; justify-content: center;
-          padding: 0 0.3rem;
+          padding: 0 0.35rem;
           animation: scaleIn 0.2s var(--ease-spring);
         }
         .p-cart-clear {
           margin-left: auto; background: none; border: 1px solid var(--border-subtle);
-          border-radius: 6px; color: var(--text-muted);
-          width: 26px; height: 26px;
+          border-radius: 8px; color: var(--text-muted);
+          width: 34px; height: 34px;
           display: flex; align-items: center; justify-content: center;
           cursor: pointer; transition: all 120ms ease;
         }
@@ -830,22 +833,23 @@ export default function POSPage() {
 
         /* Client */
         .p-client-box {
-          padding: 0.5rem 0.875rem;
+          padding: 0.7rem 1.15rem;
           border-bottom: 1px solid var(--border-subtle);
           background: var(--surface-2); flex-shrink: 0;
         }
         .p-select {
           width: 100%; background: var(--surface-1);
           border: 1px solid var(--border-default); border-radius: var(--radius-md);
-          color: var(--text-primary); font-size: 0.82rem;
-          padding: 0.45rem 0.625rem; outline: none;
+          color: var(--text-primary); font-size: 0.9rem;
+          padding: 0.65rem 0.75rem; min-height: 42px; outline: none;
+          cursor: pointer;
           transition: border-color 120ms ease;
           font-family: var(--font-sans);
         }
         .p-select:focus { border-color: var(--color-brand-500); }
 
         /* Items — scrollable */
-        .p-items { flex: 1; overflow-y: auto; padding: 0.25rem 0; }
+        .p-items { flex: 1; overflow-y: auto; padding: 0.4rem 0; }
 
         .p-cart-empty {
           display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -854,8 +858,8 @@ export default function POSPage() {
         }
 
         .p-item {
-          display: flex; align-items: center; gap: 0.5rem;
-          padding: 0.5rem 0.75rem;
+          display: flex; align-items: center; gap: 0.75rem;
+          padding: 0.9rem 1.15rem;
           border-bottom: 1px solid var(--border-subtle);
           transition: background 100ms ease;
           animation: slideUp 0.15s var(--ease-out) both;
@@ -863,20 +867,20 @@ export default function POSPage() {
         .p-item:hover { background: var(--surface-2); }
         .p-item:last-child { border-bottom: none; }
 
-        .p-item-info { flex: 1; min-width: 0; padding-right: 0.25rem; }
+        .p-item-info { flex: 1; min-width: 0; padding-right: 0.4rem; }
         .p-item-name {
-          display: block; font-size: 0.82rem; font-weight: 700;
+          display: block; font-size: 0.92rem; font-weight: 700;
           color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .p-item-total {
-          display: block; font-size: 0.76rem; font-weight: 800;
-          color: var(--color-brand-400); font-family: var(--font-display); margin-top: 1px;
+          display: block; font-size: 0.84rem; font-weight: 800;
+          color: var(--color-brand-400); font-family: var(--font-display); margin-top: 2px;
         }
 
-        .p-item-ctrl { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
+        .p-item-ctrl { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
         .p-qty-btn {
-          width: 28px; height: 28px; background: var(--surface-2);
-          border: 1px solid var(--border-default); border-radius: 6px;
+          width: 38px; height: 38px; background: var(--surface-2);
+          border: 1px solid var(--border-default); border-radius: 9px;
           color: var(--text-secondary); cursor: pointer;
           display: flex; align-items: center; justify-content: center;
           transition: all 100ms ease; flex-shrink: 0; padding: 0;
@@ -885,17 +889,17 @@ export default function POSPage() {
         .p-qty-btn:active { transform: scale(0.92); }
 
         .p-qty-input {
-          width: 36px; height: 28px; background: var(--surface-0);
-          border: 1px solid var(--border-default); border-radius: 6px;
-          color: var(--text-primary); font-size: 0.82rem; font-weight: 800;
+          width: 52px; height: 38px; background: var(--surface-0);
+          border: 1px solid var(--border-default); border-radius: 9px;
+          color: var(--text-primary); font-size: 0.95rem; font-weight: 800;
           text-align: center; outline: none; transition: border-color 100ms ease;
         }
         .p-qty-input:focus { border-color: var(--color-brand-500); }
         .p-qty-input::-webkit-outer-spin-button, .p-qty-input::-webkit-inner-spin-button { -webkit-appearance: none; }
 
         .p-remove-btn {
-          width: 28px; height: 28px; background: none; border: none;
-          border-radius: 6px; color: var(--text-disabled);
+          width: 36px; height: 36px; background: none; border: none;
+          border-radius: 8px; color: var(--text-disabled);
           cursor: pointer; display: flex; align-items: center; justify-content: center;
           transition: all 100ms ease; flex-shrink: 0; padding: 0;
         }
@@ -903,18 +907,18 @@ export default function POSPage() {
 
         /* Summary — scrollable zone (sans le bouton validate) */
         .p-summary {
-          padding: 0.75rem 0.875rem;
+          padding: 1rem 1.15rem;
           border-top: 1px solid var(--border-subtle);
           flex-shrink: 0;
-          display: flex; flex-direction: column; gap: 0.45rem;
+          display: flex; flex-direction: column; gap: 0.6rem;
           background: var(--surface-1);
           overflow-y: auto;
         }
 
         /* Validate sticky footer */
         .p-validate-footer {
-          padding: 0.75rem 0.875rem;
-          padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+          padding: 1rem 1.15rem;
+          padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
           background: var(--surface-1);
           border-top: 1px solid var(--border-subtle);
           flex-shrink: 0;
@@ -922,7 +926,7 @@ export default function POSPage() {
 
         .p-row {
           display: flex; align-items: center; justify-content: space-between;
-          font-size: 0.8rem; color: var(--text-secondary);
+          font-size: 0.88rem; color: var(--text-secondary);
         }
         .p-row span:last-child { font-weight: 600; }
         .p-total {
@@ -935,10 +939,10 @@ export default function POSPage() {
 
         /* Remise */
         .p-discount {
-          width: 90px; background: var(--surface-0);
-          border: 1px solid var(--border-default); border-radius: 6px;
-          color: var(--text-primary); font-size: 0.8rem; font-weight: 600;
-          padding: 0.25rem 0.5rem; text-align: right; outline: none;
+          width: 100px; height: 36px; background: var(--surface-0);
+          border: 1px solid var(--border-default); border-radius: 8px;
+          color: var(--text-primary); font-size: 0.88rem; font-weight: 600;
+          padding: 0.35rem 0.6rem; text-align: right; outline: none;
           font-family: var(--font-sans);
           transition: border-color 120ms;
         }
@@ -955,13 +959,14 @@ export default function POSPage() {
         .p-pay-btn {
           display: flex; flex-direction: column;
           align-items: center; justify-content: center;
-          gap: 0.25rem;
-          padding: 0.55rem 0.25rem;
+          gap: 0.3rem;
+          padding: 0.75rem 0.35rem;
+          min-height: 56px;
           border-radius: var(--radius-md);
           border: 1.5px solid var(--border-default);
           background: var(--surface-2);
           color: var(--text-secondary);
-          font-size: 0.7rem; font-weight: 600;
+          font-size: 0.76rem; font-weight: 600;
           cursor: pointer;
           transition: all 150ms ease;
           text-align: center;

@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CircleDollarSign, ShoppingBag, Users, Clock, Crown, CheckCircle, BarChart3, MessageCircle, ArrowDownRight, Wallet } from 'lucide-react';
+import { CircleDollarSign, ShoppingBag, Users, Clock, Crown, CheckCircle, BarChart3, MessageCircle, ArrowDownRight, Wallet, Package } from 'lucide-react';
 import type { DashboardKPIs, Order, AnalyticsData } from '@/types';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
+import { buildPeriodParams, isWithinPeriod, periodLabel, type PeriodKey } from '@/lib/period';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const STATUS_CONFIG = {
@@ -169,7 +170,7 @@ export default function DashboardPage() {
   const [totalOrders, setTotalOrders] = useState(0);
   const [orderPage, setOrderPage] = useState(1);
   const [ordersPerPage, setOrdersPerPage] = useState(10);
-  const [periodFilter, setPeriodFilter] = useState<'7j' | '30j' | '90j' | 'custom'>('7j');
+  const [periodFilter, setPeriodFilter] = useState<PeriodKey>('30j');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [clients, setClients] = useState<any[]>([]);
@@ -188,42 +189,22 @@ export default function DashboardPage() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      let start = periodFilter === 'custom' && customStartDate ? customStartDate : undefined;
-      let end = periodFilter === 'custom' && customEndDate ? customEndDate : undefined;
-
-      if (periodFilter === '7j') {
-        const d = new Date(); d.setDate(d.getDate() - 7);
-        start = d.toISOString().split('T')[0];
-        end = new Date().toISOString().split('T')[0];
-      } else if (periodFilter === '30j') {
-        const d = new Date(); d.setDate(d.getDate() - 30);
-        start = d.toISOString().split('T')[0];
-        end = new Date().toISOString().split('T')[0];
-      } else if (periodFilter === '90j') {
-        const d = new Date(); d.setDate(d.getDate() - 90);
-        start = d.toISOString().split('T')[0];
-        end = new Date().toISOString().split('T')[0];
-      }
+      // Mêmes paramètres que le module Finance : c'est ce qui garantit que
+      // les deux écrans affichent les mêmes chiffres pour une même période.
+      const range = buildPeriodParams(periodFilter, customStartDate, customEndDate);
 
       const [kpiData, ordersData, clientsData, productsData, analyticsData] = await Promise.all([
-        api.getDashboardKPIs(periodFilter, start, end),
+        api.getDashboardKPIs(range.period, range.start_date, range.end_date),
         api.getOrders(orderPage, undefined),
         api.getClients(1, 100),
         api.getProducts(1, 100),
-        api.getAnalyticsData(periodFilter, start, end).catch(() => null)
+        api.getAnalyticsData(range.period, range.start_date, range.end_date).catch(() => null)
       ]);
       setKpis(kpiData);
 
-      let filteredOrders = ordersData.items || [];
-      if (start || end) {
-        const startMs = start ? new Date(start + 'T00:00:00').getTime() : 0;
-        const endMs = end ? new Date(end + 'T23:59:59.999').getTime() : Infinity;
-        filteredOrders = filteredOrders.filter((o: any) => {
-          const oMs = new Date(o.created_at || 0).getTime();
-          return oMs >= startMs && oMs <= endMs;
-        });
-      }
-      filteredOrders.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+      const filteredOrders = (ordersData.items || [])
+        .filter((o: any) => isWithinPeriod(o.created_at, range))
+        .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
 
       setRecentOrders(filteredOrders.slice(0, ordersPerPage));
       setTotalOrders(filteredOrders.length);
@@ -280,19 +261,18 @@ export default function DashboardPage() {
     );
   }
 
-  // Reverse data points for chronological ordering
-  const chartData = analytics?.revenue_data 
-    ? [...analytics.revenue_data].reverse().map(pt => ({
-        ...pt,
-        value: Number(pt.value)
-      }))
-    : [];
+  // Le backend renvoie déjà les points du plus ancien au plus récent :
+  // les réordonner ici affichait la courbe à l'envers.
+  const chartData = (analytics?.revenue_data ?? []).map(pt => ({
+    ...pt,
+    value: Number(pt.value),
+  }));
 
   const kpiCards = [
     {
       title: language === 'fr' ? 'Chiffre d\'Affaires' : 'Revenue',
       value: kpis.total_revenue || 0,
-      change: language === 'fr' ? 'Revenu total' : 'Total income',
+      change: analytics?.kpis?.revenue_change ?? (language === 'fr' ? 'Revenu total' : 'Total income'),
       icon: <CircleDollarSign size={20} style={{ color: 'var(--color-brand-400)' }} />,
       color: 'var(--brand-alpha-12, rgba(109,213,196,0.12))',
       isCurrency: true,
@@ -316,14 +296,23 @@ export default function DashboardPage() {
     {
       title: t('dash.orders'),
       value: kpis.total_orders || 0,
-      change: '+8.1%',
+      change: analytics?.kpis?.orders_change ?? (language === 'fr' ? 'sur la période' : 'in period'),
       icon: <ShoppingBag size={20} style={{ color: '#f59e0b' }} />,
       color: 'rgba(245,158,11,0.12)',
     },
     {
+      title: language === 'fr' ? 'Produits vendus' : 'Items sold',
+      value: kpis.items_sold || 0,
+      change: language === 'fr' ? 'articles' : 'items',
+      icon: <Package size={20} style={{ color: '#a78bfa' }} />,
+      color: 'rgba(167,139,250,0.12)',
+    },
+    {
       title: t('dash.clients'),
       value: kpis.total_clients || 0,
-      change: '+14.2%',
+      change: language === 'fr'
+        ? `+${kpis.new_clients ?? 0} nouveau(x)`
+        : `+${kpis.new_clients ?? 0} new`,
       icon: <Users size={20} style={{ color: '#51c7b7' }} />,
       color: 'rgba(81,199,183,0.12)',
     },
@@ -347,16 +336,16 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="header-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <select 
-            className="input" 
+          <select
+            className="input"
             value={periodFilter}
-            onChange={(e) => setPeriodFilter(e.target.value as any)}
+            onChange={(e) => setPeriodFilter(e.target.value as PeriodKey)}
+            aria-label={language === 'fr' ? 'Période analysée' : 'Analysed period'}
             style={{ width: 'auto', fontSize: '0.875rem', padding: '0.5rem 0.75rem' }}
           >
-            <option value="7j">{language === 'fr' ? '7 derniers jours' : 'Last 7 days'}</option>
-            <option value="30j">{language === 'fr' ? '30 derniers jours' : 'Last 30 days'}</option>
-            <option value="90j">{language === 'fr' ? '90 derniers jours' : 'Last 90 days'}</option>
-            <option value="custom">{language === 'fr' ? 'Période personnalisée' : 'Custom range'}</option>
+            {(['7j', '30j', '90j', 'all', 'custom'] as PeriodKey[]).map(p => (
+              <option key={p} value={p}>{periodLabel(p, language)}</option>
+            ))}
           </select>
 
           {periodFilter === 'custom' && (
@@ -366,17 +355,19 @@ export default function DashboardPage() {
                 className="input"
                 style={{ padding: '0.4rem 0.6rem', fontSize: '0.85rem' }}
                 value={customStartDate}
+                max={customEndDate || undefined}
                 onChange={(e) => setCustomStartDate(e.target.value)}
-                placeholder="Début"
+                aria-label={language === 'fr' ? 'Date de début' : 'Start date'}
               />
-              <span style={{ color: 'var(--text-muted)' }}>à</span>
+              <span style={{ color: 'var(--text-muted)' }}>{language === 'fr' ? 'à' : 'to'}</span>
               <input
                 type="date"
                 className="input"
                 style={{ padding: '0.4rem 0.6rem', fontSize: '0.85rem' }}
                 value={customEndDate}
+                min={customStartDate || undefined}
                 onChange={(e) => setCustomEndDate(e.target.value)}
-                placeholder="Fin"
+                aria-label={language === 'fr' ? 'Date de fin' : 'End date'}
               />
             </div>
           )}

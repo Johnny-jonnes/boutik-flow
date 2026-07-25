@@ -630,8 +630,27 @@ export default function HomePage() {
           padding: 0.875rem 2rem;
           font-size: 1.05rem;
           gap: 0.625rem;
-          font-weight: 600;
-          box-shadow: var(--shadow-brand);
+          font-weight: 800;
+          color: #ffffff;
+          /* Dégradé volontairement plus sombre que le bleu turquoise clair
+             utilisé ailleurs dans l'app : sur fond clair comme sur fond
+             sombre, le texte blanc y garde un contraste ≥ 4.5:1 (WCAG AA),
+             ce qui n'était pas le cas du dégradé brand-500→600 d'origine. */
+          background: linear-gradient(135deg, var(--color-brand-700) 0%, var(--color-brand-900) 100%);
+          border: 1.5px solid rgba(255,255,255,0.25);
+          box-shadow:
+            0 12px 32px rgba(24,87,80,0.5),
+            0 4px 12px rgba(0,0,0,0.3),
+            inset 0 1px 0 rgba(255,255,255,0.3);
+          text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+        }
+        .hero-cta:hover {
+          filter: brightness(1.12);
+          transform: translateY(-2px);
+          box-shadow:
+            0 16px 40px rgba(24,87,80,0.6),
+            0 6px 16px rgba(0,0,0,0.35),
+            inset 0 1px 0 rgba(255,255,255,0.35);
         }
         .hero-cta-secondary { padding: 0.875rem 1.75rem; font-size: 1.05rem; }
         
@@ -972,6 +991,29 @@ export default function HomePage() {
           }
         }
         .show-on-xs-btn { display: none; }
+
+        /* Même correction de contraste que le CTA du hero : le bouton de la
+           barre de navigation doit rester lisible sur toutes les tailles
+           d'écran, y compris une fois réduit à "Essayer" en mobile. */
+        .nav-cta-btn {
+          color: #ffffff;
+          font-weight: 800;
+          background: linear-gradient(135deg, var(--color-brand-700) 0%, var(--color-brand-900) 100%);
+          border: 1.5px solid rgba(255,255,255,0.25);
+          box-shadow:
+            0 4px 16px rgba(24,87,80,0.45),
+            0 1px 4px rgba(0,0,0,0.25),
+            inset 0 1px 0 rgba(255,255,255,0.28);
+          text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+        }
+        .nav-cta-btn:hover {
+          filter: brightness(1.12);
+          box-shadow:
+            0 6px 20px rgba(24,87,80,0.55),
+            0 2px 6px rgba(0,0,0,0.3),
+            inset 0 1px 0 rgba(255,255,255,0.32);
+        }
+
         @media (max-width: 640px) {
           #btn-nav-login, .hide-on-xs, .hide-on-xs-btn { display: none !important; }
           .show-on-xs-btn { display: inline !important; }

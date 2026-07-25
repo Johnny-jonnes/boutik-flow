@@ -4,37 +4,17 @@ import { useEffect } from 'react';
 
 export function PWARegister() {
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      // 1. Désenregistrer activement TOUS les Service Workers actifs pour réparer le cache mobile bloqué
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then((registrations) => {
-          for (const registration of registrations) {
-            registration.unregister().then((success) => {
-              if (success) {
-                console.log('Successfully unregistered active Service Worker to clear local cache.');
-                // Recharger la page pour s'assurer que les requêtes repassent immédiatement par le réseau natif
-                window.location.reload();
-              }
-            });
-          }
-        }).catch((err) => {
-          console.error('Error unregistering service worker:', err);
-        });
-      }
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
 
-      // 2. Vider tous les caches de stockage locaux (CacheStorage) pour purger les fichiers périmés
-      if ('caches' in window) {
-        caches.keys().then((cacheNames) => {
-          return Promise.all(
-            cacheNames.map((cacheName) => {
-              return caches.delete(cacheName);
-            })
-          );
-        }).catch((err) => {
-          console.error('Error clearing CacheStorage:', err);
-        });
-      }
-    }
+    // `sw.js` ne fait aucune interception réseau (le mode hors ligne de
+    // l'app repose sur localStorage, pas sur le Cache API) : son seul rôle
+    // est de rendre l'app installable et de purger, à chaque activation,
+    // les caches laissés par d'anciennes versions du Service Worker.
+    // L'enregistrer normalement suffit ; register() est un no-op si la même
+    // version est déjà active, et déclenche une mise à jour sinon.
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch((err) => {
+      console.error('Service Worker registration failed:', err);
+    });
   }, []);
 
   return null;

@@ -16,6 +16,7 @@ import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
 import { useLanguage } from '@/context/LanguageContext';
+import { buildPeriodParams, type PeriodKey } from '@/lib/period';
 import type {
   FinancialTransaction,
   FinanceSummary,
@@ -107,33 +108,18 @@ export default function FinancePage() {
     try {
       const typeParam = selectedType !== 'all' ? selectedType : undefined;
       const categoryParam = selectedCategory !== 'all' ? selectedCategory : undefined;
-      const periodParam = selectedPeriod !== 'all' ? selectedPeriod : 'all';
-      
-      let startDateParam = selectedPeriod === 'custom' && filterDateFrom ? filterDateFrom : undefined;
-      let endDateParam = selectedPeriod === 'custom' && filterDateTo ? filterDateTo : undefined;
-
-      if (selectedPeriod === '7j') {
-        const d = new Date(); d.setDate(d.getDate() - 7);
-        startDateParam = d.toISOString().split('T')[0];
-        endDateParam = new Date().toISOString().split('T')[0];
-      } else if (selectedPeriod === '30j') {
-        const d = new Date(); d.setDate(d.getDate() - 30);
-        startDateParam = d.toISOString().split('T')[0];
-        endDateParam = new Date().toISOString().split('T')[0];
-      } else if (selectedPeriod === '90j') {
-        const d = new Date(); d.setDate(d.getDate() - 90);
-        startDateParam = d.toISOString().split('T')[0];
-        endDateParam = new Date().toISOString().split('T')[0];
-      }
+      // Même fonction que le Tableau de bord : une sélection identique y
+      // produit exactement les mêmes bornes de dates.
+      const range = buildPeriodParams(selectedPeriod as PeriodKey, filterDateFrom, filterDateTo);
 
       const res = await api.getFinanceTransactions(
         page,
         perPage,
         typeParam,
         categoryParam,
-        periodParam,
-        startDateParam,
-        endDateParam
+        range.period,
+        range.start_date,
+        range.end_date
       );
 
       const items = (res.items || []).sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
@@ -370,6 +356,7 @@ export default function FinancePage() {
                 className="input"
                 style={{ width: '140px', padding: '0.35rem 0.5rem', height: '38px', fontSize: '0.85rem', background: 'var(--surface-0)', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: 'var(--text-primary)' }}
                 value={filterDateFrom}
+                max={filterDateTo || undefined}
                 onChange={(e) => {
                   setFilterDateFrom(e.target.value);
                   setPage(1);
@@ -381,6 +368,7 @@ export default function FinancePage() {
                 className="input"
                 style={{ width: '140px', padding: '0.35rem 0.5rem', height: '38px', fontSize: '0.85rem', background: 'var(--surface-0)', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: 'var(--text-primary)' }}
                 value={filterDateTo}
+                min={filterDateFrom || undefined}
                 onChange={(e) => {
                   setFilterDateTo(e.target.value);
                   setPage(1);

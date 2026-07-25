@@ -280,18 +280,18 @@ export default function CRMPage() {
       <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="+ Client">
         <form onSubmit={handleAdd} className="modal-form">
           <div className="form-group">
-            <label className="form-label">Nom</label>
-            <input type="text" className="input" required placeholder="Nom du client" value={addForm.name}
+            <label className="form-label">Nom du client</label>
+            <input type="text" className="input" required value={addForm.name}
               onChange={e => setAddForm({ ...addForm, name: e.target.value })} />
           </div>
           <div className="form-group">
             <label className="form-label">Téléphone</label>
-            <input type="tel" className="input" required placeholder="Numéro de téléphone" value={addForm.phone}
+            <input type="tel" className="input" required value={addForm.phone}
               onChange={e => setAddForm({ ...addForm, phone: e.target.value })} />
           </div>
           <div className="form-group">
             <label className="form-label">Email</label>
-            <input type="email" className="input" placeholder="Adresse email" value={addForm.email}
+            <input type="email" className="input" value={addForm.email}
               onChange={e => setAddForm({ ...addForm, email: e.target.value })} />
           </div>
           <div className="form-group">
@@ -306,7 +306,7 @@ export default function CRMPage() {
           </div>
           <div className="form-group">
             <label className="form-label">Notes</label>
-            <textarea className="input" rows={2} placeholder="Notes / remarques" value={addForm.notes}
+            <textarea className="input" rows={2} value={addForm.notes}
               onChange={e => setAddForm({ ...addForm, notes: e.target.value })} />
           </div>
           <div className="modal-actions">
@@ -463,18 +463,18 @@ export default function CRMPage() {
       <Modal isOpen={!!editClient} onClose={() => setEditClient(null)} title="Modifier">
         <form onSubmit={handleEdit} className="modal-form">
           <div className="form-group">
-            <label className="form-label">Nom</label>
-            <input type="text" className="input" required placeholder="Nom du client" value={editForm.name}
+            <label className="form-label">Nom du client</label>
+            <input type="text" className="input" required value={editForm.name}
               onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
           </div>
           <div className="form-group">
             <label className="form-label">Téléphone</label>
-            <input type="tel" className="input" required placeholder="Numéro de téléphone" value={editForm.phone}
+            <input type="tel" className="input" required value={editForm.phone}
               onChange={e => setEditForm({ ...editForm, phone: e.target.value })} />
           </div>
           <div className="form-group">
             <label className="form-label">Email</label>
-            <input type="email" className="input" placeholder="Adresse email" value={editForm.email}
+            <input type="email" className="input" value={editForm.email}
               onChange={e => setEditForm({ ...editForm, email: e.target.value })} />
           </div>
           <div className="form-group">
@@ -489,7 +489,7 @@ export default function CRMPage() {
           </div>
           <div className="form-group">
             <label className="form-label">Notes</label>
-            <textarea className="input" rows={2} placeholder="Notes / remarques" value={editForm.notes}
+            <textarea className="input" rows={2} value={editForm.notes}
               onChange={e => setEditForm({ ...editForm, notes: e.target.value })} />
           </div>
           <div className="modal-actions">

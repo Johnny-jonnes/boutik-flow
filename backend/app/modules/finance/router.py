@@ -4,15 +4,14 @@ Gestion des entrées, dépenses et calcul du Solde Net.
 """
 from typing import Annotated
 import uuid
-from decimal import Decimal
-from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, func
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_owner_or_manager, CurrentUser
-from app.modules.finance.models import FinancialTransaction, TransactionTypeEnum, TransactionCategoryEnum
+from app.core.period import resolve_period
+from app.core.metrics import financial_totals
+from app.modules.finance.models import FinancialTransaction
 from app.modules.finance.schemas import (
     TransactionCreate,
     TransactionResponse,
@@ -41,31 +40,20 @@ def list_transactions(
     start_date: str | None = Query(None),
     end_date: str | None = Query(None),
 ) -> TransactionListResponse:
+    # Fenêtre de dates résolue par la fonction partagée avec le Tableau de bord :
+    # une même sélection y produit donc rigoureusement les mêmes bornes.
+    start, end = resolve_period(period, start_date, end_date)
+
     query = db.query(FinancialTransaction).filter(FinancialTransaction.tenant_id == current_user.tenant_id)
 
     if type:
         query = query.filter(FinancialTransaction.type == type)
     if category:
         query = query.filter(FinancialTransaction.category == category)
-
-    if period == "custom" and (start_date or end_date):
-        if start_date:
-            try:
-                start_dt = datetime.strptime(start_date, "%Y-%m-%d")
-                query = query.filter(FinancialTransaction.created_at >= start_dt)
-            except ValueError:
-                pass
-        if end_date:
-            try:
-                # Ajoute 1 jour pour inclure la date de fin complète
-                end_dt = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
-                query = query.filter(FinancialTransaction.created_at < end_dt)
-            except ValueError:
-                pass
-    elif period and period != "all":
-        days = 7 if period == "7j" else (90 if period == "90j" else 30)
-        since = datetime.utcnow() - timedelta(days=days)
-        query = query.filter(FinancialTransaction.created_at >= since)
+    if start is not None:
+        query = query.filter(FinancialTransaction.created_at >= start)
+    if end is not None:
+        query = query.filter(FinancialTransaction.created_at < end)
 
     total = query.count()
     items = (
@@ -76,23 +64,22 @@ def list_transactions(
         .all()
     )
 
-    # Calcul des totaux pour le résumé
-    all_trans = query.all()
-    total_inc = Decimal(0)
-    total_exp = Decimal(0)
-
-    for t in all_trans:
-        val = Decimal(str(t.amount))
-        if t.type == TransactionTypeEnum.income or t.type == "income":
-            total_inc += val
-        else:
-            total_exp += val
+    # Totaux calculés par le service partagé (agrégation SQL) : plus de
+    # chargement de toutes les lignes en mémoire pour faire une somme.
+    totals = financial_totals(
+        db,
+        current_user.tenant_id,
+        start,
+        end,
+        type_filter=type,
+        category_filter=category,
+    )
 
     summary = FinanceSummary(
-        total_income=total_inc,
-        total_expense=total_exp,
-        net_balance=total_inc - total_exp,
-        transactions_count=total,
+        total_income=totals.total_income,
+        total_expense=totals.total_expense,
+        net_balance=totals.net_balance,
+        transactions_count=totals.transactions_count,
     )
 
     return TransactionListResponse(

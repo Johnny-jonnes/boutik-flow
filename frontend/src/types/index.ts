@@ -192,6 +192,12 @@ export interface DashboardKPIs {
   pending_orders: number;
   total_expenses?: number;
   net_balance?: number;
+  /** Articles vendus sur la période. */
+  items_sold?: number;
+  /** Clients créés pendant la période (les autres compteurs sont cumulés). */
+  new_clients?: number;
+  period_start?: string | null;
+  period_end?: string | null;
 }
 
 export interface RevenueDataPoint {
@@ -265,6 +271,9 @@ export interface AnalyticsKPIs {
   orders_change: string;
   aov_change: string;
   conversion_change: string;
+  total_expenses?: number;
+  net_balance?: number;
+  items_sold?: number;
 }
 
 export interface AnalyticsData {
@@ -273,6 +282,8 @@ export interface AnalyticsData {
   orders_data: OrderChartPoint[];
   top_products: TopProductPoint[];
   client_segments: ClientSegmentPoint[];
+  period_start?: string | null;
+  period_end?: string | null;
 }
 
 // ─── Campagnes Marketing ────────────────────────────────────────────────────

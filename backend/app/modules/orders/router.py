@@ -57,6 +57,107 @@ def _create_order_log(
     db.add(log)
 
 
+def _restock_order_items(db: Session, order: Order, current_user: CurrentUser, reason: str):
+    """Remet en stock les articles d'une commande et trace chaque mouvement."""
+    for item in order.items:
+        product = db.query(Product).filter(Product.id == item.product_id).first()
+        if not product:
+            continue
+
+        old_stock = product.stock
+        product.stock += item.quantity
+        db.add(
+            InventoryLog(
+                id=uuid.uuid4(),
+                tenant_id=current_user.tenant_id,
+                product_id=product.id,
+                change_type=reason,
+                old_value=str(old_stock),
+                new_value=str(product.stock),
+                changed_by=current_user.user_id,
+            )
+        )
+
+
+def _consume_order_items(db: Session, order: Order, current_user: CurrentUser):
+    """
+    Redébite le stock d'une commande réactivée après annulation.
+
+    Le stock est d'abord vérifié en totalité : on refuse la réactivation
+    plutôt que de laisser un stock négatif s'installer en base.
+    """
+    products = {}
+    for item in order.items:
+        product = db.query(Product).filter(Product.id == item.product_id).first()
+        if not product:
+            continue
+        if product.stock < item.quantity:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Stock insuffisant pour réactiver la commande : {product.name} (Reste: {product.stock}).",
+            )
+        products[item.product_id] = product
+
+    for item in order.items:
+        product = products.get(item.product_id)
+        if not product:
+            continue
+
+        old_stock = product.stock
+        product.stock -= item.quantity
+        db.add(
+            InventoryLog(
+                id=uuid.uuid4(),
+                tenant_id=current_user.tenant_id,
+                product_id=product.id,
+                change_type="order_reactivated",
+                old_value=str(old_stock),
+                new_value=str(product.stock),
+                changed_by=current_user.user_id,
+            )
+        )
+
+
+def _remove_sale_transaction(db: Session, order: Order):
+    """Supprime la recette générée par une vente qui vient d'être annulée."""
+    db.query(FinancialTransaction).filter(
+        and_(
+            FinancialTransaction.tenant_id == order.tenant_id,
+            FinancialTransaction.reference == str(order.id),
+            FinancialTransaction.type == TransactionTypeEnum.income,
+            FinancialTransaction.category == TransactionCategoryEnum.sale,
+        )
+    ).delete(synchronize_session=False)
+
+
+def _restore_sale_transaction(db: Session, order: Order, current_user: CurrentUser):
+    """Recrée la recette d'une commande réactivée, sans jamais la dupliquer."""
+    existing = db.query(FinancialTransaction).filter(
+        and_(
+            FinancialTransaction.tenant_id == order.tenant_id,
+            FinancialTransaction.reference == str(order.id),
+            FinancialTransaction.type == TransactionTypeEnum.income,
+            FinancialTransaction.category == TransactionCategoryEnum.sale,
+        )
+    ).first()
+    if existing:
+        return
+
+    db.add(
+        FinancialTransaction(
+            id=uuid.uuid4(),
+            tenant_id=order.tenant_id,
+            type=TransactionTypeEnum.income,
+            category=TransactionCategoryEnum.sale,
+            amount=order.total,
+            description=f"Vente Magasin N°{str(order.id)[:8]} (commande réactivée)",
+            payment_method="cash",
+            reference=str(order.id),
+            user_id=current_user.user_id,
+        )
+    )
+
+
 # ──────────────────────────── GET /orders ────────────────────────────
 
 @router.get(
@@ -353,11 +454,24 @@ def update_order_status(
     if old_status == new_status_enum:
         return OrderResponse.model_validate(order)
 
-    # Si annulée, on pourrait restituer le stock (à implémenter selon besoin métier)
-    # Dans ce MVP, on se concentre sur l'historisation
-    
+    was_cancelled = old_status == OrderStatusEnum.cancelled
+    is_cancelled = new_status_enum == OrderStatusEnum.cancelled
+
+    # ── Annulation : la vente n'a pas eu lieu ──
+    # Sans ce traitement, la recette restait comptée dans le chiffre d'affaires
+    # et le stock restait débité : le Tableau de bord et Finance affichaient
+    # alors une vente qui n'existe plus.
+    if is_cancelled:
+        _restock_order_items(db, order, current_user, "order_cancelled")
+        _remove_sale_transaction(db, order)
+
+    # ── Réactivation d'une commande annulée : on rejoue la vente ──
+    elif was_cancelled:
+        _consume_order_items(db, order, current_user)
+        _restore_sale_transaction(db, order, current_user)
+
     order.status = new_status_enum
-    
+
     _create_order_log(
         db=db,
         tenant_id=current_user.tenant_id,

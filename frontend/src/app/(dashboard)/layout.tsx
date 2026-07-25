@@ -342,8 +342,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           height: calc(56px + env(safe-area-inset-top, 0px));
           background: rgba(8, 12, 11, 0.92);
           border-bottom: 1px solid rgba(109,213,196,0.15);
-          padding-left: 1rem;
-          padding-right: 1rem;
+          /* max() garde 1rem minimum et s'élargit derrière l'encoche latérale
+             en paysage (iPhone) ou la découpe caméra d'un Android bord à bord. */
+          padding-left: max(1rem, env(safe-area-inset-left, 0px));
+          padding-right: max(1rem, env(safe-area-inset-right, 0px));
           align-items: flex-end;
           padding-bottom: 0.5rem;
           justify-content: space-between;
@@ -781,6 +783,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             box-shadow: 16px 0 50px rgba(0,0,0,0.85);
             padding-top: calc(0.5rem + env(safe-area-inset-top, 0px));
             padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+            /* Le tiroir colle au bord gauche : en paysage sur iPhone à
+               encoche, son contenu doit rester derrière la découpe. */
+            padding-left: env(safe-area-inset-left, 0px);
           }
           .sidebar--open { transform: translateX(0); }
 
@@ -794,7 +799,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             justify-content: center;
             z-index: 1000;
             pointer-events: none;
-            padding: 0 1rem;
+            padding-left: max(1rem, env(safe-area-inset-left, 0px));
+            padding-right: max(1rem, env(safe-area-inset-right, 0px));
           }
 
           .bottom-nav-glass {

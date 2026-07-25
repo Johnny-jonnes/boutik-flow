@@ -1,21 +1,30 @@
 """
 Router Dashboard — Indicateurs clés de la boutique
+
 Règles appliquées :
 - Multi-tenant : filtrage strict par tenant_id sur toutes les requêtes
 - Soft delete : exclusion des éléments supprimés (deleted_at IS NULL)
+- Filtrage par date : délégué à `app.core.period.resolve_period()`
+- Calculs : délégués à `app.core.metrics`, partagés avec le module Finance.
+  Le Tableau de bord ne calcule plus aucun montant lui-même : c'est ce qui
+  garantit qu'il affiche exactement les mêmes chiffres que Finance pour une
+  même période.
 """
 import logging
 from typing import Annotated
 from decimal import Decimal
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, CurrentUser
+from app.core.period import resolve_period, previous_period
+from app.core.metrics import financial_totals, sales_metrics, format_change
 from app.modules.products.models import Order, OrderStatusEnum, OrderItem, Product
+from app.modules.finance.models import FinancialTransaction, TransactionTypeEnum
 from app.modules.crm.models import Client, ClientStatusEnum
 from app.modules.dashboard.schemas import (
     DashboardKPIs,
@@ -31,52 +40,46 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
+# Libellés de période acceptés. "custom" est toléré car le frontend l'envoie
+# en même temps que start_date/end_date ; les dates explicites priment.
+PERIOD_QUERY = Query("30j", pattern="^(24h|7j|30j|90j|all|custom)$")
+
+DAY_MAP = {
+    "Mon": "Lun", "Tue": "Mar", "Wed": "Mer", "Thu": "Jeu",
+    "Fri": "Ven", "Sat": "Sam", "Sun": "Dim",
+}
+
 
 @router.get(
     "/kpis",
     response_model=DashboardKPIs,
-    summary="Indicateurs clés (KPIs)",
+    summary="Indicateurs clés (KPIs) sur une période",
 )
 def get_kpis(
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    period: str = PERIOD_QUERY,
+    start_date: str | None = Query(None, description="Date de début (YYYY-MM-DD)"),
+    end_date: str | None = Query(None, description="Date de fin incluse (YYYY-MM-DD)"),
 ) -> DashboardKPIs:
-    """Retourne les KPIs globaux de la boutique (Tableau de bord d'accueil)."""
-    
-    # Total des revenus (commandes livrées ou confirmées, selon les règles métier,
-    # on exclut les commandes annulées)
-    revenue_query = db.query(func.sum(Order.total)).filter(
-        and_(
-            Order.tenant_id == current_user.tenant_id,
-            Order.status != OrderStatusEnum.cancelled,
-            Order.deleted_at.is_(None)
-        )
-    ).scalar()
-    total_revenue = revenue_query or Decimal("0.00")
+    """
+    KPIs de la boutique sur la période demandée.
 
-    # Nombre total de commandes (non annulées)
-    total_orders = db.query(Order).filter(
-        and_(
-            Order.tenant_id == current_user.tenant_id,
-            Order.status != OrderStatusEnum.cancelled,
-            Order.deleted_at.is_(None)
-        )
-    ).count()
+    Montants (CA, dépenses, bénéfice) : identiques au module Finance.
+    Volumes (commandes, produits vendus) : calculés sur les commandes.
+    Compteurs clients : totaux cumulés du fichier client — ce sont des
+    stocks, pas des flux ; `new_clients` donne l'acquisition sur la période.
+    """
+    start, end = resolve_period(period, start_date, end_date)
+    tenant_id = current_user.tenant_id
 
-    # Commandes en attente
-    pending_orders = db.query(Order).filter(
-        and_(
-            Order.tenant_id == current_user.tenant_id,
-            Order.status == OrderStatusEnum.pending,
-            Order.deleted_at.is_(None)
-        )
-    ).count()
+    money = financial_totals(db, tenant_id, start, end)
+    sales = sales_metrics(db, tenant_id, start, end)
 
-    # Base query for clients
     base_client_query = db.query(Client).filter(
         and_(
-            Client.tenant_id == current_user.tenant_id,
-            Client.deleted_at.is_(None)
+            Client.tenant_id == tenant_id,
+            Client.deleted_at.is_(None),
         )
     )
 
@@ -84,27 +87,77 @@ def get_kpis(
     active_clients = base_client_query.filter(Client.status == ClientStatusEnum.actif).count()
     vip_clients = base_client_query.filter(Client.status == ClientStatusEnum.vip).count()
 
-    # Calcul des dépenses totales (charges) à partir du module finance
-    from app.modules.finance.models import FinancialTransaction, TransactionTypeEnum
-    expenses_query = db.query(func.sum(FinancialTransaction.amount)).filter(
-        and_(
-            FinancialTransaction.tenant_id == current_user.tenant_id,
-            FinancialTransaction.type == TransactionTypeEnum.expense
-        )
-    ).scalar()
-    total_expenses = expenses_query or Decimal("0.00")
-    net_balance = total_revenue - total_expenses
+    new_clients_query = base_client_query
+    if start is not None:
+        new_clients_query = new_clients_query.filter(Client.created_at >= start)
+    if end is not None:
+        new_clients_query = new_clients_query.filter(Client.created_at < end)
+    new_clients = new_clients_query.count()
 
     return DashboardKPIs(
-        total_revenue=total_revenue,
-        total_orders=total_orders,
+        total_revenue=money.total_income,
+        total_expenses=money.total_expense,
+        net_balance=money.net_balance,
+        total_orders=sales.total_orders,
+        pending_orders=sales.pending_orders,
+        items_sold=sales.items_sold,
         total_clients=total_clients,
         active_clients=active_clients,
         vip_clients=vip_clients,
-        pending_orders=pending_orders,
-        total_expenses=total_expenses,
-        net_balance=net_balance,
+        new_clients=new_clients,
+        period_start=start,
+        period_end=end,
     )
+
+
+def _build_buckets(
+    start: datetime,
+    end: datetime,
+) -> list[tuple[str, datetime, datetime]]:
+    """
+    Découpe la fenêtre en intervalles de graphique `(libellé, début, fin)`.
+
+    La granularité s'adapte à la durée réelle de la période sélectionnée,
+    de façon à rester lisible aussi bien sur 24 h que sur un an.
+    """
+    span = end - start
+    total_hours = max(span.total_seconds() / 3600, 1)
+
+    # ── Moins de 48 h : découpage horaire ──
+    if total_hours <= 48:
+        buckets = []
+        cursor = start.replace(minute=0, second=0, microsecond=0)
+        while cursor < end:
+            nxt = cursor + timedelta(hours=1)
+            buckets.append((cursor.strftime("%Hh"), cursor, nxt))
+            cursor = nxt
+        return buckets
+
+    total_days = max(int(span.days), 1)
+
+    # ── Jusqu'à 31 jours : un point par jour ──
+    if total_days <= 31:
+        buckets = []
+        cursor = start
+        while cursor < end:
+            nxt = cursor + timedelta(days=1)
+            if total_days <= 7:
+                label = DAY_MAP.get(cursor.strftime("%a"), cursor.strftime("%a"))
+            else:
+                label = cursor.strftime("%d/%m")
+            buckets.append((label, cursor, nxt))
+            cursor = nxt
+        return buckets
+
+    # ── Au-delà : regroupement pour rester sous ~20 points ──
+    group_days = max(1, -(-total_days // 18))  # division entière par excès
+    buckets = []
+    cursor = start
+    while cursor < end:
+        nxt = min(cursor + timedelta(days=group_days), end)
+        buckets.append((cursor.strftime("%d/%m"), cursor, nxt))
+        cursor = nxt
+    return buckets
 
 
 @router.get(
@@ -115,200 +168,172 @@ def get_kpis(
 def get_analytics(
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
-    period: str = Query("7j", regex="^(24h|7j|30j|90j)$")
+    period: str = PERIOD_QUERY,
+    start_date: str | None = Query(None, description="Date de début (YYYY-MM-DD)"),
+    end_date: str | None = Query(None, description="Date de fin incluse (YYYY-MM-DD)"),
 ) -> AnalyticsData:
-    """Retourne les analyses complètes filtrées par la période demandée."""
-    
-    now = datetime.now(timezone.utc)
-    
-    # Détermination des dates de début
-    if period == "24h":
-        start_date = now - timedelta(hours=24)
-        prev_start_date = now - timedelta(hours=48)
-    elif period == "7j":
-        start_date = now - timedelta(days=7)
-        prev_start_date = now - timedelta(days=14)
-    elif period == "30j":
-        start_date = now - timedelta(days=30)
-        prev_start_date = now - timedelta(days=60)
-    else:  # 90j
-        start_date = now - timedelta(days=90)
-        prev_start_date = now - timedelta(days=180)
+    """
+    Analyses et graphiques sur la période demandée.
 
-    # Récupération des commandes
-    orders_curr = db.query(Order).filter(
-        and_(
-            Order.tenant_id == current_user.tenant_id,
-            Order.deleted_at.is_(None),
-            Order.created_at >= start_date,
-            Order.created_at <= now
+    Les points du graphique de chiffre d'affaires proviennent des mêmes
+    transactions que le KPI « Chiffre d'affaires » : leur somme est donc
+    toujours égale au KPI affiché au-dessus du graphique.
+    """
+    start, end = resolve_period(period, start_date, end_date)
+    tenant_id = current_user.tenant_id
+
+    money = financial_totals(db, tenant_id, start, end)
+    sales = sales_metrics(db, tenant_id, start, end)
+
+    # ── Comparaison avec la période précédente de même durée ──
+    prev_start, prev_end = previous_period(start, end)
+    if prev_start is not None:
+        prev_money = financial_totals(db, tenant_id, prev_start, prev_end)
+        prev_sales = sales_metrics(db, tenant_id, prev_start, prev_end)
+        prev_revenue = prev_money.total_income
+        prev_orders = prev_sales.total_orders
+        prev_aov = prev_sales.average_order_value
+        prev_conversion = (
+            (prev_sales.delivered_orders / prev_sales.total_orders * 100)
+            if prev_sales.total_orders else 0.0
         )
-    ).all()
+    else:
+        prev_revenue, prev_orders = Decimal("0.00"), 0
+        prev_aov, prev_conversion = Decimal("0.00"), 0.0
 
-    orders_prev = db.query(Order).filter(
-        and_(
-            Order.tenant_id == current_user.tenant_id,
-            Order.deleted_at.is_(None),
-            Order.created_at >= prev_start_date,
-            Order.created_at < start_date
+    conversion = (
+        (sales.delivered_orders / sales.total_orders * 100)
+        if sales.total_orders else 0.0
+    )
+
+    # ── Points de graphique ──
+    # Sans période bornée ("all"), on cadre sur l'activité réellement présente
+    # pour éviter un graphique vide ou démesuré.
+    chart_start, chart_end = start, end
+    if chart_start is None or chart_end is None:
+        bounds = db.query(
+            func.min(FinancialTransaction.created_at),
+            func.max(FinancialTransaction.created_at),
+        ).filter(FinancialTransaction.tenant_id == tenant_id).first()
+        now = datetime.now(timezone.utc)
+        chart_start = chart_start or (bounds[0] if bounds and bounds[0] else now - timedelta(days=30))
+        chart_end = chart_end or (bounds[1] + timedelta(seconds=1) if bounds and bounds[1] else now)
+        if chart_start >= chart_end:
+            chart_start = chart_end - timedelta(days=1)
+
+    buckets = _build_buckets(chart_start, chart_end)
+
+    # Une seule lecture des mouvements et des commandes, puis répartition en
+    # mémoire : le volume par boutique et par période reste faible, et cela
+    # évite autant d'allers-retours SQL que de points de graphique.
+    income_rows = (
+        db.query(FinancialTransaction.created_at, FinancialTransaction.amount)
+        .filter(
+            FinancialTransaction.tenant_id == tenant_id,
+            FinancialTransaction.type == TransactionTypeEnum.income,
+            FinancialTransaction.created_at >= chart_start,
+            FinancialTransaction.created_at < chart_end,
         )
-    ).all()
+        .all()
+    )
 
-    # Calcul des KPIs actuels
-    curr_total_revenue = sum((o.total for o in orders_curr if o.status != OrderStatusEnum.cancelled), Decimal("0.00"))
-    curr_total_orders = sum(1 for o in orders_curr if o.status != OrderStatusEnum.cancelled)
-    curr_delivered_orders = sum(1 for o in orders_curr if o.status == OrderStatusEnum.delivered)
-    curr_aov = curr_total_revenue / curr_total_orders if curr_total_orders > 0 else Decimal("0.00")
-    curr_conversion = (curr_delivered_orders / curr_total_orders * 100) if curr_total_orders > 0 else 0.0
+    order_rows = (
+        db.query(Order.created_at, Order.status)
+        .filter(
+            Order.tenant_id == tenant_id,
+            Order.deleted_at.is_(None),
+            Order.created_at >= chart_start,
+            Order.created_at < chart_end,
+        )
+        .all()
+    )
 
-    # Calcul des KPIs précédents
-    prev_total_revenue = sum((o.total for o in orders_prev if o.status != OrderStatusEnum.cancelled), Decimal("0.00"))
-    prev_total_orders = sum(1 for o in orders_prev if o.status != OrderStatusEnum.cancelled)
-    prev_delivered_orders = sum(1 for o in orders_prev if o.status == OrderStatusEnum.delivered)
-    prev_aov = prev_total_revenue / prev_total_orders if prev_total_orders > 0 else Decimal("0.00")
-    prev_conversion = (prev_delivered_orders / prev_total_orders * 100) if prev_total_orders > 0 else 0.0
+    revenue_points: list[RevenueChartPoint] = []
+    order_points: list[OrderChartPoint] = []
 
-    # Formatage des variations (%)
-    def format_change(curr, prev):
-        if prev == 0:
-            return "+0.0%" if curr == 0 else "+100.0%"
-        diff = float(curr - prev)
-        pct = (diff / float(prev)) * 100
-        sign = "+" if pct >= 0 else ""
-        return f"{sign}{pct:.1f}%"
+    for label, b_start, b_end in buckets:
+        bucket_revenue = sum(
+            (Decimal(str(amount or 0)) for created_at, amount in income_rows
+             if b_start <= created_at < b_end),
+            Decimal("0.00"),
+        )
+        bucket_orders = [s for created_at, s in order_rows if b_start <= created_at < b_end]
 
-    revenue_change = format_change(curr_total_revenue, prev_total_revenue)
-    orders_change = format_change(curr_total_orders, prev_total_orders)
-    aov_change = format_change(curr_aov, prev_aov)
-    conversion_change = format_change(curr_conversion, prev_conversion)
+        revenue_points.append(RevenueChartPoint(name=label, value=bucket_revenue))
+        order_points.append(
+            OrderChartPoint(
+                name=label,
+                commandes=sum(1 for s in bucket_orders if s != OrderStatusEnum.cancelled),
+                livrees=sum(1 for s in bucket_orders if s == OrderStatusEnum.delivered),
+            )
+        )
 
-    # ─── Graphiques ───
-    revenue_points = []
-    order_points = []
-
-    if period == "24h":
-        for i in range(24):
-            dt = now - timedelta(hours=i)
-            name = dt.strftime("%Hh")
-            hour_orders = [o for o in orders_curr if o.created_at.astimezone(dt.tzinfo).hour == dt.hour and o.created_at.astimezone(dt.tzinfo).date() == dt.date()]
-            
-            h_rev = sum((o.total for o in hour_orders if o.status != OrderStatusEnum.cancelled), Decimal("0.00"))
-            h_orders = sum(1 for o in hour_orders if o.status != OrderStatusEnum.cancelled)
-            h_deliv = sum(1 for o in hour_orders if o.status == OrderStatusEnum.delivered)
-            
-            revenue_points.append(RevenueChartPoint(name=name, value=h_rev))
-            order_points.append(OrderChartPoint(name=name, commandes=h_orders, livrees=h_deliv))
-            
-    elif period == "7j":
-        DAY_MAP = {"Mon": "Lun", "Tue": "Mar", "Wed": "Mer", "Thu": "Jeu", "Fri": "Ven", "Sat": "Sam", "Sun": "Dim"}
-        for i in range(7):
-            dt = now - timedelta(days=i)
-            day_name_en = dt.strftime("%a")
-            name = DAY_MAP.get(day_name_en, day_name_en)
-            day_orders = [o for o in orders_curr if o.created_at.date() == dt.date()]
-            
-            d_rev = sum((o.total for o in day_orders if o.status != OrderStatusEnum.cancelled), Decimal("0.00"))
-            d_orders = sum(1 for o in day_orders if o.status != OrderStatusEnum.cancelled)
-            d_deliv = sum(1 for o in day_orders if o.status == OrderStatusEnum.delivered)
-            
-            revenue_points.append(RevenueChartPoint(name=name, value=d_rev))
-            order_points.append(OrderChartPoint(name=name, commandes=d_orders, livrees=d_deliv))
-
-    elif period == "30j":
-        for i in range(30):
-            dt = now - timedelta(days=i)
-            name = dt.strftime("%d/%m")
-            day_orders = [o for o in orders_curr if o.created_at.date() == dt.date()]
-            
-            d_rev = sum((o.total for o in day_orders if o.status != OrderStatusEnum.cancelled), Decimal("0.00"))
-            d_orders = sum(1 for o in day_orders if o.status != OrderStatusEnum.cancelled)
-            d_deliv = sum(1 for o in day_orders if o.status == OrderStatusEnum.delivered)
-            
-            revenue_points.append(RevenueChartPoint(name=name, value=d_rev))
-            order_points.append(OrderChartPoint(name=name, commandes=d_orders, livrees=d_deliv))
-
-    else:  # 90j
-        # Groupement par bloc de 5 jours pour ne pas surcharger le graphique
-        for i in range(18):  # 18 blocs de 5 jours = 90 jours
-            block_start = start_date + timedelta(days=i*5)
-            block_end = start_date + timedelta(days=(i+1)*5)
-            name = block_start.strftime("%d/%m")
-            block_orders = [o for o in orders_curr if o.created_at >= block_start and o.created_at < block_end]
-            
-            b_rev = sum((o.total for o in block_orders if o.status != OrderStatusEnum.cancelled), Decimal("0.00"))
-            b_orders = sum(1 for o in block_orders if o.status != OrderStatusEnum.cancelled)
-            b_deliv = sum(1 for o in block_orders if o.status == OrderStatusEnum.delivered)
-            
-            revenue_points.append(RevenueChartPoint(name=name, value=b_rev))
-            order_points.append(OrderChartPoint(name=name, commandes=b_orders, livrees=b_deliv))
-
-    if period != "90j":
-        revenue_points.reverse()
-        order_points.reverse()
-
-    # ─── Top 5 Produits ───
-    top_products_query = db.query(
+    # ── Top 5 produits (bornes strictement identiques aux KPI) ──
+    top_query = db.query(
         Product.name,
         func.sum(OrderItem.quantity).label("ventes"),
-        func.sum(OrderItem.quantity * OrderItem.unit_price).label("revenue")
+        func.sum(OrderItem.quantity * OrderItem.unit_price).label("revenue"),
     ).join(
         OrderItem, Product.id == OrderItem.product_id
     ).join(
         Order, Order.id == OrderItem.order_id
     ).filter(
         and_(
-            Order.tenant_id == current_user.tenant_id,
+            Order.tenant_id == tenant_id,
             Order.deleted_at.is_(None),
-            Order.created_at >= start_date,
-            Order.status != OrderStatusEnum.cancelled
+            Order.status != OrderStatusEnum.cancelled,
         )
-    ).group_by(
-        Product.name
-    ).order_by(
-        func.sum(OrderItem.quantity).desc()
-    ).limit(5).all()
+    )
+    if start is not None:
+        top_query = top_query.filter(Order.created_at >= start)
+    if end is not None:
+        top_query = top_query.filter(Order.created_at < end)
 
     top_products = [
-        TopProductPoint(name=item[0], ventes=int(item[1]), revenue=item[2] or Decimal("0.00"))
-        for item in top_products_query
+        TopProductPoint(name=name, ventes=int(ventes or 0), revenue=revenue or Decimal("0.00"))
+        for name, ventes, revenue in (
+            top_query.group_by(Product.name)
+            .order_by(func.sum(OrderItem.quantity).desc())
+            .limit(5)
+            .all()
+        )
     ]
 
-    # Si pas de ventes, on met des produits de démo vides ou liste vide
-    # (la liste vide est préférable pour être conforme à la réalité)
-
-    # ─── Répartition Clients ───
-    clients = db.query(Client).filter(
+    # ── Répartition du fichier client (état courant, non borné à la période) ──
+    clients = db.query(Client.status).filter(
         and_(
-            Client.tenant_id == current_user.tenant_id,
-            Client.deleted_at.is_(None)
+            Client.tenant_id == tenant_id,
+            Client.deleted_at.is_(None),
         )
     ).all()
-    
-    total_c = len(clients)
-    vip_c = sum(1 for c in clients if c.status == ClientStatusEnum.vip)
-    actif_c = sum(1 for c in clients if c.status == ClientStatusEnum.actif)
-    nouveau_c = sum(1 for c in clients if c.status == ClientStatusEnum.nouveau)
-    inact_c = sum(1 for c in clients if c.status == ClientStatusEnum.inact) if hasattr(ClientStatusEnum, 'inact') else sum(1 for c in clients if c.status == ClientStatusEnum.inactif)
 
-    def get_pct(cnt, tot):
-        return round((cnt / tot * 100), 1) if tot > 0 else 0.0
+    total_c = len(clients)
+    statuses = [row[0] for row in clients]
+
+    def pct(status) -> float:
+        if not total_c:
+            return 0.0
+        return round(sum(1 for s in statuses if s == status) / total_c * 100, 1)
 
     client_segments = [
-        ClientSegmentPoint(name="VIP", value=get_pct(vip_c, total_c), color="#10b981"),
-        ClientSegmentPoint(name="Actifs", value=get_pct(actif_c, total_c), color="#3b82f6"),
-        ClientSegmentPoint(name="Nouveaux", value=get_pct(nouveau_c, total_c), color="#8b5cf6"),
-        ClientSegmentPoint(name="Inactifs", value=get_pct(inact_c, total_c), color="#6b7280"),
+        ClientSegmentPoint(name="VIP", value=pct(ClientStatusEnum.vip), color="#10b981"),
+        ClientSegmentPoint(name="Actifs", value=pct(ClientStatusEnum.actif), color="#3b82f6"),
+        ClientSegmentPoint(name="Nouveaux", value=pct(ClientStatusEnum.nouveau), color="#8b5cf6"),
+        ClientSegmentPoint(name="Inactifs", value=pct(ClientStatusEnum.inactif), color="#6b7280"),
     ]
 
     kpis = AnalyticsKPIs(
-        total_revenue=curr_total_revenue,
-        total_orders=curr_total_orders,
-        average_order_value=curr_aov,
-        conversion_rate=curr_conversion,
-        revenue_change=revenue_change,
-        orders_change=orders_change,
-        aov_change=aov_change,
-        conversion_change=conversion_change,
+        total_revenue=money.total_income,
+        total_expenses=money.total_expense,
+        net_balance=money.net_balance,
+        total_orders=sales.total_orders,
+        items_sold=sales.items_sold,
+        average_order_value=sales.average_order_value,
+        conversion_rate=conversion,
+        revenue_change=format_change(money.total_income, prev_revenue),
+        orders_change=format_change(sales.total_orders, prev_orders),
+        aov_change=format_change(sales.average_order_value, prev_aov),
+        conversion_change=format_change(conversion, prev_conversion),
     )
 
     return AnalyticsData(
@@ -317,5 +342,6 @@ def get_analytics(
         orders_data=order_points,
         top_products=top_products,
         client_segments=client_segments,
+        period_start=start,
+        period_end=end,
     )
-

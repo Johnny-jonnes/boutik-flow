@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     description: "Vendre, gérer, suivre. La caisse la plus simple pour les commerçants africains.",
     type: "website",
   },
-  manifest: "/manifest.json?v=3",
+  manifest: "/manifest.json?v=5",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -24,14 +24,14 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/logo-bf.svg?v=3", type: "image/svg+xml" },
-      { url: "/favicon-32x32.png?v=3", sizes: "32x32", type: "image/png" },
-      { url: "/icons/icon-192x192.png?v=3", sizes: "192x192", type: "image/png" },
+      { url: "/logo-bf.svg?v=5", type: "image/svg+xml" },
+      { url: "/favicon-32x32.png?v=5", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192x192.png?v=5", sizes: "192x192", type: "image/png" },
     ],
     apple: [
-      { url: "/apple-touch-icon.png?v=3", sizes: "180x180", type: "image/png" },
+      { url: "/apple-touch-icon.png?v=5", sizes: "180x180", type: "image/png" },
     ],
-    shortcut: "/logo-bf.svg?v=3",
+    shortcut: "/logo-bf.svg?v=5",
   },
 };
 
@@ -57,12 +57,12 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="BoutikFlow" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <link rel="icon" href="/logo-bf.svg?v=3" type="image/svg+xml" />
-        <link rel="icon" href="/favicon-32x32.png?v=3" sizes="32x32" type="image/png" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
-        <link rel="apple-touch-icon-precomposed" href="/apple-touch-icon-precomposed.png?v=3" />
+        <link rel="icon" href="/logo-bf.svg?v=5" type="image/svg+xml" />
+        <link rel="icon" href="/favicon-32x32.png?v=5" sizes="32x32" type="image/png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=5" />
+        <link rel="apple-touch-icon-precomposed" href="/apple-touch-icon-precomposed.png?v=5" />
         <meta name="msapplication-TileColor" content="#009460" />
-        <meta name="msapplication-TileImage" content="/icons/icon-144x144.png?v=3" />
+        <meta name="msapplication-TileImage" content="/icons/icon-144x144.png?v=5" />
       </head>
       <body>
         <LanguageProvider>
