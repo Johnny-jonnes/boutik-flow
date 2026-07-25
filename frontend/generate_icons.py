@@ -1,122 +1,193 @@
-import math
-import os
-from PIL import Image, ImageDraw
+#!/usr/bin/env python3
+"""
+Génère les icônes BF BoutikFlow à partir d'un rendu SVG.
+Couleurs guinéennes : vert #009460, jaune #FCD116, rouge #CE1126
+Monogramme BF blanc sur hexagone avec dégradé vertical.
+"""
 
-def create_boutikflow_icon(size, maskable=False):
-    """
-    maskable=True : fond plein couvrant 100% du carré (no padding, no transparency)
-    maskable=False : fond arrondi avec transparence (pour favicon et any)
-    """
-    scale = 4
-    w = size * scale
-    h = size * scale
+import struct, zlib, math, os
 
-    bg_color = (8, 12, 11, 255)  # #080c0b
+def write_png(path, width, height, pixels):
+    """Écrit un fichier PNG RGBA depuis une liste de pixels."""
+    def chunk(name, data):
+        c = name + data
+        return struct.pack('>I', len(data)) + c + struct.pack('>I', zlib.crc32(c) & 0xffffffff)
+    
+    raw = b''
+    for y in range(height):
+        raw += b'\x00'  # filter byte
+        for x in range(width):
+            raw += bytes(pixels[y][x])
+    
+    png = b'\x89PNG\r\n\x1a\n'
+    png += chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 2, 0, 0, 0))
+    png += chunk(b'IDAT', zlib.compress(raw, 9))
+    png += chunk(b'IEND', b'')
+    
+    with open(path, 'wb') as f:
+        f.write(png)
 
-    if maskable:
-        # Fond plein pour maskable — aucune zone blanche visible
-        img = Image.new("RGBA", (w, h), bg_color)
+def hex_to_rgb(h):
+    h = h.lstrip('#')
+    return int(h[0:2],16), int(h[2:4],16), int(h[4:6],16)
+
+def lerp(a, b, t):
+    return int(a + (b - a) * t)
+
+def lerp_color(c1, c2, t):
+    return (lerp(c1[0], c2[0], t), lerp(c1[1], c2[1], t), lerp(c1[2], c2[2], t))
+
+def gradient_color(y, h):
+    """Dégradé vertical : vert → jaune → rouge"""
+    green  = hex_to_rgb('#009460')
+    yellow = hex_to_rgb('#FCD116')
+    red    = hex_to_rgb('#CE1126')
+    t = y / max(h - 1, 1)
+    if t < 0.5:
+        return lerp_color(green, yellow, t * 2)
     else:
-        img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img)
-        corner_radius = int(w * 0.22)
-        draw.rounded_rectangle([0, 0, w, h], radius=corner_radius, fill=bg_color)
+        return lerp_color(yellow, red, (t - 0.5) * 2)
 
-    # Hexagon avec marge safe pour maskable (80% de la surface)
-    if maskable:
-        hex_scale = 0.72  # logo occupe 72% de la surface dans la safe zone maskable
-    else:
-        hex_scale = 0.88
+def point_in_hexagon(px, py, cx, cy, r):
+    """Test si un pixel est dans l'hexagone (flat-top)."""
+    dx = abs(px - cx) / r
+    dy = abs(py - cy) / r
+    return dx <= 1.0 and dy <= math.sqrt(3)/2 and dx + dy * (2/math.sqrt(3)) <= 1.0
 
-    cx, cy = w / 2, h / 2
-    pts_grid = [(20, 2), (36, 11), (36, 29), (20, 38), (4, 29), (4, 11)]
-    pts = [
-        (
-            cx + (x - 20) / 40.0 * w * hex_scale,
-            cy + (y - 20) / 40.0 * h * hex_scale
-        )
-        for x, y in pts_grid
+def point_in_hexagon_pointy(px, py, cx, cy, r):
+    """Hexagone pointy-top comme dans le logo."""
+    # Les 6 sommets du hexagone pointy-top
+    angles = [math.radians(60*i - 90) for i in range(6)]
+    verts = [(cx + r*math.cos(a), cy + r*math.sin(a)) for a in angles]
+    # Ray casting
+    n = 6
+    inside = False
+    j = n - 1
+    for i in range(n):
+        xi, yi = verts[i]
+        xj, yj = verts[j]
+        if ((yi > py) != (yj > py)) and (px < (xj-xi)*(py-yi)/(yj-yi)+xi):
+            inside = not inside
+        j = i
+    return inside
+
+def draw_letter_B(pixels, ox, oy, scale, color, w, h):
+    """Dessine un B simplifié en pixel art scalé."""
+    template = [
+        "###..",
+        "#..#.",
+        "#..#.",
+        "###..",
+        "#..#.",
+        "#..#.",
+        "###..",
     ]
+    pw = int(2.2 * scale)
+    for row, line in enumerate(template):
+        for col, ch in enumerate(line):
+            if ch == '#':
+                for dy in range(pw):
+                    for dx in range(pw):
+                        ry = oy + row * pw + dy
+                        rx = ox + col * pw + dx
+                        if 0 <= ry < h and 0 <= rx < w:
+                            pixels[ry][rx] = list(color) + [255]
 
-    # Dégradé hexagone : #6dd5c4 → #31a292
-    hex_mask = Image.new("L", (w, h), 0)
-    hex_draw = ImageDraw.Draw(hex_mask)
-    hex_draw.polygon(pts, fill=255)
+def draw_letter_F(pixels, ox, oy, scale, color, w, h):
+    """Dessine un F simplifié en pixel art scalé."""
+    template = [
+        "####",
+        "#...",
+        "#...",
+        "###.",
+        "#...",
+        "#...",
+        "#...",
+    ]
+    pw = int(2.2 * scale)
+    for row, line in enumerate(template):
+        for col, ch in enumerate(line):
+            if ch == '#':
+                for dy in range(pw):
+                    for dx in range(pw):
+                        ry = oy + row * pw + dy
+                        rx = ox + col * pw + dx
+                        if 0 <= ry < h and 0 <= rx < w:
+                            pixels[ry][rx] = list(color) + [255]
 
-    grad_img = Image.new("RGBA", (w, h))
-    g_draw = ImageDraw.Draw(grad_img)
-    for y_idx in range(h):
-        factor = y_idx / float(h)
-        r_c = int(109 * (1 - factor) + 49 * factor)
-        g_c = int(213 * (1 - factor) + 162 * factor)
-        b_c = int(196 * (1 - factor) + 146 * factor)
-        g_draw.line([(0, y_idx), (w, y_idx)], fill=(r_c, g_c, b_c, 242))
+def generate_icon(size, path, maskable=False):
+    w = h = size
+    pixels = [[[0, 0, 0, 0] for _ in range(w)] for _ in range(h)]
+    
+    cx = w / 2
+    cy = h / 2
+    radius = w * 0.46  # légèrement interne pour éviter les bords coupés
+    
+    if maskable:
+        # Fond plein pour maskable (couleur sombre)
+        for y in range(h):
+            for x in range(w):
+                pixels[y][x] = [8, 12, 11, 255]
+        radius = w * 0.38
+    
+    # Dessiner l'hexagone avec le dégradé
+    for y in range(h):
+        for x in range(w):
+            if point_in_hexagon_pointy(x, y, cx, cy, radius):
+                r, g, b = gradient_color(y, h)
+                # Anti-aliasing simple : bord de 1px
+                pixels[y][x] = [r, g, b, 255]
+    
+    # Contour blanc semi-transparent
+    border_r = radius
+    border_w = max(1, size // 64)
+    for y in range(h):
+        for x in range(w):
+            dist_edge = False
+            in_hex = point_in_hexagon_pointy(x, y, cx, cy, border_r)
+            in_inner = point_in_hexagon_pointy(x, y, cx, cy, border_r - border_w * 2)
+            if in_hex and not in_inner:
+                # Bord : blanchir légèrement
+                cur = pixels[y][x]
+                pixels[y][x] = [
+                    min(255, cur[0] + 40),
+                    min(255, cur[1] + 40),
+                    min(255, cur[2] + 40),
+                    255
+                ]
+    
+    # Texte BF en blanc
+    scale = size / 96
+    letter_w = int(5 * 2.2 * scale)
+    letter_f_w = int(4 * 2.2 * scale)
+    total_w = letter_w + int(1.5 * scale) + letter_f_w
+    start_x = int(cx - total_w / 2)
+    start_y = int(cy - 7 * 2.2 * scale / 2)
+    
+    white = (255, 255, 255)
+    draw_letter_B(pixels, start_x, start_y, scale, white, w, h)
+    draw_letter_F(pixels, start_x + letter_w + int(1.5 * scale), start_y, scale, white, w, h)
+    
+    os.makedirs(os.path.dirname(path) if os.path.dirname(path) else '.', exist_ok=True)
+    write_png(path, w, h, pixels)
+    print(f"OK {path} ({size}x{size})")
 
-    img.paste(grad_img, (0, 0), hex_mask)
-
-    # Ondes fluides dans l'hexagone
-    wave_draw = ImageDraw.Draw(img)
-
-    def draw_bezier_wave(y_center_grid, stroke_w, color):
-        steps = 120
-        line_pts = []
-        s = hex_scale
-        for i in range(steps + 1):
-            t = i / float(steps)
-            if t <= 0.5:
-                ts = t * 2.0
-                p0x, p0y = 9.0, y_center_grid
-                p1x, p1y = 14.5, y_center_grid - 3.8
-                p2x, p2y = 20.0, y_center_grid
-                x_g = (1-ts)**2 * p0x + 2*(1-ts)*ts * p1x + ts**2 * p2x
-                y_g = (1-ts)**2 * p0y + 2*(1-ts)*ts * p1y + ts**2 * p2y
-            else:
-                ts = (t - 0.5) * 2.0
-                p0x, p0y = 20.0, y_center_grid
-                p1x, p1y = 25.5, y_center_grid + 3.8
-                p2x, p2y = 31.0, y_center_grid
-                x_g = (1-ts)**2 * p0x + 2*(1-ts)*ts * p1x + ts**2 * p2x
-                y_g = (1-ts)**2 * p0y + 2*(1-ts)*ts * p1y + ts**2 * p2y
-
-            pixel_x = cx + (x_g - 20) / 40.0 * w * s
-            pixel_y = cy + (y_g - 20) / 40.0 * h * s
-            line_pts.append((pixel_x, pixel_y))
-
-        wave_draw.line(line_pts, fill=color, width=stroke_w, joint="curve")
-
-    sw_thin  = max(2, int(w * 0.028 * hex_scale))
-    sw_thick = max(3, int(w * 0.045 * hex_scale))
-
-    draw_bezier_wave(15.0, sw_thin,  (255, 255, 255, 88))
-    draw_bezier_wave(20.0, sw_thick, (255, 255, 255, 235))
-    draw_bezier_wave(20.0, sw_thick, (245, 158, 11,  145))  # amber glow
-    draw_bezier_wave(25.0, sw_thin,  (255, 255, 255, 88))
-
-    final_img = img.resize((size, size), Image.Resampling.LANCZOS)
-    return final_img
-
-public_dir = r"c:\Users\LUXE\Desktop\Boutik-flow-zed\boutik-flow\frontend\public"
-
-# Tailles à générer
-sizes = [16, 32, 72, 96, 128, 144, 152, 167, 180, 192, 256, 384, 512]
-
-for s in sizes:
-    # Version maskable (fond plein, logo dans la safe zone)
-    icon_maskable = create_boutikflow_icon(s, maskable=True)
-    icon_maskable.save(os.path.join(public_dir, f"icon-{s}.png"), "PNG")
-
-    # Apple touch icon (180)
-    if s == 180:
-        icon_maskable.save(os.path.join(public_dir, "apple-touch-icon.png"), "PNG")
-        icon_maskable.save(os.path.join(public_dir, "icon-180.png"), "PNG")
-
-# Favicon avec transparence (non-maskable)
-for s in [16, 32]:
-    icon_fav = create_boutikflow_icon(s, maskable=False)
-    if s == 16:
-        icon_fav.save(os.path.join(public_dir, "favicon-16x16.png"), "PNG")
-    if s == 32:
-        icon_fav.save(os.path.join(public_dir, "favicon-32x32.png"), "PNG")
-        icon_fav.save(os.path.join(public_dir, "favicon.ico"), format="ICO", sizes=[(32, 32)])
-
-print("✓ Toutes les icônes regenerées sans fond blanc !")
+if __name__ == '__main__':
+    base = "public/icons"
+    
+    sizes = [72, 96, 128, 144, 152, 192, 384, 512]
+    for s in sizes:
+        generate_icon(s, f"{base}/icon-{s}x{s}.png")
+    
+    # Maskable (fond sombre opaque)
+    for s in [192, 512]:
+        generate_icon(s, f"{base}/icon-{s}x{s}-maskable.png", maskable=True)
+    
+    # Apple touch icon
+    generate_icon(180, f"public/apple-touch-icon.png")
+    
+    # Favicon
+    generate_icon(32, f"public/favicon-32x32.png")
+    generate_icon(16, f"public/favicon-16x16.png")
+    
+    print("\nDONE - Toutes les icones BF generees avec les couleurs guineennes!")

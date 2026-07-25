@@ -485,7 +485,105 @@ function handleOfflineRequest<T>(path: string, options: RequestInit = {}): Promi
     return Promise.resolve({ revenue_data } as any as T);
   }
 
-  return Promise.reject(new ApiError('Offline module mapping error for: ' + path, 404));
+  if (path.startsWith('/categories')) {
+    const categories = OfflineDB.getCategories();
+    if (method === 'GET') {
+      return Promise.resolve({
+        items: categories,
+        total: categories.length,
+        page: 1,
+        per_page: 200,
+        pages: 1
+      } as any as T);
+    }
+    if (method === 'POST') {
+      const data = JSON.parse(options.body as string);
+      const newCat = {
+        id: uuid(),
+        created_at: new Date().toISOString(),
+        slug: (data.name || '').toLowerCase().replace(/\s+/g, '-'),
+        ...data
+      };
+      categories.push(newCat);
+      OfflineDB.saveCategories(categories);
+      return Promise.resolve(newCat as any as T);
+    }
+    if (method === 'PUT') {
+      const catId = path.split('/')[2];
+      const data = JSON.parse(options.body as string);
+      const cat = categories.find(c => c.id === catId);
+      if (cat) {
+        Object.assign(cat, data);
+        OfflineDB.saveCategories(categories);
+        return Promise.resolve(cat as any as T);
+      }
+    }
+    if (method === 'DELETE') {
+      const catId = path.split('/')[2];
+      const idx = categories.findIndex(c => c.id === catId);
+      if (idx >= 0) {
+        categories.splice(idx, 1);
+        OfflineDB.saveCategories(categories);
+        return Promise.resolve(undefined as any as T);
+      }
+    }
+  }
+
+  if (path.startsWith('/suppliers')) {
+    if (method === 'GET') {
+      return Promise.resolve({
+        items: [],
+        total: 0,
+        page: 1,
+        per_page: 200,
+        pages: 0
+      } as any as T);
+    }
+  }
+
+  if (path.startsWith('/auth/team')) {
+    if (method === 'GET') {
+      return Promise.resolve([] as any as T);
+    }
+  }
+
+  if (path.startsWith('/audit')) {
+    if (method === 'GET') {
+      return Promise.resolve({
+        items: [],
+        total: 0,
+        page: 1,
+        per_page: 50,
+        pages: 0
+      } as any as T);
+    }
+  }
+
+  if (path.startsWith('/segments') || path.startsWith('/crm/segments')) {
+    if (method === 'GET') {
+      return Promise.resolve({
+        items: [],
+        total: 0,
+        page: 1,
+        per_page: 50,
+        pages: 0
+      } as any as T);
+    }
+  }
+
+  // ── Catch-all : retourner des données vides au lieu d'une erreur ──
+  // Un commerçant ne doit JAMAIS voir "Erreur de chargement" hors-ligne.
+  console.warn('[Offline] Route non mappée:', path, '→ retour données vides');
+  if (method === 'GET') {
+    return Promise.resolve({
+      items: [],
+      total: 0,
+      page: 1,
+      per_page: 50,
+      pages: 0
+    } as any as T);
+  }
+  return Promise.resolve({} as any as T);
 }
 
 // ─── Helper requête générique ───────────────────────────────────────────────

@@ -17,6 +17,7 @@ import {
   LogOut,
   Wallet,
   History,
+  FolderTree,
   Volume2,
   Volume1,
   VolumeX,
@@ -30,28 +31,29 @@ import { usePinLock } from '@/hooks/usePinLock';
 import { getSoundVolumePreference, setSoundVolumePreference, VolumeLevel } from '@/lib/audio';
 import { OfflineStatusBar } from '@/components/ui/OfflineStatusBar';
 
-/* ─── Navigation simplifiée — 8 liens max ───────────────────────── */
+/* ─── Navigation simplifiée ─────────────────────────────────────── */
 const NAV_ITEMS = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Accueil',   labelEn: 'Home',     id: 'nav-dashboard' },
-  { href: '/pos',       icon: ShoppingCart,    label: 'Caisse',    labelEn: 'POS',      id: 'nav-pos' },
-  { href: '/products',  icon: Package,         label: 'Produits',  labelEn: 'Products', id: 'nav-products' },
-  { href: '/crm',       icon: Users,           label: 'Clients',   labelEn: 'Clients',  id: 'nav-crm' },
-  { href: '/sales',     icon: History,         label: 'Ventes',    labelEn: 'Sales',    id: 'nav-sales' },
-  { href: '/finance',   icon: Wallet,          label: 'Finance',   labelEn: 'Finance',  id: 'nav-finance' },
-  { href: '/team',      icon: UserCog,         label: 'Équipe',    labelEn: 'Team',     id: 'nav-team' },
-  { href: '/billing',   icon: Settings,        label: 'Réglages',  labelEn: 'Settings', id: 'nav-settings' },
+  { href: '/dashboard',  icon: LayoutDashboard, label: 'Accueil',     labelEn: 'Home',       id: 'nav-dashboard' },
+  { href: '/pos',        icon: ShoppingCart,    label: 'Vendre',      labelEn: 'Sell',       id: 'nav-pos' },
+  { href: '/products',   icon: Package,         label: 'Produits',    labelEn: 'Products',   id: 'nav-products' },
+  { href: '/categories', icon: FolderTree,      label: 'Catégories',  labelEn: 'Categories', id: 'nav-categories' },
+  { href: '/crm',        icon: Users,           label: 'Clients',     labelEn: 'Clients',    id: 'nav-crm' },
+  { href: '/sales',      icon: History,         label: 'Ventes',      labelEn: 'Sales',      id: 'nav-sales' },
+  { href: '/finance',    icon: Wallet,          label: 'Finances',    labelEn: 'Finances',   id: 'nav-finance' },
+  { href: '/team',       icon: UserCog,         label: 'Équipe',      labelEn: 'Team',       id: 'nav-team' },
+  { href: '/billing',    icon: Settings,        label: 'Réglages',    labelEn: 'Settings',   id: 'nav-settings' },
 ];
 
 /* Bottom nav — 5 raccourcis mobiles */
 const BOTTOM_NAV = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Accueil' },
-  { href: '/pos',       icon: ShoppingCart,    label: 'Caisse' },
+  { href: '/pos',       icon: ShoppingCart,    label: 'Vendre' },
   { href: '/products',  icon: Package,         label: 'Produits' },
   { href: '/crm',       icon: Users,           label: 'Clients' },
-  { href: '/finance',   icon: Wallet,          label: 'Finance' },
+  { href: '/finance',   icon: Wallet,          label: 'Finances' },
 ];
 
-/* ─── Logo SVG indigo ───────────────────────────────────────────── */
+/* ─── Logo BF — couleurs guinéennes ─────────────────────────────── */
 function Logo({ size = 20 }: { size?: number }) {
   const [isOnline, setIsOnline] = useState(true);
 
@@ -71,54 +73,38 @@ function Logo({ size = 20 }: { size?: number }) {
   return (
     <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
       <svg
-        width={size} height={size} viewBox="0 0 40 40" fill="none"
+        width={size} height={size} viewBox="0 0 100 100" fill="none"
         xmlns="http://www.w3.org/2000/svg"
         style={{
-          filter: `drop-shadow(0 0 ${isOnline ? '5px rgba(109,213,196,0.6)' : '5px rgba(245,158,11,0.45)'})`,
+          filter: `drop-shadow(0 0 ${isOnline ? '4px rgba(0,148,96,0.5)' : '4px rgba(245,158,11,0.45)'})`,
           transition: 'filter 0.4s ease',
           animation: 'logo-breathing 4s ease-in-out infinite'
         }}
       >
         <defs>
-          <linearGradient id="bf-g-dyn" x1="0" y1="0" x2="40" y2="40">
-            {isOnline ? (
-              <>
-                <stop stopColor="#6dd5c4" />
-                <stop offset="1" stopColor="#31a292" />
-              </>
-            ) : (
-              <>
-                <stop stopColor="#fbbf24" />
-                <stop offset="1" stopColor="#f59e0b" />
-              </>
-            )}
-          </linearGradient>
-          <linearGradient id="bf-wave-amber" x1="0" y1="0" x2="40" y2="0">
-            <stop stopColor="#fbbf24" stopOpacity="0" />
-            <stop offset="0.4" stopColor="#f59e0b" />
-            <stop offset="1" stopColor="#fbbf24" stopOpacity="0" />
+          <linearGradient id="bf-guinea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#009460" />
+            <stop offset="50%" stopColor="#FCD116" />
+            <stop offset="100%" stopColor="#CE1126" />
           </linearGradient>
         </defs>
-        {/* Hexagon body */}
-        <path d="M20 2L36 11V29L20 38L4 29V11L20 2Z" fill="url(#bf-g-dyn)" opacity="0.95" />
-        <path d="M20 2L36 11V29L20 38L4 29V11L20 2Z" stroke="rgba(255,255,255,0.12)" strokeWidth="0.5" fill="none" />
-        {/* Wave 1 – top subtle */}
-        <path d="M9 15 Q14.5 12 20 15 Q25.5 18 31 15" stroke="rgba(255,255,255,0.3)" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-        {/* Wave 2 – middle bright + amber glow */}
-        <path d="M9 20 Q14.5 16 20 20 Q25.5 24 31 20" stroke="rgba(255,255,255,0.88)" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-        <path d="M9 20 Q14.5 16 20 20 Q25.5 24 31 20" stroke="url(#bf-wave-amber)" strokeWidth="1.8" fill="none" strokeLinecap="round" opacity="0.65" />
-        {/* Wave 3 – bottom subtle */}
-        <path d="M9 25 Q14.5 22 20 25 Q25.5 28 31 25" stroke="rgba(255,255,255,0.3)" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+        {/* Hexagone pointy-top */}
+        <polygon points="50,3 93,26 93,74 50,97 7,74 7,26" fill="url(#bf-guinea)" opacity="0.95" />
+        <polygon points="50,3 93,26 93,74 50,97 7,74 7,26" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" fill="none" />
+        {/* Monogramme BF */}
+        <text x="50" y="62" fontFamily="Arial Black, sans-serif" fontWeight="900" fontSize="38" fill="white" textAnchor="middle" letterSpacing="-3">BF</text>
+        {/* Accent rouge */}
+        <rect x="22" y="76" width="56" height="3.5" rx="1.75" fill="#CE1126" opacity="0.6" />
       </svg>
       <span
         style={{
           position: 'absolute',
-          bottom: '-3px',
-          right: '-3px',
+          bottom: '-2px',
+          right: '-2px',
           width: '7px',
           height: '7px',
           borderRadius: '50%',
-          border: '1px solid #0a0a0d',
+          border: '1.5px solid #080c0b',
           backgroundColor: isOnline ? '#22c55e' : '#fbbf24',
           boxShadow: `0 0 5px ${isOnline ? '#22c55e' : '#fbbf24'}`,
           transition: 'background-color 0.3s ease, box-shadow 0.3s ease',
@@ -217,6 +203,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <span className="mobile-boutique-name">{userInfo.boutiqueName}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <ThemeToggle />
           <button className="mobile-toggle" onClick={handleCycleVolume} aria-label="Volume">
             {soundVolume === 'normal' && <Volume2 size={18} />}
             {soundVolume === 'discret' && <Volume1 size={18} />}
@@ -276,8 +263,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           })}
         </nav>
 
-        {/* Footer profil */}
+        {/* Footer */}
         <div className="sidebar__footer">
+          <ThemeToggle />
           <button className="lang-toggle" onClick={() => setLanguage(language === 'fr' ? 'en' : 'fr')}>
             <Globe size={14} />
             <span>{language === 'fr' ? 'Français' : 'English'}</span>
@@ -405,17 +393,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           min-width: 0;
         }
 
-        /* Nom de boutique dans la barre mobile */
+        /* Nom de boutique dans la barre mobile — couleur accentée */
         .mobile-boutique-name {
           font-family: var(--font-display);
-          font-size: 1rem; font-weight: 800;
-          color: var(--text-primary);
+          font-size: 1.05rem; font-weight: 800;
+          background: linear-gradient(135deg, #FCD116, #CE1126);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
           letter-spacing: -0.02em;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
-          max-width: 160px;
+          max-width: 180px;
         }
+
+        .mobile-toggle {
+          border: none;
+          background: rgba(255,255,255,0.06);
+          width: 36px; height: 36px;
+          border-radius: 10px;
+          display: flex; align-items: center; justify-content: center;
+          color: var(--text-primary);
+          cursor: pointer;
+          transition: background 0.15s ease;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .mobile-toggle:hover { background: rgba(255,255,255,0.12); }
 
         /* Barre offline positionnée sous la mobile-bar */
         .offline-bar-wrapper {
@@ -465,10 +469,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
         .sidebar-boutique-name {
           font-family: var(--font-display);
-          font-size: 0.88rem; font-weight: 800;
-          color: var(--text-primary);
+          font-size: 0.95rem; font-weight: 800;
+          color: #ffffff;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
           letter-spacing: -0.01em;
+          max-width: 160px;
+        }
+        .sidebar-boutique-name:hover {
+          white-space: normal;
+          overflow: visible;
         }
         .sidebar-plan-badge {
           font-size: 0.67rem; font-weight: 600;

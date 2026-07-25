@@ -553,7 +553,7 @@ export default function FinancePage() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={language === 'fr' ? 'Nouvelle Transaction Financière' : 'New Financial Transaction'}
+        title={language === 'fr' ? '+ Mouvement' : '+ Transaction'}
       >
         <form onSubmit={handleSubmit} className="modal-form">
           {/* Type Toggle Selector */}
@@ -566,7 +566,7 @@ export default function FinancePage() {
               onClick={() => handleTypeChange('income')}
             >
               <ArrowDownLeft size={18} />
-              <span>{language === 'fr' ? 'Entrée (Revenu)' : 'Income (Revenue)'}</span>
+              <span>{language === 'fr' ? '💰 Argent reçu' : '💰 Income'}</span>
             </button>
             <button
               type="button"
@@ -576,14 +576,14 @@ export default function FinancePage() {
               onClick={() => handleTypeChange('expense')}
             >
               <ArrowUpRight size={18} />
-              <span>{language === 'fr' ? 'Sortie (Dépense)' : 'Expense (Payment)'}</span>
+              <span>{language === 'fr' ? '💸 Argent sorti' : '💸 Expense'}</span>
             </button>
           </div>
 
           <div className="form-grid">
             {/* Category Select */}
             <div className="form-group">
-              <label className="form-label">{language === 'fr' ? 'Catégorie *' : 'Category *'}</label>
+              <label className="form-label">{language === 'fr' ? 'Type' : 'Type'}</label>
               <select
                 className="input"
                 required
@@ -606,13 +606,13 @@ export default function FinancePage() {
 
             {/* Amount */}
             <div className="form-group">
-              <label className="form-label">{language === 'fr' ? 'Montant (GNF) *' : 'Amount (GNF) *'}</label>
+              <label className="form-label">{language === 'fr' ? 'Montant' : 'Amount'}</label>
               <input
                 type="number"
                 min="1"
                 step="any"
                 className="input"
-                placeholder="ex: 150000"
+                placeholder="Ex : 150 000"
                 required
                 value={formData.amount}
                 onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
@@ -621,7 +621,7 @@ export default function FinancePage() {
 
             {/* Payment Method */}
             <div className="form-group">
-              <label className="form-label">{language === 'fr' ? 'Mode de Paiement *' : 'Payment Method *'}</label>
+              <label className="form-label">{language === 'fr' ? 'Paiement' : 'Payment'}</label>
               <select
                 className="input"
                 required
@@ -642,11 +642,11 @@ export default function FinancePage() {
 
             {/* Reference */}
             <div className="form-group">
-              <label className="form-label">{language === 'fr' ? 'Référence / N° de reçu (Optionnel)' : 'Reference / Receipt No. (Optional)'}</label>
+              <label className="form-label">{language === 'fr' ? 'Référence (optionnel)' : 'Ref (optional)'}</label>
               <input
                 type="text"
                 className="input"
-                placeholder="ex: REC-00921"
+                placeholder="Ex : REC-00921"
                 value={formData.reference}
                 onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
               />
@@ -654,11 +654,11 @@ export default function FinancePage() {
 
             {/* Description */}
             <div className="form-group full-width">
-              <label className="form-label">{language === 'fr' ? 'Description *' : 'Description *'}</label>
+              <label className="form-label">{language === 'fr' ? 'Description' : 'Description'}</label>
               <textarea
                 className="input"
-                rows={3}
-                placeholder={language === 'fr' ? 'Détails de la transaction (ex: Vente directe en caisse, Achat de stock...)' : 'Transaction details (e.g. POS sale, stock purchase...)'}
+                rows={2}
+                placeholder={language === 'fr' ? 'Ex : Vente en caisse, achat stock...' : 'Ex: POS sale, stock purchase...'}
                 required
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}

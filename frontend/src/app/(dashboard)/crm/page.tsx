@@ -277,37 +277,36 @@ export default function CRMPage() {
         </table>
       </div>
 
-      {/* Modal Ajouter */}
-      <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Nouveau client">
+      <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="+ Client">
         <form onSubmit={handleAdd} className="modal-form">
           <div className="form-group">
-            <label className="form-label">Nom complet *</label>
-            <input type="text" className="input" required value={addForm.name}
+            <label className="form-label">Nom</label>
+            <input type="text" className="input" required placeholder="Ex : Mamadou Diallo" value={addForm.name}
               onChange={e => setAddForm({ ...addForm, name: e.target.value })} />
           </div>
           <div className="form-group">
-            <label className="form-label">Téléphone *</label>
-            <input type="tel" className="input" required value={addForm.phone}
+            <label className="form-label">Téléphone</label>
+            <input type="tel" className="input" required placeholder="Ex : 620 12 34 56" value={addForm.phone}
               onChange={e => setAddForm({ ...addForm, phone: e.target.value })} />
           </div>
           <div className="form-group">
-            <label className="form-label">Email (optionnel)</label>
-            <input type="email" className="input" value={addForm.email}
+            <label className="form-label">Email</label>
+            <input type="email" className="input" placeholder="Ex : client@email.com" value={addForm.email}
               onChange={e => setAddForm({ ...addForm, email: e.target.value })} />
           </div>
           <div className="form-group">
-            <label className="form-label">Statut</label>
+            <label className="form-label">Type de client</label>
             <select className="input" value={addForm.status}
               onChange={e => setAddForm({ ...addForm, status: e.target.value as ClientStatus })}>
               <option value="nouveau">Nouveau</option>
-              <option value="actif">Actif</option>
+              <option value="actif">Régulier</option>
               <option value="vip">VIP</option>
               <option value="inactif">Inactif</option>
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">Notes (optionnel)</label>
-            <textarea className="input" rows={3} value={addForm.notes}
+            <label className="form-label">Notes</label>
+            <textarea className="input" rows={2} placeholder="Ex : Livraison le lundi" value={addForm.notes}
               onChange={e => setAddForm({ ...addForm, notes: e.target.value })} />
           </div>
           <div className="modal-actions">
@@ -461,43 +460,42 @@ export default function CRMPage() {
         )}
       </Modal>
 
-      {/* Modal Modifier */}
-      <Modal isOpen={!!editClient} onClose={() => setEditClient(null)} title="Modifier le client">
+      <Modal isOpen={!!editClient} onClose={() => setEditClient(null)} title="Modifier">
         <form onSubmit={handleEdit} className="modal-form">
           <div className="form-group">
-            <label className="form-label">Nom complet *</label>
-            <input type="text" className="input" required value={editForm.name}
+            <label className="form-label">Nom</label>
+            <input type="text" className="input" required placeholder="Ex : Mamadou Diallo" value={editForm.name}
               onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
           </div>
           <div className="form-group">
-            <label className="form-label">Téléphone *</label>
-            <input type="tel" className="input" required value={editForm.phone}
+            <label className="form-label">Téléphone</label>
+            <input type="tel" className="input" required placeholder="Ex : 620 12 34 56" value={editForm.phone}
               onChange={e => setEditForm({ ...editForm, phone: e.target.value })} />
           </div>
           <div className="form-group">
             <label className="form-label">Email</label>
-            <input type="email" className="input" value={editForm.email}
+            <input type="email" className="input" placeholder="Ex : client@email.com" value={editForm.email}
               onChange={e => setEditForm({ ...editForm, email: e.target.value })} />
           </div>
           <div className="form-group">
-            <label className="form-label">Statut</label>
+            <label className="form-label">Type de client</label>
             <select className="input" value={editForm.status}
               onChange={e => setEditForm({ ...editForm, status: e.target.value as ClientStatus })}>
               <option value="nouveau">Nouveau</option>
-              <option value="actif">Actif</option>
+              <option value="actif">Régulier</option>
               <option value="vip">VIP</option>
               <option value="inactif">Inactif</option>
             </select>
           </div>
           <div className="form-group">
             <label className="form-label">Notes</label>
-            <textarea className="input" rows={3} value={editForm.notes}
+            <textarea className="input" rows={2} placeholder="Ex : Livraison le lundi" value={editForm.notes}
               onChange={e => setEditForm({ ...editForm, notes: e.target.value })} />
           </div>
           <div className="modal-actions">
             <button type="button" className="btn btn-ghost" onClick={() => setEditClient(null)}>Annuler</button>
             <button type="submit" className="btn btn-primary" disabled={isEditing}>
-              {isEditing ? 'Enregistrement...' : 'Enregistrer'}
+              {isEditing ? 'Sauvegarde...' : 'Sauver'}
             </button>
           </div>
         </form>

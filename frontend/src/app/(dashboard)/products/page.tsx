@@ -282,7 +282,7 @@ function ProductsContent() {
       <form onSubmit={onSubmit} className="modal-form">
         {/* IA Section */}
         <div className="ai-photo-section">
-          <label className="form-label">Photo du produit (Remplissage IA)</label>
+          <label className="form-label">📷 Ajouter une photo</label>
           <div className="ai-photo-row">
             <div className="photo-upload-zone">
               {imgPreview ? (
@@ -290,7 +290,7 @@ function ProductsContent() {
               ) : (
                 <div className="upload-placeholder">
                   <ImageIcon size={18} />
-                  <span>Pas de photo</span>
+                  <span>Toucher pour ajouter</span>
                 </div>
               )}
               <input
@@ -312,22 +312,22 @@ function ProductsContent() {
                 onClick={() => handleAIPrefill(isEdit)}
               >
                 <Sparkles size={13} className="sparkle-icon" />
-                {isAILoading ? 'Analyse...' : "Auto-remplir par l'IA"}
+                {isAILoading ? 'Analyse...' : '✨ Remplir automatiquement'}
               </button>
             )}
           </div>
         </div>
 
         <div className="form-group">
-          <label className="form-label">{t('prod.name_label')}</label>
+          <label className="form-label">Nom du produit</label>
           <input 
             type="text" 
             className="input" 
             required 
+            placeholder="Ex : Riz 25 kg"
             value={form.name}
             onChange={e => {
               const newName = e.target.value;
-              // If SKU is empty or was auto-generated, keep SKU in sync with name
               const autoSku = !form.sku || form.sku.startsWith('SKU-') ? generateClientSku(newName) : form.sku;
               setForm({ ...form, name: newName, sku: autoSku });
             }} 
@@ -369,13 +369,13 @@ function ProductsContent() {
 
         <div className="form-row">
           <div className="form-group" style={{ flex: 1 }}>
-            <label className="form-label">Prix (GNF) *</label>
-            <input type="number" className="input" required min="0" value={form.price}
+            <label className="form-label">Prix</label>
+            <input type="number" className="input" required min="0" placeholder="Ex : 150 000" value={form.price}
               onChange={e => setForm({ ...form, price: e.target.value })} />
           </div>
           <div className="form-group" style={{ flex: 1 }}>
-            <label className="form-label">Stock *</label>
-            <input type="number" className="input" required min="0" value={form.stock}
+            <label className="form-label">En stock</label>
+            <input type="number" className="input" required min="0" placeholder="Ex : 50" value={form.stock}
               onChange={e => setForm({ ...form, stock: e.target.value })} />
           </div>
         </div>
@@ -383,21 +383,21 @@ function ProductsContent() {
         <div className="form-group">
           <label className="form-label">Catégorie</label>
           <select className="input" value={form.category_id} onChange={e => setForm({ ...form, category_id: e.target.value })}>
-            <option value="">Sélectionner une catégorie</option>
+            <option value="">Choisir...</option>
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
 
         <div className="form-group">
-          <label className="form-label">Description</label>
-          <textarea className="input" rows={3} value={form.description}
+          <label className="form-label">Détails (optionnel)</label>
+          <textarea className="input" rows={2} placeholder="Ex : Riz importé, sac de 25 kg" value={form.description}
             onChange={e => setForm({ ...form, description: e.target.value })} />
         </div>
 
         <label className="checkbox-label">
           <input type="checkbox" checked={form.is_available}
             onChange={e => setForm({ ...form, is_available: e.target.checked })} />
-          Produit disponible à la vente
+          Disponible à la vente
         </label>
 
         <div className="modal-actions">

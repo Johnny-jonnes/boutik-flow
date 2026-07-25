@@ -106,36 +106,30 @@ export default function LoginPage() {
       <div className="auth-glow" />
 
       <div className="auth-container animate-fade-in">
-        {/* Logo */}
+        {/* Logo BF — couleurs guinéennes */}
         <div className="auth-logo">
           <div className="auth-logo-icon">
-            <svg width="36" height="36" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 0 8px rgba(109,213,196,0.5))' }}>
+            <svg width="48" height="48" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 0 10px rgba(0,148,96,0.6))' }}>
               <defs>
-                <linearGradient id="auth-hex-grad" x1="0" y1="0" x2="40" y2="40">
-                  <stop stopColor="#6dd5c4" />
-                  <stop offset="1" stopColor="#31a292" />
-                </linearGradient>
-                <linearGradient id="auth-wave-amber" x1="0" y1="0" x2="40" y2="0">
-                  <stop stopColor="#fbbf24" stopOpacity="0" />
-                  <stop offset="0.4" stopColor="#f59e0b" />
-                  <stop offset="1" stopColor="#fbbf24" stopOpacity="0" />
+                <linearGradient id="auth-guinea" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#009460" />
+                  <stop offset="50%" stopColor="#FCD116" />
+                  <stop offset="100%" stopColor="#CE1126" />
                 </linearGradient>
               </defs>
-              <path d="M20 2L36 11V29L20 38L4 29V11L20 2Z" fill="url(#auth-hex-grad)" opacity="0.95" />
-              <path d="M20 2L36 11V29L20 38L4 29V11L20 2Z" stroke="rgba(109,213,196,0.3)" strokeWidth="0.5" fill="none" />
-              <path d="M9 15 Q14.5 12 20 15 Q25.5 18 31 15" stroke="rgba(255,255,255,0.3)" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-              <path d="M9 20 Q14.5 16 20 20 Q25.5 24 31 20" stroke="rgba(255,255,255,0.9)" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-              <path d="M9 20 Q14.5 16 20 20 Q25.5 24 31 20" stroke="url(#auth-wave-amber)" strokeWidth="1.8" fill="none" strokeLinecap="round" opacity="0.65" />
-              <path d="M9 25 Q14.5 22 20 25 Q25.5 28 31 25" stroke="rgba(255,255,255,0.3)" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+              <polygon points="50,3 93,26 93,74 50,97 7,74 7,26" fill="url(#auth-guinea)" opacity="0.97" />
+              <polygon points="50,3 93,26 93,74 50,97 7,74 7,26" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" fill="none" />
+              <text x="50" y="62" fontFamily="Arial Black, sans-serif" fontWeight="900" fontSize="38" fill="white" textAnchor="middle" letterSpacing="-3">BF</text>
+              <rect x="22" y="76" width="56" height="3.5" rx="1.75" fill="#CE1126" opacity="0.6" />
             </svg>
           </div>
-          <span className="auth-logo-text" style={{ background: 'linear-gradient(135deg, #6dd5c4, #31a292)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 800 }}>BoutikFlow</span>
+          <span className="auth-logo-text" style={{ background: 'linear-gradient(135deg, #009460, #FCD116)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 900, fontSize: '1.3rem', letterSpacing: '-0.03em' }}>BoutikFlow</span>
         </div>
 
         <div className="auth-card glass">
           <div className="auth-header">
-            <h1 className="auth-title">Bon retour</h1>
-            <p className="auth-subtitle">Connectez-vous à votre boutique</p>
+            <h1 className="auth-title" style={{ fontSize: '1.5rem' }}>👋 Bon retour !</h1>
+            <p className="auth-subtitle">Entrez vos informations pour continuer</p>
           </div>
 
           {/* Bandeau d'état du serveur */}
@@ -247,7 +241,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="form-group">
               <label className="form-label" htmlFor="boutique_slug">
-                Identifiant boutique
+                Nom de la boutique
               </label>
               <div className="input-wrapper">
                 <span className="input-prefix">boutikflow.app/</span>
@@ -255,7 +249,7 @@ export default function LoginPage() {
                   id="boutique_slug"
                   type="text"
                   className="input input-with-prefix"
-                  placeholder="ma-boutique"
+                  placeholder="Ex : mamadou-commerce"
                   value={form.boutique_slug}
                   onChange={e => setForm(f => ({ ...f, boutique_slug: e.target.value.toLowerCase() }))}
                   required
@@ -266,13 +260,13 @@ export default function LoginPage() {
 
             <div className="form-group">
               <label className="form-label" htmlFor="email">
-                Adresse email
+                Email
               </label>
               <input
                 id="email"
                 type="email"
                 className="input"
-                placeholder="vous@exemple.com"
+                placeholder="Ex : mamadou@gmail.com"
                 value={form.email}
                 onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                 required

@@ -6,17 +6,17 @@ import { PWARegister } from "@/components/PWARegister";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "BoutikFlow — Caisse, CRM & Gestion de boutique",
+  title: "BoutikFlow — Vendre, gérer, suivre votre boutique",
   description:
-    "BoutikFlow : caisse enregistreuse, CRM clients, gestion de stock et finances pour votre boutique. 100% offline, conçu pour les commerçants africains.",
+    "BoutikFlow : vendez, gérez vos produits, clients et finances. 100% offline. Conçu pour les commerçants africains.",
   keywords: ["caisse", "POS", "CRM", "boutique", "Guinée", "ventes", "offline", "stock", "BoutikFlow"],
   authors: [{ name: "BoutikFlow" }],
   openGraph: {
-    title: "BoutikFlow — Caisse & CRM",
-    description: "Caisse, CRM et gestion de boutique 100% offline pour commerçants africains.",
+    title: "BoutikFlow — Vendre & Gérer",
+    description: "Vendre, gérer, suivre. La caisse la plus simple pour les commerçants africains.",
     type: "website",
   },
-  manifest: "/manifest.json?v=2",
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -24,14 +24,14 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icon.svg?v=2", type: "image/svg+xml" },
-      { url: "/favicon-32x32.png?v=2", sizes: "32x32", type: "image/png" },
-      { url: "/icon-192.png?v=2", sizes: "192x192", type: "image/png" },
+      { url: "/logo-bf.svg", type: "image/svg+xml" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
     ],
     apple: [
-      { url: "/apple-touch-icon.png?v=2", sizes: "180x180", type: "image/png" },
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
-    shortcut: "/icon.svg?v=2",
+    shortcut: "/logo-bf.svg",
   },
 };
 
@@ -42,7 +42,7 @@ export const viewport: Viewport = {
   userScalable: false,
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#6dd5c4' },
+    { media: '(prefers-color-scheme: light)', color: '#009460' },
     { media: '(prefers-color-scheme: dark)', color: '#080c0b' },
   ],
 };
@@ -57,12 +57,11 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="BoutikFlow" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <link rel="icon" href="/icon.svg?v=2" type="image/svg+xml" />
-        <link rel="icon" href="/favicon.ico?v=2" sizes="any" />
-        <link rel="alternate icon" href="/icon-192.png?v=2" type="image/png" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
-        <meta name="msapplication-TileColor" content="#6dd5c4" />
-        <meta name="msapplication-TileImage" content="/icon-144.png?v=2" />
+        <link rel="icon" href="/logo-bf.svg" type="image/svg+xml" />
+        <link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <meta name="msapplication-TileColor" content="#009460" />
+        <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
       </head>
       <body>
         <LanguageProvider>
