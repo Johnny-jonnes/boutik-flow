@@ -806,7 +806,16 @@ export default function POSPage() {
         .p-cart {
           background: var(--surface-1);
           display: flex; flex-direction: column;
-          height: 100%; overflow: hidden;
+          height: 100%;
+          /* Le panier défile désormais lui-même au lieu de couper son
+             contenu : avec overflow:hidden, quand les sections fixes
+             (en-tête, client, totaux, bouton Valider) dépassaient la
+             hauteur disponible, la zone d'articles — seul enfant flexible
+             — était écrasée jusqu'à 0px de haut. Les articles existaient
+             toujours (le badge et le sous-total les comptaient bien) mais
+             n'avaient plus aucun espace visible pour s'afficher. */
+          overflow-y: auto;
+          overflow-x: hidden;
         }
 
         .p-cart-header {
@@ -814,6 +823,7 @@ export default function POSPage() {
           padding: 1rem 1.15rem;
           border-bottom: 1px solid var(--border-subtle);
           background: var(--surface-2); flex-shrink: 0;
+          position: sticky; top: 0; z-index: 5;
         }
         .p-cart-title {
           font-family: var(--font-display); font-size: 1rem; font-weight: 800;
@@ -853,12 +863,15 @@ export default function POSPage() {
         }
         .p-select:focus { border-color: var(--color-brand-500); }
 
-        /* Items — scrollable */
-        .p-items { flex: 1; overflow-y: auto; padding: 0.4rem 0; }
+        /* Items — jamais totalement écrasée : min-height garantit toujours
+           la place d'au moins un article, même sous forte contrainte de
+           hauteur (c'est .p-cart qui défile désormais si besoin, plus
+           cette zone toute seule). */
+        .p-items { flex: 1; overflow-y: visible; padding: 0.4rem 0; min-height: 170px; }
 
         .p-cart-empty {
           display: flex; flex-direction: column; align-items: center; justify-content: center;
-          height: 100%; gap: 0.625rem; color: var(--text-muted);
+          min-height: 170px; gap: 0.625rem; color: var(--text-muted);
           font-size: 0.82rem; padding: 2rem;
         }
 
@@ -920,13 +933,17 @@ export default function POSPage() {
           overflow-y: auto;
         }
 
-        /* Validate sticky footer */
+        /* Validate sticky footer — toujours atteignable : comme .p-cart
+           défile désormais au lieu de couper son contenu, le bouton Valider
+           doit rester ancré en bas plutôt que de défiler avec le reste
+           (et risquer de sortir de l'écran sur une fenêtre basse). */
         .p-validate-footer {
           padding: 1rem 1.15rem;
           padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
           background: var(--surface-1);
           border-top: 1px solid var(--border-subtle);
           flex-shrink: 0;
+          position: sticky; bottom: 0; z-index: 5;
         }
 
         .p-row {

@@ -45,11 +45,11 @@ const NAV_ITEMS = [
 
 /* Bottom nav — 5 raccourcis mobiles */
 const BOTTOM_NAV = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Accueil' },
-  { href: '/pos',       icon: ShoppingCart,    label: 'Vendre' },
-  { href: '/products',  icon: Package,         label: 'Produits' },
-  { href: '/crm',       icon: Users,           label: 'Clients' },
-  { href: '/finance',   icon: Wallet,          label: 'Finances' },
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Accueil',  labelEn: 'Home' },
+  { href: '/pos',       icon: ShoppingCart,    label: 'Vendre',   labelEn: 'Sell' },
+  { href: '/products',  icon: Package,         label: 'Produits', labelEn: 'Products' },
+  { href: '/crm',       icon: Users,           label: 'Clients',  labelEn: 'Clients' },
+  { href: '/finance',   icon: Wallet,          label: 'Finances', labelEn: 'Finances' },
 ];
 
 /* ─── Logo BF — couleurs guinéennes ─────────────────────────────── */
@@ -318,7 +318,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <Icon size={20} className="bottom-nav-icon" />
                   {active && <div className="bottom-nav-pill-bg" />}
                 </div>
-                <span className="bottom-nav-label">{item.label}</span>
+                <span className="bottom-nav-label">{language === 'fr' ? item.label : item.labelEn}</span>
               </Link>
             );
           })}
