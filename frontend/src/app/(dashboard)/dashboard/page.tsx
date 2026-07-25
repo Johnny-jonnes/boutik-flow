@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CircleDollarSign, ShoppingBag, Users, Clock, Crown, CheckCircle, BarChart3, MessageCircle, ArrowDownRight, Wallet, Package } from 'lucide-react';
 import type { DashboardKPIs, Order, AnalyticsData } from '@/types';
 import { api } from '@/lib/api/client';
@@ -166,8 +166,11 @@ function KPICard({
 export default function DashboardPage() {
   const [kpis, setKpis] = useState<DashboardKPIs | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
-  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
-  const [totalOrders, setTotalOrders] = useState(0);
+  // Ensemble déjà trié et filtré par période : la pagination ci-dessous
+  // découpe CE tableau côté client. Elle ne doit jamais redemander une autre
+  // page au serveur, sans quoi "Suivant" saute vers un lot de commandes non
+  // lié plutôt que de continuer la même liste triée (bug du tri "cassé").
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [orderPage, setOrderPage] = useState(1);
   const [ordersPerPage, setOrdersPerPage] = useState(10);
   const [periodFilter, setPeriodFilter] = useState<PeriodKey>('30j');
@@ -195,19 +198,21 @@ export default function DashboardPage() {
 
       const [kpiData, ordersData, clientsData, productsData, analyticsData] = await Promise.all([
         api.getDashboardKPIs(range.period, range.start_date, range.end_date),
-        api.getOrders(orderPage, undefined),
+        // Un seul lot des commandes les plus récentes (borne max de l'API) :
+        // la pagination affichée en dessous ne fait que re-découper ce même
+        // tableau, elle ne redemande jamais une autre page au serveur.
+        api.getOrders(1, undefined, 100),
         api.getClients(1, 100),
         api.getProducts(1, 100),
         api.getAnalyticsData(range.period, range.start_date, range.end_date).catch(() => null)
       ]);
       setKpis(kpiData);
 
-      const filteredOrders = (ordersData.items || [])
+      const ordersInPeriod = (ordersData.items || [])
         .filter((o: any) => isWithinPeriod(o.created_at, range))
         .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
 
-      setRecentOrders(filteredOrders.slice(0, ordersPerPage));
-      setTotalOrders(filteredOrders.length);
+      setFilteredOrders(ordersInPeriod);
       setClients(clientsData.items);
       setProducts(productsData.items);
       setAnalytics(analyticsData);
@@ -220,7 +225,20 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchData();
-  }, [language, orderPage, ordersPerPage, periodFilter, customStartDate, customEndDate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language, periodFilter, customStartDate, customEndDate]);
+
+  // Changer de période invalide la page courante : sans ce reset, rester
+  // sur la page 3 après un nouveau filtre pouvait afficher une page vide.
+  useEffect(() => {
+    setOrderPage(1);
+  }, [periodFilter, customStartDate, customEndDate]);
+
+  const totalOrders = filteredOrders.length;
+  const recentOrders = useMemo(
+    () => filteredOrders.slice((orderPage - 1) * ordersPerPage, orderPage * ordersPerPage),
+    [filteredOrders, orderPage, ordersPerPage]
+  );
 
   if (isLoading || !kpis) {
     return (

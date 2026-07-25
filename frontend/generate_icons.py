@@ -20,7 +20,12 @@ def write_png(path, width, height, pixels):
             raw += bytes(pixels[y][x])
     
     png = b'\x89PNG\r\n\x1a\n'
-    png += chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 2, 0, 0, 0))
+    # Colortype 6 = RGBA (8 bits/canal, 4 octets/pixel) : les pixels écrits
+    # ci-dessus sont [r,g,b,a], PAS du RGB à 3 octets (colortype 2). Le
+    # mismatch précédent produisait un PNG dont l'en-tête et les données ne
+    # correspondaient pas : les navigateurs ne pouvaient pas le décoder et
+    # retombaient sur une icône par défaut, différente du logo réel de l'app.
+    png += chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 6, 0, 0, 0))
     png += chunk(b'IDAT', zlib.compress(raw, 9))
     png += chunk(b'IEND', b'')
     

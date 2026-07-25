@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Search, Plus, Minus, Trash2, CreditCard, Banknote,
   Smartphone, ShoppingCart, ArrowUpRight, CheckCircle, X,
-  Zap, Package, AlertCircle,
+  Zap, Package,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { api } from '@/lib/api/client';
@@ -19,7 +19,7 @@ interface CartItem extends Product { cartQuantity: number; }
 const fmt = (n: number) => n.toLocaleString('fr-FR') + ' GNF';
 
 export default function POSPage() {
-  const { language, t } = useLanguage();
+  const { language } = useLanguage();
   const [products, setProducts]         = useState<Product[]>([]);
   const [clients, setClients]           = useState<{ id: string; name: string; phone?: string }[]>([]);
   const [selectedClientId, setSelectedClientId] = useState('');
@@ -607,9 +607,15 @@ export default function POSPage() {
         }
 
         /* Panier encore plus large sur les grands écrans : plus d'aisance
-           pour cliquer avec la souris sans réduire l'espace produits. */
+           pour cliquer avec la souris sans réduire l'espace produits.
+           Important : la valeur à ≤1200px reste supérieure à TOUTES les
+           anciennes valeurs (340px/380px) — de nombreux ordinateurs portables
+           rapportent une largeur logique ≤1200px à cause de la mise à
+           l'échelle Windows (125%/150%), et retomber sur l'ancienne valeur
+           à ce palier donnait l'impression que l'agrandissement n'avait
+           aucun effet sur "machine". */
         @media (min-width: 1600px) { .p-grid { grid-template-columns: minmax(0, 1fr) 500px; } }
-        @media (max-width: 1200px) { .p-grid { grid-template-columns: minmax(0, 1fr) 380px; } }
+        @media (max-width: 1200px) { .p-grid { grid-template-columns: minmax(0, 1fr) 400px; } }
         @media (max-width: 860px) {
           .p-grid {
             grid-template-columns: 1fr;
