@@ -7,31 +7,16 @@ import {
   LayoutDashboard,
   Users,
   Package,
-  ShoppingBag,
   ShoppingCart,
-  MessageSquare,
   Menu,
   X,
   Store,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Rocket,
-  BarChart3,
-  Tags,
-  FolderTree,
-  Megaphone,
-  Shield,
   Globe,
-  Truck,
   UserCog,
   Settings,
-  CreditCard,
   LogOut,
   Wallet,
-  ClipboardList,
   History,
-  Zap,
   Volume2,
   Volume1,
   VolumeX,
@@ -43,61 +28,21 @@ import { ScrollToTop } from '@/components/ScrollToTop';
 import { PinLock } from '@/components/ui/PinLock';
 import { usePinLock } from '@/hooks/usePinLock';
 import { getSoundVolumePreference, setSoundVolumePreference, VolumeLevel } from '@/lib/audio';
+import { OfflineStatusBar } from '@/components/ui/OfflineStatusBar';
 
-/* ─── Navigation data ───────────────────────────────────────────── */
-const NAV_GROUPS = [
-  {
-    title: 'Tableau de Bord',
-    titleKey: 'nav.dashboard',
-    icon: LayoutDashboard,
-    items: [
-      { href: '/dashboard',  icon: LayoutDashboard, labelKey: 'nav.dashboard', label: "Vue d'ensemble", id: 'nav-dashboard' },
-      { href: '/analytics',  icon: BarChart3,        labelKey: 'nav.analytics', label: 'Analytique',     id: 'nav-analytics' },
-    ],
-  },
-  {
-    title: 'CRM',
-    titleKey: 'nav.crm',
-    icon: Users,
-    items: [
-      { href: '/crm',      icon: Users, labelKey: 'nav.crm',      label: 'Clients',  id: 'nav-crm' },
-      { href: '/segments', icon: Tags,  labelKey: 'nav.segments',  label: 'Segments', id: 'nav-segments' },
-    ],
-  },
-  {
-    title: 'Ventes',
-    titleKey: 'nav.products',
-    icon: ShoppingBag,
-    items: [
-      { href: '/pos',        icon: ShoppingCart, labelKey: 'nav.pos',        label: 'Vente Express',      id: 'nav-pos' },
-      { href: '/sales',      icon: History,      labelKey: 'nav.sales',      label: 'Historique Ventes',  id: 'nav-sales' },
-      { href: '/orders',     icon: ClipboardList,labelKey: 'nav.orders',     label: 'Suivi Commandes',    id: 'nav-orders' },
-      { href: '/products',   icon: Package,      labelKey: 'nav.products',   label: 'Produits',           id: 'nav-products' },
-      { href: '/categories', icon: FolderTree,   labelKey: 'nav.categories', label: 'Catégories',         id: 'nav-categories' },
-      { href: '/suppliers',  icon: Truck,        labelKey: 'nav.suppliers',  label: 'Fournisseurs',       id: 'nav-suppliers' },
-    ],
-  },
-  {
-    title: 'Marketing',
-    titleKey: 'nav.campaigns',
-    icon: Megaphone,
-    items: [
-      { href: '/whatsapp', icon: MessageSquare, labelKey: 'nav.whatsapp', label: 'WhatsApp', id: 'nav-whatsapp' },
-    ],
-  },
-  {
-    title: 'Gestion',
-    titleKey: 'nav.management',
-    icon: Settings,
-    items: [
-      { href: '/team',    icon: UserCog,      labelKey: 'nav.team',    label: 'Équipe',   id: 'nav-team' },
-      { href: '/finance', icon: Wallet,       labelKey: 'nav.finance', label: 'Finance',  id: 'nav-finance' },
-      { href: '/audit',   icon: ClipboardList,labelKey: 'nav.audit',   label: 'Audit',    id: 'nav-audit' },
-    ],
-  },
+/* ─── Navigation simplifiée — 8 liens max ───────────────────────── */
+const NAV_ITEMS = [
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Accueil',   labelEn: 'Home',     id: 'nav-dashboard' },
+  { href: '/pos',       icon: ShoppingCart,    label: 'Caisse',    labelEn: 'POS',      id: 'nav-pos' },
+  { href: '/products',  icon: Package,         label: 'Produits',  labelEn: 'Products', id: 'nav-products' },
+  { href: '/crm',       icon: Users,           label: 'Clients',   labelEn: 'Clients',  id: 'nav-crm' },
+  { href: '/sales',     icon: History,         label: 'Ventes',    labelEn: 'Sales',    id: 'nav-sales' },
+  { href: '/finance',   icon: Wallet,          label: 'Finance',   labelEn: 'Finance',  id: 'nav-finance' },
+  { href: '/team',      icon: UserCog,         label: 'Équipe',    labelEn: 'Team',     id: 'nav-team' },
+  { href: '/billing',   icon: Settings,        label: 'Réglages',  labelEn: 'Settings', id: 'nav-settings' },
 ];
 
-/* Bottom nav — 5 raccourcis mobiles les plus fréquents */
+/* Bottom nav — 5 raccourcis mobiles */
 const BOTTOM_NAV = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Accueil' },
   { href: '/pos',       icon: ShoppingCart,    label: 'Caisse' },
@@ -191,14 +136,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { isLocked, pinError, verifyPin, setPinError } = usePinLock();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
-    'Tableau de Bord': true,
-    'CRM': true,
-    'Ventes': true,
-    'Marketing': true,
-    'Gestion': true,
-    'Administration': true,
-  });
   const [userInfo, setUserInfo] = useState({
     boutiqueName: 'Ma Boutique',
     email: '',
@@ -207,7 +144,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   });
   const [soundVolume, setSoundVolume] = useState<VolumeLevel>('normal');
   const profileDropdownRef = useRef<HTMLDivElement>(null);
-  const { language, setLanguage, t } = useLanguage();
+  const { language, setLanguage } = useLanguage();
 
   // Charger le volume initial
   useEffect(() => {
@@ -264,141 +201,91 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const userInitial = userInfo.email ? userInfo.email.charAt(0).toUpperCase() : 'U';
   const userName    = userInfo.email ? userInfo.email.split('@')[0] : 'Utilisateur';
 
-  /* All nav groups including optional admin */
-  const allGroups = [
-    ...NAV_GROUPS,
-    ...(userInfo.role?.toLowerCase() === 'admin' ? [{
-      title: 'Administration',
-      titleKey: 'nav.admin',
-      icon: Shield,
-      items: [
-        { href: '/admin',         icon: LayoutDashboard, labelKey: 'nav.dashboard', label: "Vue d'ensemble",   id: 'nav-admin-dashboard' },
-        { href: '/admin/tenants', icon: Store,            labelKey: 'nav.tenants',   label: 'Gestion Boutiques', id: 'nav-admin-tenants' },
-      ],
-    }] : []),
-  ];
+  /* Nav items — admin gets extra entries */
+  const navItems = userInfo.role?.toLowerCase() === 'admin'
+    ? [...NAV_ITEMS, { href: '/admin', icon: Store, label: 'Admin', labelEn: 'Admin', id: 'nav-admin' }]
+    : NAV_ITEMS;
 
   return (
     <div className="shell">
       {isLocked && <PinLock onVerify={verifyPin} error={pinError} onClearError={() => setPinError('')} />}
 
-      {/* ── Mobile top bar ─────────────────────────── */}
+      {/* ── Mobile top bar — affiche le nom de la boutique ── */}
       <header className="mobile-bar">
         <div className="mobile-brand">
           <div className="logo-mark"><Logo size={18} /></div>
-          <span className="brand-text"><span style={{ color: 'var(--text-primary)', fontWeight: 800 }}>Boutik</span><span style={{ background: 'linear-gradient(135deg, #6dd5c4, #31a292)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 700 }}>Flow</span></span>
+          <span className="mobile-boutique-name">{userInfo.boutiqueName}</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button className="mobile-toggle" onClick={handleCycleVolume} aria-label="Volume" style={{ border: 'none', background: 'var(--surface-2)', width: '36px', height: '36px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button className="mobile-toggle" onClick={handleCycleVolume} aria-label="Volume">
             {soundVolume === 'normal' && <Volume2 size={18} />}
             {soundVolume === 'discret' && <Volume1 size={18} />}
             {soundVolume === 'muted' && <VolumeX size={18} />}
           </button>
-          <ThemeToggle />
           <button className="mobile-toggle" onClick={() => setIsMobileMenuOpen(true)} aria-label="Menu">
             <Menu size={22} />
           </button>
         </div>
       </header>
- 
-      {/* ── Backdrop ───────────────────────────────── */}
+
+      {/* ── Barre offline — juste sous la mobile-bar ── */}
+      <div className="offline-bar-wrapper">
+        <OfflineStatusBar />
+      </div>
+
+      {/* ── Backdrop ── */}
       {isMobileMenuOpen && <div className="backdrop" onClick={() => setIsMobileMenuOpen(false)} />}
- 
-      {/* ══════════════════════════════════════════════
-          SIDEBAR
-          ══════════════════════════════════════════════ */}
+
+      {/* ══ SIDEBAR — Navigation plate 8 liens ══ */}
       <aside className={`sidebar ${isMobileMenuOpen ? 'sidebar--open' : ''}`}>
- 
-        {/* Brand header */}
+
+        {/* En-tête : logo + nom boutique + fermer */}
         <div className="sidebar__brand">
           <div className="logo-mark"><Logo size={20} /></div>
-          <span className="brand-text"><span style={{ color: 'var(--text-primary)', fontWeight: 800 }}>Boutik</span><span style={{ background: 'linear-gradient(135deg, #6dd5c4, #31a292)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 700 }}>Flow</span></span>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <ThemeToggle />
-            <button className="sidebar-collapse-btn" onClick={() => setIsMobileMenuOpen(false)} aria-label="Fermer">
-              <X size={15} />
-            </button>
-          </div>
-        </div>
-
-        {/* Boutique pill */}
-        <div className="boutique-card">
-          <div className="boutique-icon"><Store size={16} /></div>
-          <div className="boutique-details">
-            <span className="boutique-name">{userInfo.boutiqueName}</span>
-            <span className="boutique-badge">
+          <div className="sidebar-brand-info">
+            <span className="sidebar-boutique-name">{userInfo.boutiqueName}</span>
+            <span className="sidebar-plan-badge">
               {userInfo.plan === 'freemium' ? '✦ Freemium' : userInfo.plan === 'lifetime' ? '⚡ Lifetime' : '✓ Pro'}
             </span>
           </div>
+          <button className="sidebar-collapse-btn" onClick={() => setIsMobileMenuOpen(false)} aria-label="Fermer">
+            <X size={16} />
+          </button>
         </div>
 
-        {/* Navigation */}
+        {/* Navigation plate */}
         <nav className="sidebar__nav">
-          {allGroups.map((group) => {
-            const GroupIcon = group.icon;
-            const isExpanded = expandedGroups[group.title] !== false;
+          {navItems.map((item) => {
+            const ItemIcon = item.icon;
+            const isDash = item.href === '/dashboard';
+            const active = isDash ? pathname === item.href : pathname.startsWith(item.href);
             return (
-              <div key={group.title} className="nav-group">
-                <button
-                  className="nav-section-title"
-                  onClick={() => setExpandedGroups(prev => ({ ...prev, [group.title]: !isExpanded }))}
-                >
-                  <div className="nav-section-title-left">
-                    <GroupIcon size={13} />
-                    <span>{t(group.titleKey)}</span>
-                  </div>
-                  {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                </button>
-
-                {isExpanded && (
-                  <div className="nav-items-wrapper">
-                    {group.items.map((item) => {
-                      const isDashboard = item.href === '/dashboard';
-                      const active = isDashboard ? pathname === item.href : pathname.startsWith(item.href);
-                      const ItemIcon = item.icon;
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          id={item.id}
-                          className={`nav-link ${active ? 'nav-link--active' : ''}`}
-                          onClick={() => setIsMobileMenuOpen(false)}
-                        >
-                          <ItemIcon size={15} className="nav-icon" />
-                          <span className="nav-text">{t(item.labelKey)}</span>
-                          {item.id === 'nav-whatsapp' && <span className="wa-dot" />}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              <Link
+                key={item.href}
+                href={item.href}
+                id={item.id}
+                className={`nav-link ${active ? 'nav-link--active' : ''}`}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <div className="nav-icon-wrap">
+                  <ItemIcon size={20} />
+                </div>
+                <span className="nav-text">{language === 'fr' ? item.label : item.labelEn}</span>
+              </Link>
             );
           })}
         </nav>
 
-        {/* Footer */}
+        {/* Footer profil */}
         <div className="sidebar__footer">
           <button className="lang-toggle" onClick={() => setLanguage(language === 'fr' ? 'en' : 'fr')}>
-            <Globe size={13} />
+            <Globe size={14} />
             <span>{language === 'fr' ? 'Français' : 'English'}</span>
-            <span className="lang-flag">{language === 'fr' ? '🇫🇷' : '🇬🇧'}</span>
-          </button>
-
-          <button className="lang-toggle sound-toggle-btn" onClick={handleCycleVolume} style={{ marginTop: '4px' }}>
-            {soundVolume === 'normal' && <Volume2 size={13} />}
-            {soundVolume === 'discret' && <Volume1 size={13} />}
-            {soundVolume === 'muted' && <VolumeX size={13} />}
-            <span>
-              {soundVolume === 'normal' && (language === 'fr' ? 'Son : Normal' : 'Sound: Normal')}
-              {soundVolume === 'discret' && (language === 'fr' ? 'Son : Discret' : 'Sound: Soft')}
-              {soundVolume === 'muted' && (language === 'fr' ? 'Son : Muet' : 'Sound: Muted')}
-            </span>
+            <span>{language === 'fr' ? '🇫🇷' : '🇬🇧'}</span>
           </button>
 
           <div className="footer-separator" />
 
-          {/* Profile */}
           <div className="profile-container" ref={profileDropdownRef}>
             <div
               className={`profile-card ${isProfileDropdownOpen ? 'profile-card--open' : ''}`}
@@ -408,17 +295,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <div className="profile-info">
                 <span className="profile-name">{userName}</span>
                 <span className="profile-role">
-                  {userInfo.role === 'admin' ? 'Super Admin' : userInfo.role === 'owner' ? (language === 'fr' ? 'Propriétaire' : 'Owner') : userInfo.role}
+                  {userInfo.role === 'admin' ? 'Admin' : userInfo.role === 'owner' ? (language === 'fr' ? 'Propriétaire' : 'Owner') : userInfo.role}
                 </span>
               </div>
-              <ChevronDown size={13} className={`profile-chevron ${isProfileDropdownOpen ? 'profile-chevron--rotated' : ''}`} />
             </div>
 
             {isProfileDropdownOpen && (
               <div className="profile-dropdown">
                 <div className="dropdown-item dropdown-item--logout" onClick={handleLogout}>
                   <LogOut size={14} />
-                  <span>{t('sidebar.logout')}</span>
+                  <span>{language === 'fr' ? 'Déconnexion' : 'Logout'}</span>
                 </div>
               </div>
             )}
@@ -426,15 +312,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      {/* ── Main content ───────────────────────────── */}
+      {/* ── Main content ── */}
       <main className="main">
         <div className="main__inner main-content">{children}</div>
         <ScrollToTop />
       </main>
 
-      {/* ══════════════════════════════════════════════
-          BOTTOM NAV — Mobile uniquement (Glassmorphism Dock Fixe)
-          ══════════════════════════════════════════════ */}
+      {/* ══ BOTTOM NAV — Glassmorphism Dock ══ */}
       <nav className="bottom-nav" aria-label="Navigation principale mobile">
         <div className="bottom-nav-glass">
           {BOTTOM_NAV.map((item) => {
@@ -521,6 +405,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           min-width: 0;
         }
 
+        /* Nom de boutique dans la barre mobile */
+        .mobile-boutique-name {
+          font-family: var(--font-display);
+          font-size: 1rem; font-weight: 800;
+          color: var(--text-primary);
+          letter-spacing: -0.02em;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 160px;
+        }
+
+        /* Barre offline positionnée sous la mobile-bar */
+        .offline-bar-wrapper {
+          display: none;
+          position: fixed;
+          top: calc(56px + env(safe-area-inset-top, 0px));
+          left: 0; right: 0;
+          z-index: 1090;
+        }
+
         /* ══ SIDEBAR ════════════════════════════════ */
         .sidebar {
           width: 256px;
@@ -543,14 +448,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
 
         .sidebar__brand {
-          display: flex; align-items: center; gap: 0.5rem;
-          padding: 1rem 0.875rem 0.75rem;
+          display: flex; align-items: center; gap: 0.625rem;
+          padding: 1rem 1rem 0.875rem;
           position: sticky; top: 0;
           background: inherit;
           z-index: 1;
-          border-bottom: 1px solid rgba(255,255,255,0.04);
-          margin-bottom: 0.5rem;
+          border-bottom: 1px solid rgba(109,213,196,0.10);
+          margin-bottom: 0.25rem;
           min-width: 0;
+        }
+
+        /* Info boutique dans la sidebar */
+        .sidebar-brand-info {
+          display: flex; flex-direction: column;
+          min-width: 0; flex: 1;
+        }
+        .sidebar-boutique-name {
+          font-family: var(--font-display);
+          font-size: 0.88rem; font-weight: 800;
+          color: var(--text-primary);
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          letter-spacing: -0.01em;
+        }
+        .sidebar-plan-badge {
+          font-size: 0.67rem; font-weight: 600;
+          color: #6dd5c4;
+          margin-top: 1px;
         }
 
         .sidebar-collapse-btn {
@@ -610,57 +533,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           margin-top: 1px;
         }
 
-        /* ── Navigation ───────────────────────────── */
+        /* ── Navigation plate ─────────────────────── */
         .sidebar__nav {
           flex: 1;
           display: flex; flex-direction: column;
-          gap: 0.25rem;
-          padding: 0 0.625rem;
-          margin-bottom: 1rem;
+          gap: 2px;
+          padding: 0.25rem 0.75rem;
+          margin-bottom: 0.5rem;
         }
 
-        .nav-group {
-          display: flex;
-          flex-direction: column;
-          margin-bottom: 0.25rem;
-        }
-
-        .nav-section-title {
-          font-size: 0.7rem; font-weight: 700;
-          color: rgba(255,255,255,0.32);
-          text-transform: uppercase;
-          letter-spacing: 0.08em;
-          padding: 0.5rem 0.625rem 0.25rem;
-          margin-top: 0.5rem;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
+        /* Icône wrap — carré arrondi visible */
+        .nav-icon-wrap {
+          width: 36px; height: 36px;
+          border-radius: 10px;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
           background: transparent;
-          border: none;
-          width: 100%;
-          cursor: pointer;
-          transition: color 0.15s ease;
+          transition: background 0.15s ease;
+          color: inherit;
         }
-        .nav-section-title:hover { color: rgba(109,213,196,0.7); }
-        .nav-section-title-left {
-          display: flex;
-          align-items: center;
-          gap: 0.4rem;
-        }
-
-        .nav-items-wrapper {
-          display: flex;
-          flex-direction: column;
-          gap: 1px;
+        .nav-link--active .nav-icon-wrap {
+          background: rgba(109,213,196,0.18);
+          color: #6dd5c4;
         }
 
         .nav-link {
-          display: flex; align-items: center; gap: 0.625rem;
-          padding: 0.55rem 0.75rem;
-          border-radius: 10px;
+          display: flex; align-items: center; gap: 0.75rem;
+          padding: 0.375rem 0.5rem;
+          min-height: 48px;
+          border-radius: 12px;
           text-decoration: none;
-          color: rgba(255,255,255,0.48);
-          font-size: 0.84rem; font-weight: 500;
+          color: rgba(255,255,255,0.5);
+          font-size: 0.9rem; font-weight: 500;
           position: relative;
           transition: all 0.15s ease;
           border: 1px solid transparent;
@@ -668,6 +572,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           width: 100%;
           white-space: nowrap;
           overflow: hidden;
+          -webkit-tap-highlight-color: transparent;
         }
         .nav-link:hover {
           color: rgba(255,255,255,0.9);
@@ -678,21 +583,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         .nav-link--active {
           color: #6dd5c4;
-          background: rgba(109,213,196,0.14);
-          border-color: rgba(109,213,196,0.25);
-          font-weight: 600;
+          background: rgba(109,213,196,0.10);
+          border-color: rgba(109,213,196,0.20);
+          font-weight: 700;
         }
         .nav-link--active:hover {
-          background: rgba(109,213,196,0.18);
+          background: rgba(109,213,196,0.16);
           color: #98e5d9;
         }
 
         .nav-icon {
-          flex-shrink: 0;
-          color: inherit;
-          width: 15px; height: 15px;
-          display: inline-block;
-          opacity: 0.85;
+          flex-shrink: 0; color: inherit;
+          width: 20px; height: 20px;
+          display: inline-block; opacity: 0.85;
         }
         .nav-link--active .nav-icon { opacity: 1; color: #6dd5c4; }
 
@@ -850,6 +753,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         @media (max-width: 768px) {
           .mobile-bar { display: flex; }
+          .offline-bar-wrapper { display: block; }
 
           .main__inner {
             padding: 1.25rem 1rem;

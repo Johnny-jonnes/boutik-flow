@@ -637,9 +637,9 @@ export default function POSPage() {
         /* Grid produits */
         .p-products-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-          gap: 0.5rem;
-          padding: 0.75rem;
+          grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+          gap: 0.625rem;
+          padding: 0.875rem;
           overflow-y: auto; flex: 1; align-content: start;
         }
 
@@ -663,9 +663,9 @@ export default function POSPage() {
           padding: 0;
         }
         .p-card:hover:not(.p-card--out) {
-          border-color: rgba(99,102,241,0.5);
+          border-color: rgba(109,213,196,0.5);
           background: var(--surface-2);
-          transform: translateY(-3px) scale(1.01);
+          transform: translateY(-2px) scale(1.01);
           box-shadow: var(--shadow-md);
         }
         .p-card:active:not(.p-card--out) {
@@ -682,7 +682,7 @@ export default function POSPage() {
         .p-card-image-box {
           position: relative;
           width: 100%;
-          height: 100px;
+          height: 120px;
           background: var(--surface-2);
           overflow: hidden;
           border-bottom: 1px solid var(--border-subtle);
@@ -859,8 +859,8 @@ export default function POSPage() {
 
         .p-item-ctrl { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
         .p-qty-btn {
-          width: 24px; height: 24px; background: var(--surface-2);
-          border: 1px solid var(--border-default); border-radius: 6px;
+          width: 32px; height: 32px; background: var(--surface-2);
+          border: 1px solid var(--border-default); border-radius: 8px;
           color: var(--text-secondary); cursor: pointer;
           display: flex; align-items: center; justify-content: center;
           transition: all 100ms ease; flex-shrink: 0; padding: 0;
@@ -989,11 +989,11 @@ export default function POSPage() {
 
         /* Bouton valider */
         .p-validate {
-          width: 100%; min-height: 56px;
+          width: 100%; min-height: 64px;
           background: linear-gradient(135deg, var(--color-brand-500), var(--color-brand-600));
           color: #fff; font-family: var(--font-display);
-          font-size: 0.95rem; font-weight: 800;
-          border: none; border-radius: var(--radius-lg);
+          font-size: 1.05rem; font-weight: 800;
+          border: none; border-radius: var(--radius-xl);
           cursor: pointer; letter-spacing: 0.01em;
           display: flex; align-items: center; justify-content: center; gap: 0.5rem;
           transition: all 250ms var(--ease-out);
