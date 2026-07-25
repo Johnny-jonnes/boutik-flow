@@ -243,7 +243,10 @@ export default function HomePage() {
         <div className="nav-actions">
           <ThemeToggle />
           <Link href="/login" className="btn btn-ghost hide-on-xs" id="btn-nav-login">Se connecter</Link>
-          <Link href="/register" className="btn btn-primary nav-cta-btn" id="btn-nav-register">Essayer BoutikFlow</Link>
+          <Link href="/register" className="btn btn-primary nav-cta-btn" id="btn-nav-register">
+            <span className="hide-on-xs-btn">Essayer BoutikFlow</span>
+            <span className="show-on-xs-btn">Essayer</span>
+          </Link>
         </div>
       </nav>
 
@@ -968,8 +971,10 @@ export default function HomePage() {
             white-space: nowrap !important;
           }
         }
+        .show-on-xs-btn { display: none; }
         @media (max-width: 640px) {
-          #btn-nav-login, .hide-on-xs { display: none !important; }
+          #btn-nav-login, .hide-on-xs, .hide-on-xs-btn { display: none !important; }
+          .show-on-xs-btn { display: inline !important; }
           .nav-cta-btn {
             padding: 0.45rem 0.8rem !important;
             font-size: 0.82rem !important;
