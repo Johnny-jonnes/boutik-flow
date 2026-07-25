@@ -147,21 +147,24 @@ export default function RegisterPage() {
       <div className="auth-glow" />
 
       <div className="register-container animate-fade-in">
-        {/* Logo */}
+        {/* Logo BF */}
         <div className="auth-logo">
           <div className="auth-logo-icon">
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-              <path d="M14 2L26 8V20L14 26L2 20V8L14 2Z" fill="url(#grad2)" />
-              <path d="M9 14L12.5 17.5L19 11" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 0 8px rgba(0,148,96,0.5))' }}>
               <defs>
-                <linearGradient id="grad2" x1="2" y1="2" x2="26" y2="26" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#10b981" />
-                  <stop offset="1" stopColor="#047857" />
+                <linearGradient id="reg-guinea" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#009460" />
+                  <stop offset="50%" stopColor="#FCD116" />
+                  <stop offset="100%" stopColor="#CE1126" />
                 </linearGradient>
               </defs>
+              <polygon points="50,3 93,26 93,74 50,97 7,74 7,26" fill="url(#reg-guinea)" opacity="0.97" />
+              <polygon points="50,3 93,26 93,74 50,97 7,74 7,26" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" fill="none" />
+              <text x="50" y="62" fontFamily="Arial Black, sans-serif" fontWeight="900" fontSize="38" fill="white" textAnchor="middle" letterSpacing="-3">BF</text>
+              <rect x="22" y="76" width="56" height="3.5" rx="1.75" fill="#CE1126" opacity="0.6" />
             </svg>
           </div>
-          <span className="auth-logo-text">BoutikFlow</span>
+          <span className="auth-logo-text" style={{ background: 'linear-gradient(135deg, #009460, #FCD116)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 900, letterSpacing: '-0.03em' }}>BoutikFlow</span>
         </div>
 
         {isSuccess ? (
@@ -198,8 +201,8 @@ export default function RegisterPage() {
           {/* Form */}
           <div className="auth-card glass">
             <div className="auth-header">
-              <h1 className="auth-title">Créer votre boutique</h1>
-              <p className="auth-subtitle">Démarrez en 2 minutes</p>
+              <h1 className="auth-title" style={{ fontSize: '1.4rem' }}>🏪 Ouvrir ma boutique</h1>
+              <p className="auth-subtitle">Inscrivez-vous en 2 étapes</p>
             </div>
 
             {/* Bandeau d'état du serveur */}
@@ -278,11 +281,11 @@ export default function RegisterPage() {
               {step === 1 ? (
                 <>
                   <div className="form-group">
-                    <label className="form-label">Nom de votre boutique</label>
+                    <label className="form-label">Nom de la boutique</label>
                     <input
                       type="text"
                       className="input"
-                      placeholder="Ma Super Boutique"
+                      placeholder="Ex : Chez Mamadou"
                       value={form.boutique_name}
                       onChange={e => handleBoutiqueNameChange(e.target.value)}
                       required
@@ -290,7 +293,7 @@ export default function RegisterPage() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Identifiant unique (URL)</label>
+                    <label className="form-label">Lien unique</label>
                     <div className="input-wrapper">
                       <span className="input-prefix">boutikflow.app/</span>
                       <input
@@ -303,7 +306,7 @@ export default function RegisterPage() {
                         title="Lettres minuscules, chiffres et tirets uniquement"
                       />
                     </div>
-                    <span className="form-hint">Utilisé pour vous connecter à votre boutique</span>
+                    <span className="form-hint">Votre adresse de connexion</span>
                   </div>
 
                   <button
@@ -319,11 +322,11 @@ export default function RegisterPage() {
               ) : (
                 <>
                   <div className="form-group">
-                    <label className="form-label">Votre nom complet</label>
+                    <label className="form-label">Votre nom</label>
                     <input
                       type="text"
                       className="input"
-                      placeholder="Mamadou Diallo"
+                      placeholder="Ex : Mamadou Diallo"
                       value={form.full_name}
                       onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))}
                       required
@@ -331,7 +334,7 @@ export default function RegisterPage() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Adresse email</label>
+                    <label className="form-label">Email</label>
                     <input
                       type="email"
                       className="input"
@@ -343,7 +346,7 @@ export default function RegisterPage() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Téléphone (optionnel)</label>
+                    <label className="form-label">Téléphone</label>
                     <input
                       type="tel"
                       className="input"
@@ -358,7 +361,7 @@ export default function RegisterPage() {
                     <input
                       type="password"
                       className="input"
-                      placeholder="Min. 8 caractères, 1 majuscule, 1 chiffre"
+                      placeholder="Ex : Boutik2025"
                       value={form.password}
                       onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                       required
