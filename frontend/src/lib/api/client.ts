@@ -399,7 +399,23 @@ function handleOfflineRequest<T>(path: string, options: RequestInit = {}): Promi
   }
 
   if (path.startsWith('/finance')) {
-    const transactions = OfflineDB.getTransactions();
+    const urlObj = new URL(path, 'http://localhost');
+    const startDate = urlObj.searchParams.get('start_date');
+    const endDate = urlObj.searchParams.get('end_date');
+    const type = urlObj.searchParams.get('type');
+
+    let transactions = OfflineDB.getTransactions();
+    if (startDate || endDate) {
+      const startMs = startDate ? new Date(startDate + 'T00:00:00').getTime() : 0;
+      const endMs = endDate ? new Date(endDate + 'T23:59:59.999').getTime() : Infinity;
+      transactions = transactions.filter(t => {
+        const tMs = new Date(t.created_at || 0).getTime();
+        return tMs >= startMs && tMs <= endMs;
+      });
+    }
+    if (type && type !== 'all') {
+      transactions = transactions.filter(t => t.type === type);
+    }
     if (method === 'GET') {
       const total_income = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
       const total_expense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
@@ -437,9 +453,26 @@ function handleOfflineRequest<T>(path: string, options: RequestInit = {}): Promi
   }
 
   if (path.startsWith('/dashboard/kpis')) {
-    const transactions = OfflineDB.getTransactions();
-    const orders = OfflineDB.getOrders();
+    const urlObj = new URL(path, 'http://localhost');
+    const startDate = urlObj.searchParams.get('start_date');
+    const endDate = urlObj.searchParams.get('end_date');
+
+    let transactions = OfflineDB.getTransactions();
+    let orders = OfflineDB.getOrders();
     const clients = OfflineDB.getClients();
+
+    if (startDate || endDate) {
+      const startMs = startDate ? new Date(startDate + 'T00:00:00').getTime() : 0;
+      const endMs = endDate ? new Date(endDate + 'T23:59:59.999').getTime() : Infinity;
+      transactions = transactions.filter(t => {
+        const tMs = new Date(t.created_at || 0).getTime();
+        return tMs >= startMs && tMs <= endMs;
+      });
+      orders = orders.filter(o => {
+        const oMs = new Date(o.created_at || 0).getTime();
+        return oMs >= startMs && oMs <= endMs;
+      });
+    }
 
     const total_revenue = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const total_expenses = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
@@ -457,7 +490,20 @@ function handleOfflineRequest<T>(path: string, options: RequestInit = {}): Promi
   }
 
   if (path.startsWith('/dashboard/analytics')) {
-    const transactions = OfflineDB.getTransactions();
+    const urlObj = new URL(path, 'http://localhost');
+    const startDate = urlObj.searchParams.get('start_date');
+    const endDate = urlObj.searchParams.get('end_date');
+
+    let transactions = OfflineDB.getTransactions();
+    if (startDate || endDate) {
+      const startMs = startDate ? new Date(startDate + 'T00:00:00').getTime() : 0;
+      const endMs = endDate ? new Date(endDate + 'T23:59:59.999').getTime() : Infinity;
+      transactions = transactions.filter(t => {
+        const tMs = new Date(t.created_at || 0).getTime();
+        return tMs >= startMs && tMs <= endMs;
+      });
+    }
+
     const revenue_data = [] as any[];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
@@ -602,19 +648,8 @@ async function request<T>(
     res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers, signal: controller.signal });
     clearTimeout(timeoutId);
     
-    // Pour TOUT GET échouant sur les routes critiques → offline
-    const isCriticalRead = method === 'GET' && (
-      path.startsWith('/products') ||
-      path.startsWith('/clients') ||
-      path.startsWith('/categories') ||
-      path.startsWith('/finance') ||
-      path.startsWith('/dashboard/kpis')
-    );
-    if (!res.ok && isCriticalRead) {
-      return handleOfflineRequest<T>(path, options);
-    }
-    // Pour les autres endpoints non-critiques → offline sur 5xx/404/422
-    if (!res.ok && (res.status >= 500 || res.status === 404 || res.status === 422 || res.status === 502 || res.status === 503 || res.status === 504)) {
+    // Pour TOUT GET échouant (offline, timeout, 5xx, 404, 422) → fallback offline immédiat
+    if (method === 'GET' && !res.ok) {
       return handleOfflineRequest<T>(path, options);
     }
   } catch {
@@ -810,12 +845,12 @@ export const api = {
   },
 
   // ── Dashboard ─────────────────────────────────────────────────────────
-  getDashboardKPIs(): Promise<DashboardKPIs> {
-    return request('/dashboard/kpis');
+  getDashboardKPIs(period?: string, startDate?: string, endDate?: string): Promise<DashboardKPIs> {
+    return request(`/dashboard/kpis${buildQuery({ period, start_date: startDate, end_date: endDate })}`);
   },
 
-  getAnalyticsData(period: string = '7j'): Promise<AnalyticsData> {
-    return request(`/dashboard/analytics${buildQuery({ period })}`);
+  getAnalyticsData(period: string = '7j', startDate?: string, endDate?: string): Promise<AnalyticsData> {
+    return request(`/dashboard/analytics${buildQuery({ period, start_date: startDate, end_date: endDate })}`);
   },
 
   // ── CRM — Clients ─────────────────────────────────────────────────────

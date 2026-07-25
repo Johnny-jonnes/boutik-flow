@@ -416,6 +416,7 @@ export default function POSPage() {
                     className="p-qty-input"
                     type="text"
                     inputMode="numeric"
+                    onFocus={e => e.target.select()}
                     value={item.cartQuantity === 0 ? '' : item.cartQuantity}
                     onChange={e => {
                       const val = e.target.value;

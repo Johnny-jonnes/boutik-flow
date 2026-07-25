@@ -287,17 +287,13 @@ function ProductsContent() {
             <label
               htmlFor={isEdit ? "edit-file-input" : "add-file-input"}
               className="photo-upload-zone"
-              style={{ cursor: 'pointer', flex: 1 }}
+              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
             >
               {imgPreview ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <img src={imgPreview} alt="Aperçu" className="uploaded-preview-img" />
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Changer la photo</span>
-                </div>
+                <img src={imgPreview} alt="Photo du produit" className="uploaded-preview-img" style={{ width: '54px', height: '54px', borderRadius: '10px', objectFit: 'cover' }} />
               ) : (
-                <div className="upload-placeholder-box">
-                  <Camera size={20} style={{ color: 'var(--text-muted)' }} />
-                  <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>Ajouter une photo</span>
+                <div className="upload-placeholder-box" style={{ width: '54px', height: '54px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-2)', border: '1px dashed var(--border-default)' }}>
+                  <Camera size={22} style={{ color: 'var(--text-muted)' }} />
                 </div>
               )}
               <input

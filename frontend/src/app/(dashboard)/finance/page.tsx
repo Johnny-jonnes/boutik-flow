@@ -108,8 +108,23 @@ export default function FinancePage() {
       const typeParam = selectedType !== 'all' ? selectedType : undefined;
       const categoryParam = selectedCategory !== 'all' ? selectedCategory : undefined;
       const periodParam = selectedPeriod !== 'all' ? selectedPeriod : 'all';
-      const startDateParam = selectedPeriod === 'custom' && filterDateFrom ? filterDateFrom : undefined;
-      const endDateParam = selectedPeriod === 'custom' && filterDateTo ? filterDateTo : undefined;
+      
+      let startDateParam = selectedPeriod === 'custom' && filterDateFrom ? filterDateFrom : undefined;
+      let endDateParam = selectedPeriod === 'custom' && filterDateTo ? filterDateTo : undefined;
+
+      if (selectedPeriod === '7j') {
+        const d = new Date(); d.setDate(d.getDate() - 7);
+        startDateParam = d.toISOString().split('T')[0];
+        endDateParam = new Date().toISOString().split('T')[0];
+      } else if (selectedPeriod === '30j') {
+        const d = new Date(); d.setDate(d.getDate() - 30);
+        startDateParam = d.toISOString().split('T')[0];
+        endDateParam = new Date().toISOString().split('T')[0];
+      } else if (selectedPeriod === '90j') {
+        const d = new Date(); d.setDate(d.getDate() - 90);
+        startDateParam = d.toISOString().split('T')[0];
+        endDateParam = new Date().toISOString().split('T')[0];
+      }
 
       const res = await api.getFinanceTransactions(
         page,
@@ -121,7 +136,8 @@ export default function FinancePage() {
         endDateParam
       );
 
-      setTransactions(res.items || []);
+      const items = (res.items || []).sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+      setTransactions(items);
       setSummary(res.summary || null);
       setTotal(res.total || 0);
       setTotalPages(res.pages || 1);

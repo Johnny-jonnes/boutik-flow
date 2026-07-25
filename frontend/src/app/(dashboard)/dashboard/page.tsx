@@ -188,12 +188,29 @@ export default function DashboardPage() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
+      let start = periodFilter === 'custom' && customStartDate ? customStartDate : undefined;
+      let end = periodFilter === 'custom' && customEndDate ? customEndDate : undefined;
+
+      if (periodFilter === '7j') {
+        const d = new Date(); d.setDate(d.getDate() - 7);
+        start = d.toISOString().split('T')[0];
+        end = new Date().toISOString().split('T')[0];
+      } else if (periodFilter === '30j') {
+        const d = new Date(); d.setDate(d.getDate() - 30);
+        start = d.toISOString().split('T')[0];
+        end = new Date().toISOString().split('T')[0];
+      } else if (periodFilter === '90j') {
+        const d = new Date(); d.setDate(d.getDate() - 90);
+        start = d.toISOString().split('T')[0];
+        end = new Date().toISOString().split('T')[0];
+      }
+
       const [kpiData, ordersData, clientsData, productsData, analyticsData] = await Promise.all([
-        api.getDashboardKPIs(),
+        api.getDashboardKPIs(periodFilter, start, end),
         api.getOrders(orderPage, undefined),
         api.getClients(1, 100),
         api.getProducts(1, 100),
-        api.getAnalyticsData(periodFilter).catch(() => null)
+        api.getAnalyticsData(periodFilter, start, end).catch(() => null)
       ]);
       setKpis(kpiData);
       setRecentOrders(ordersData.items.slice(0, ordersPerPage));
@@ -210,7 +227,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchData();
-  }, [language, orderPage, ordersPerPage, periodFilter]);
+  }, [language, orderPage, ordersPerPage, periodFilter, customStartDate, customEndDate]);
 
   if (isLoading || !kpis) {
     return (

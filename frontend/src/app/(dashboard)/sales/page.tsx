@@ -180,8 +180,14 @@ export default function SalesHistoryPage() {
 
   // Filter Logic
   const filteredSales = sales.filter(o => {
-    if (filterDateFrom && new Date(o.created_at) < new Date(filterDateFrom)) return false;
-    if (filterDateTo && new Date(o.created_at) > new Date(filterDateTo + 'T23:59:59')) return false;
+    if (filterDateFrom) {
+      const fromMs = new Date(filterDateFrom + 'T00:00:00').getTime();
+      if (new Date(o.created_at).getTime() < fromMs) return false;
+    }
+    if (filterDateTo) {
+      const toMs = new Date(filterDateTo + 'T23:59:59.999').getTime();
+      if (new Date(o.created_at).getTime() > toMs) return false;
+    }
     
     if (filterPayment !== 'all') {
       if (getPaymentMethod(o.notes) !== filterPayment) return false;

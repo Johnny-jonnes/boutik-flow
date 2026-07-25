@@ -554,7 +554,7 @@ export default function OrdersPage() {
                   </select>
                 </div>
                 <div className="form-group" style={{ width: '80px' }}>
-                  <input type="number" className="input" required min="1" value={item.quantity} onChange={e => handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)} />
+                  <input type="number" className="input" required min="1" value={item.quantity} onFocus={e => e.target.select()} onChange={e => handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)} />
                 </div>
                 {createForm.items.length > 1 && (
                   <button type="button" className="btn btn-ghost btn-icon btn-danger-icon" onClick={() => handleRemoveItem(index)}>

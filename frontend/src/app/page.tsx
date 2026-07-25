@@ -578,8 +578,8 @@ export default function HomePage() {
         .nav-logo-text {
           font-family: var(--font-display);
           font-size: 1.15rem;
-          font-weight: 700;
-          background: linear-gradient(135deg, #818cf8, #4f46e5);
+          font-weight: 800;
+          background: linear-gradient(90deg, #CE1126 0%, #FCD116 50%, #009460 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
