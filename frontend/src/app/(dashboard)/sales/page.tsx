@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Download, FileText, Eye, Printer, RotateCcw, Search, Calendar, CreditCard as CardIcon } from 'lucide-react';
+import { Download, Eye, Printer, RotateCcw, Search, Calendar, CreditCard as CardIcon } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import type { Order, Client, Product } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { ReceiptModal } from '@/components/ui/ReceiptModal';
 import { useLanguage } from '@/context/LanguageContext';
+import { extractPaymentMethod } from '@/lib/saleNotes';
 
 function formatGNF(amount: number) {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' GNF';
@@ -70,10 +71,18 @@ export default function SalesHistoryPage() {
   const fetchSales = async () => {
     try {
       setIsLoading(true);
-      const response = await api.getOrders(1); // Fetch orders page 1 (we can pagination in client-side)
-      // Filter for delivered orders (completed sales)
-      const completedSales = response.items.filter(o => o.status === 'delivered');
-      setSales(completedSales);
+      // Charge toutes les commandes (pas seulement les 100 premières) avant
+      // de filtrer sur "livrée" : sinon l'historique perdait silencieusement
+      // les ventes les plus anciennes dès que la boutique dépassait 100
+      // commandes au total, tous statuts confondus.
+      const first = await api.getOrders(1, undefined, 100);
+      let all = first.items;
+      const totalPages = Math.min(first.pages || 1, 50); // garde-fou anti-boucle infinie
+      for (let page = 2; page <= totalPages; page++) {
+        const next = await api.getOrders(page, undefined, 100);
+        all = all.concat(next.items);
+      }
+      setSales(all.filter(o => o.status === 'delivered'));
     } catch (error) {
       toast.error(language === 'fr' ? "Erreur de récupération de l'historique" : "Error fetching history");
     } finally {
@@ -94,12 +103,6 @@ export default function SalesHistoryPage() {
   };
 
   const getProductName = (productId: string) => products.find(p => p.id === productId)?.name || `Produit...`;
-
-  const getPaymentMethod = (notes: string | null) => {
-    if (!notes) return 'cash';
-    const match = notes.match(/Mode de paiement:\s*(\w+)/);
-    return match ? match[1] : 'cash';
-  };
 
   const getPaymentLabel = (method: string) => {
     const labels: Record<string, string> = {
@@ -131,7 +134,7 @@ export default function SalesHistoryPage() {
       getClientName(o.client_id),
       String(o.total || 0),
       String(o.items?.length || 0),
-      getPaymentLabel(getPaymentMethod(o.notes)),
+      getPaymentLabel(extractPaymentMethod(o.notes)),
       o.notes || '',
       new Date(o.created_at).toLocaleDateString('fr-FR'),
     ]);
@@ -190,7 +193,7 @@ export default function SalesHistoryPage() {
     }
     
     if (filterPayment !== 'all') {
-      if (getPaymentMethod(o.notes) !== filterPayment) return false;
+      if (extractPaymentMethod(o.notes) !== filterPayment) return false;
     }
 
     if (searchQuery) {
@@ -292,7 +295,7 @@ export default function SalesHistoryPage() {
               </thead>
               <tbody>
                 {paginatedSales.map(order => {
-                  const paymentMethod = getPaymentMethod(order.notes);
+                  const paymentMethod = extractPaymentMethod(order.notes);
                   return (
                     <tr key={order.id}>
                       <td>
@@ -348,11 +351,22 @@ export default function SalesHistoryPage() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="pagination-bar" style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', borderTop: '1px solid var(--border-subtle)' }}>
+              <div className="pagination-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderTop: '1px solid var(--border-subtle)', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                   {language === 'fr' ? `Affichage de ${(currentPage - 1) * perPage + 1} à ${Math.min(currentPage * perPage, totalFiltered)} sur ${totalFiltered} ventes` : `Showing ${(currentPage - 1) * perPage + 1} to ${Math.min(currentPage * perPage, totalFiltered)} of ${totalFiltered} sales`}
                 </span>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <select
+                    className="input"
+                    style={{ width: '80px' }}
+                    value={perPage}
+                    onChange={e => { setPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                  >
+                    <option value={15}>15</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
                   <button className="btn btn-ghost btn-sm" disabled={currentPage === 1} onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}>
                     {language === 'fr' ? 'Précédent' : 'Previous'}
                   </button>
@@ -372,7 +386,7 @@ export default function SalesHistoryPage() {
           <div className="detail-grid">
             <div className="detail-row"><span className="detail-label">{language === 'fr' ? 'N° Vente' : 'Sale ID'}</span><span className="detail-value">BF-{selectedSale.id.slice(0, 8).toUpperCase()}</span></div>
             <div className="detail-row"><span className="detail-label">Client</span><span className="detail-value">{getClientName(selectedSale.client_id)}</span></div>
-            <div className="detail-row"><span className="detail-label">{language === 'fr' ? 'Mode de Paiement' : 'Payment Method'}</span><span className="detail-value">{getPaymentLabel(getPaymentMethod(selectedSale.notes))}</span></div>
+            <div className="detail-row"><span className="detail-label">{language === 'fr' ? 'Mode de Paiement' : 'Payment Method'}</span><span className="detail-value">{getPaymentLabel(extractPaymentMethod(selectedSale.notes))}</span></div>
             <div className="detail-row"><span className="detail-label">Total</span><span className="detail-value order-amount text-emerald">{formatGNF(Number(selectedSale.total) || 0)}</span></div>
             <div className="detail-row"><span className="detail-label">Date</span><span className="detail-value">{formatDate(selectedSale.created_at, language)}</span></div>
             

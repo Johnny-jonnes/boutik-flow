@@ -5,6 +5,7 @@ import { Modal } from '@/components/ui/Modal';
 import { useLanguage } from '@/context/LanguageContext';
 import { Printer } from 'lucide-react';
 import { toast } from 'sonner';
+import { extractPaymentMethod, extractDiscount } from '@/lib/saleNotes';
 import './ReceiptModal.css';
 
 interface ReceiptModalProps {
@@ -20,8 +21,6 @@ interface ReceiptModalProps {
     status: string;
   };
   shopName: string;
-  shopPhone?: string;
-  shopAddress?: string;
   sellerName?: string;
 }
 
@@ -30,11 +29,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   onClose,
   order,
   shopName,
-  shopPhone,
-  shopAddress,
   sellerName,
 }) => {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   const [format, setFormat] = useState<'thermal' | 'a4'>('thermal');
 
   const formatGNF = (amount: number, compact = false) => {
@@ -151,7 +148,6 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             .powered-by { font-size: 0.68em; color: #9ca3af; margin: 0.15rem 0 0 0; font-weight: 600; }
             .powered-url { font-size: 0.62em; color: #9ca3af; margin: 0; }
             .shop-logo-placeholder { width: 28px; height: 28px; margin: 0 auto 0.35rem auto; background: #047857; color: white; font-weight: 800; font-size: 0.75rem; border-radius: 5px; display: flex; align-items: center; justify-content: center; }
-            .shop-detail { margin: 0; color: #4b5563; font-size: 0.82em; }
             .strong { font-weight: 700; }
             .items-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
             .items-table th { text-align: left; font-weight: 700; padding: 0.3rem 0.2rem; border-bottom: 1px solid #111827; font-size: 0.78em; text-transform: uppercase; }
@@ -193,8 +189,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
   const receiptNumber = `BF-${order.id.slice(0, 8).toUpperCase()}`;
   const subtotal = order.items?.reduce((acc, item) => acc + (item.unit_price || 0) * item.quantity, 0) || 0;
-  const paymentInfo = order.notes?.match(/Mode de paiement:\s*(\w+)/)?.[1] || 'cash';
-  const discountInfo = order.notes?.match(/Remise:\s*([\d,]+)/)?.[1] || '0';
+  const paymentInfo = extractPaymentMethod(order.notes);
+  const discountAmount = extractDiscount(order.notes);
 
   const paymentLabels: Record<string, string> = {
     cash: language === 'fr' ? 'Espèces' : 'Cash',
@@ -232,8 +228,6 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             <div className="receipt-header">
               <div className="shop-logo-placeholder">BF</div>
               <h2 className="shop-name">{shopName}</h2>
-              {shopAddress && <p className="shop-detail">{shopAddress}</p>}
-              {shopPhone && <p className="shop-detail">Tel : {shopPhone}</p>}
               <div className="receipt-line-solid" />
               <p className="receipt-title">{language === 'fr' ? 'REÇU DE VENTE' : 'SALES RECEIPT'}</p>
               <div className="receipt-line-dash" />
@@ -318,10 +312,10 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                 <span>{language === 'fr' ? 'Sous-total' : 'Subtotal'} ({order.items?.length || 0}) :</span>
                 <span>{formatGNF(subtotal)}</span>
               </div>
-              {Number(discountInfo.replace(',', '')) > 0 && (
+              {discountAmount > 0 && (
                 <div className="total-row discount-row">
                   <span>{language === 'fr' ? 'Remise' : 'Discount'} :</span>
-                  <span>-{formatGNF(Number(discountInfo.replace(',', '')))}</span>
+                  <span>-{formatGNF(discountAmount)}</span>
                 </div>
               )}
               <div className="receipt-line-dash" />

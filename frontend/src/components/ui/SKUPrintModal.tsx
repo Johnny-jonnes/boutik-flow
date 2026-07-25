@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Modal } from '@/components/ui/Modal';
-import { Printer, Download, Barcode, Grid, Tag } from 'lucide-react';
+import { Printer, Download, Grid, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface SKUPrintModalProps {

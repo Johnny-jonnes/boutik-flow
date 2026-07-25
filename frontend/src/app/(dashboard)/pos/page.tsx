@@ -13,6 +13,7 @@ import { ReceiptModal } from '@/components/ui/ReceiptModal';
 import { Modal } from '@/components/ui/Modal';
 import { Product } from '@/types';
 import { SoundEffects, triggerHaptic } from '@/lib/audio';
+import { buildSaleNotes } from '@/lib/saleNotes';
 
 interface CartItem extends Product { cartQuantity: number; }
 
@@ -173,9 +174,7 @@ export default function POSPage() {
       const payload: any = {
         status: isDebt ? 'pending' : 'delivered',
         items: cart.map(i => ({ product_id: i.id, quantity: i.cartQuantity })),
-        notes: isDebt
-          ? `[DETTE] Montant: ${total} GNF | Paiement: ${paymentMethod} | Remise: ${discount} GNF`
-          : `Paiement: ${paymentMethod} | Remise: ${discount} GNF`,
+        notes: buildSaleNotes({ paymentMethod, discount, isDebt, debtTotal: total }),
         is_debt: isDebt,
       };
       if (selectedClientId) payload.client_id = selectedClientId;
