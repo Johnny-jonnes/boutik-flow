@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CircleDollarSign, ShoppingBag, Users, Clock, Crown, CheckCircle, BarChart3, MessageCircle, ArrowDownRight, Wallet, Package } from 'lucide-react';
 import type { DashboardKPIs, Order, AnalyticsData } from '@/types';
 import { api } from '@/lib/api/client';
@@ -189,7 +189,23 @@ export default function DashboardPage() {
     else setGreeting(t('dash.welcome_evening'));
   }, [language, t]);
 
+  // Incrémenté à chaque fetchData() : permet à une réponse arrivée en
+  // retard de savoir qu'elle est périmée et de ne pas écraser un résultat
+  // plus récent (voir plus bas).
+  const fetchIdRef = useRef(0);
+
   const fetchData = async () => {
+    // Une période "personnalisée" tant que les deux dates ne sont pas
+    // encore choisies n'a pas de sens à envoyer au serveur : celui-ci
+    // l'interprète alors comme "aucune contrainte" et renvoie les KPI de
+    // tout l'historique. Ce fetch prématuré affichait un instant les
+    // totaux globaux (ex : 12 commandes / 12 929 992 GNF) à la place de
+    // ceux de la période réellement choisie.
+    if (periodFilter === 'custom' && (!customStartDate || !customEndDate)) {
+      return;
+    }
+
+    const requestId = ++fetchIdRef.current;
     try {
       setIsLoading(true);
       // Mêmes paramètres que le module Finance : c'est ce qui garantit que
@@ -206,6 +222,14 @@ export default function DashboardPage() {
         api.getProducts(1, 100),
         api.getAnalyticsData(range.period, range.start_date, range.end_date).catch(() => null)
       ]);
+
+      // Une sélection de période plus récente a peut-être déjà déclenché
+      // un autre appel entre-temps (ex : passage rapide de "30 jours" à
+      // une période personnalisée) ; si sa réponse à LUI est déjà arrivée,
+      // celle-ci est obsolète et ne doit pas l'écraser avec des chiffres
+      // périmés — c'était la cause du KPI figé sur le total global.
+      if (requestId !== fetchIdRef.current) return;
+
       setKpis(kpiData);
 
       const ordersInPeriod = (ordersData.items || [])
@@ -217,9 +241,13 @@ export default function DashboardPage() {
       setProducts(productsData.items);
       setAnalytics(analyticsData);
     } catch (error) {
-      toast.error(language === 'fr' ? 'Erreur lors du chargement des données' : 'Error loading dashboard data');
+      if (requestId === fetchIdRef.current) {
+        toast.error(language === 'fr' ? 'Erreur lors du chargement des données' : 'Error loading dashboard data');
+      }
     } finally {
-      setIsLoading(false);
+      if (requestId === fetchIdRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 

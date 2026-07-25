@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Plus,
   Search,
@@ -103,7 +103,23 @@ export default function FinancePage() {
     reference: '',
   });
 
+  // Incrémenté à chaque fetchTransactions() : une réponse arrivée en
+  // retard (ex : l'appel "toutes périodes" déclenché en passant par
+  // "personnalisée" avant d'avoir choisi les deux dates) sait alors
+  // qu'elle est périmée et n'écrase pas un résultat plus récent.
+  const fetchIdRef = useRef(0);
+
   const fetchTransactions = useCallback(async () => {
+    // Tant que les deux dates d'une période personnalisée ne sont pas
+    // choisies, il n'y a rien de sensé à demander au serveur : celui-ci
+    // renverrait "toutes les transactions", ce qui affichait un instant
+    // les totaux globaux à la place de ceux de la période choisie — et
+    // pouvait même écraser le bon résultat si cette réponse arrivait après.
+    if (selectedPeriod === 'custom' && (!filterDateFrom || !filterDateTo)) {
+      return;
+    }
+
+    const requestId = ++fetchIdRef.current;
     setIsLoading(true);
     try {
       const typeParam = selectedType !== 'all' ? selectedType : undefined;
@@ -122,16 +138,25 @@ export default function FinancePage() {
         range.end_date
       );
 
+      // Une sélection plus récente a peut-être déjà déclenché un autre
+      // appel entre-temps ; si celui-ci est déjà arrivé, cette réponse-ci
+      // est obsolète et ne doit pas l'écraser avec des chiffres périmés.
+      if (requestId !== fetchIdRef.current) return;
+
       const items = (res.items || []).sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
       setTransactions(items);
       setSummary(res.summary || null);
       setTotal(res.total || 0);
       setTotalPages(res.pages || 1);
     } catch (err: any) {
-      console.error('Error loading finance transactions:', err);
-      toast.error(err?.message || 'Erreur lors du chargement des transactions');
+      if (requestId === fetchIdRef.current) {
+        console.error('Error loading finance transactions:', err);
+        toast.error(err?.message || 'Erreur lors du chargement des transactions');
+      }
     } finally {
-      setIsLoading(false);
+      if (requestId === fetchIdRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [page, perPage, selectedType, selectedCategory, selectedPeriod, filterDateFrom, filterDateTo]);
 
