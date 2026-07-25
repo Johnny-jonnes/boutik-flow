@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Printer, Download, Grid, Tag } from 'lucide-react';
 import { toast } from 'sonner';
+import JsBarcode from 'jsbarcode';
 
 interface SKUPrintModalProps {
   isOpen: boolean;
@@ -28,6 +29,29 @@ export const SKUPrintModal: React.FC<SKUPrintModalProps> = ({
 
   const skuCode = product.sku || product.barcode || `SKU-${product.id.slice(0, 8).toUpperCase()}`;
 
+  // Vrai code-barres Code128 (encode SKU alphanumérique aussi bien qu'un
+  // code-barres numérique) — remplace l'ancien motif de rayures purement
+  // décoratif qui n'encodait aucune donnée et ne pouvait jamais être
+  // scanné en caisse. Généré une seule fois par code et réutilisé comme
+  // image dans toutes les étiquettes répétées de la planche.
+  const [barcodeDataUrl, setBarcodeDataUrl] = useState('');
+
+  useEffect(() => {
+    try {
+      const canvas = document.createElement('canvas');
+      JsBarcode(canvas, skuCode, {
+        format: 'CODE128',
+        displayValue: false,
+        margin: 0,
+        height: 45,
+        width: 2,
+      });
+      setBarcodeDataUrl(canvas.toDataURL('image/png'));
+    } catch {
+      setBarcodeDataUrl('');
+    }
+  }, [skuCode]);
+
   const formatGNF = (amount: number) => {
     return new Intl.NumberFormat('fr-FR').format(amount) + ' GNF';
   };
@@ -43,7 +67,7 @@ export const SKUPrintModal: React.FC<SKUPrintModalProps> = ({
       if (!ctx) return;
 
       canvas.width = 400;
-      canvas.height = 240;
+      canvas.height = 260;
 
       // Fond blanc
       ctx.fillStyle = '#ffffff';
@@ -58,32 +82,37 @@ export const SKUPrintModal: React.FC<SKUPrintModalProps> = ({
       ctx.fillStyle = '#111827';
       ctx.font = 'bold 20px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(product.name.slice(0, 24), canvas.width / 2, 45);
+      ctx.fillText(product.name.slice(0, 24), canvas.width / 2, 38);
 
-      // SKU text
-      ctx.font = 'bold 26px monospace';
-      ctx.fillText(skuCode, canvas.width / 2, 95);
-
-      // Simulation barre de code-barres
-      ctx.fillStyle = '#000000';
-      const startX = 50;
-      const barWidth = 300;
-      for (let x = startX; x < startX + barWidth; x += 6) {
-        const thickness = (x % 12 === 0 || x % 18 === 0) ? 4 : 2;
-        ctx.fillRect(x, 115, thickness, 55);
-      }
+      // Vrai code-barres Code128 (scannable), composé sur le canvas de
+      // l'étiquette — remplace l'ancienne simulation de rayures qui
+      // n'encodait aucune donnée réelle.
+      const barcodeCanvas = document.createElement('canvas');
+      JsBarcode(barcodeCanvas, skuCode, {
+        format: 'CODE128',
+        displayValue: true,
+        fontSize: 18,
+        margin: 0,
+        height: 55,
+        width: 2.4,
+      });
+      const drawWidth = Math.min(320, barcodeCanvas.width);
+      const scale = drawWidth / barcodeCanvas.width;
+      const drawHeight = barcodeCanvas.height * scale;
+      const barcodeY = 52;
+      ctx.drawImage(barcodeCanvas, (canvas.width - drawWidth) / 2, barcodeY, drawWidth, drawHeight);
 
       // Prix
       ctx.fillStyle = '#047857';
       ctx.font = 'bold 22px sans-serif';
-      ctx.fillText(formatGNF(product.price), canvas.width / 2, 205);
+      ctx.fillText(formatGNF(product.price), canvas.width / 2, barcodeY + drawHeight + 28);
 
       const link = document.createElement('a');
       link.download = `SKU_${skuCode}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
       toast.success('Étiquette SKU téléchargée avec succès !');
-    } catch (err) {
+    } catch {
       toast.error('Erreur lors de la génération de l\'étiquette');
     }
   };
@@ -141,7 +170,11 @@ export const SKUPrintModal: React.FC<SKUPrintModalProps> = ({
               <div key={i} className="sku-card-item">
                 <span className="sku-prod-name">{product.name}</span>
                 <div className="sku-barcode-sim">
-                  <div className="bars-graphic" />
+                  {barcodeDataUrl ? (
+                    <img src={barcodeDataUrl} alt={skuCode} className="barcode-img" />
+                  ) : (
+                    <div className="bars-graphic" />
+                  )}
                   <span className="sku-code-text">{skuCode}</span>
                 </div>
                 <span className="sku-prod-price">{formatGNF(product.price)}</span>
@@ -263,6 +296,14 @@ export const SKUPrintModal: React.FC<SKUPrintModalProps> = ({
             #fff 2px, #fff 4px,
             #000 4px, #000 7px
           );
+        }
+
+        .barcode-img {
+          width: 80%;
+          max-width: 160px;
+          height: 28px;
+          object-fit: contain;
+          image-rendering: pixelated;
         }
 
         .sku-code-text {

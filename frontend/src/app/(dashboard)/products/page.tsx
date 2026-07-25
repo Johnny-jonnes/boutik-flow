@@ -12,6 +12,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import type { Category } from '@/types';
 import { compressImage } from '@/lib/utils/imageCompressor';
 import { useSearchParams, useRouter } from 'next/navigation';
+import QRCode from 'qrcode';
 
 function formatGNF(amount: number) {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' GNF';
@@ -20,7 +21,7 @@ function formatGNF(amount: number) {
 
 
 function ProductsContent() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const searchParams = useSearchParams();
   const categoryIdFromUrl = searchParams.get('category_id');
   const router = useRouter();
@@ -213,51 +214,59 @@ function ProductsContent() {
     }
   };
 
-  // QR Code download/print helpers
+  // QR Code download/print helpers — générés localement (le service Google
+  // Charts précédemment utilisé a été fermé par Google et répond 404 :
+  // aucun QR code ne pouvait plus être ni téléchargé ni imprimé).
   const downloadQRCode = async (sku: string, productName: string) => {
-    const qrUrl = `https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=${encodeURIComponent(sku)}&choe=UTF-8`;
     try {
-      const response = await fetch(qrUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const dataUrl = await QRCode.toDataURL(sku, { width: 300, margin: 1 });
       const a = document.createElement('a');
-      a.href = url;
+      a.href = dataUrl;
       a.download = `QRCode-${productName.replace(/\s+/g, '_')}-${sku}.png`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
     } catch {
-      window.open(qrUrl, '_blank');
+      toast.error(language === 'fr' ? 'Erreur lors de la génération du QR code' : 'Error generating QR code');
     }
   };
 
   const printQRCode = (sku: string, productName: string) => {
-    const qrUrl = `https://chart.googleapis.com/chart?chs=250x250&cht=qr&chl=${encodeURIComponent(sku)}&choe=UTF-8`;
+    // Ouvrir la popup de façon synchrone (avant tout await) : sinon les
+    // navigateurs strictement anti-popup (Safari) bloquent window.open()
+    // une fois sorti du contexte direct du clic utilisateur.
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Imprimer QR Code - ${productName}</title>
-          <style>
-            body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: sans-serif; text-align: center; }
-            h2 { margin-bottom: 5px; }
-            p { margin-top: 5px; color: #555; }
-            img { border: 1px solid #eee; padding: 10px; }
-            @media print {
-              img { max-width: 100%; }
-            }
-          </style>
-        </head>
-        <body onload="window.print(); window.close();">
-          <h2>${productName}</h2>
-          <img src="${qrUrl}" alt="${sku}" />
-          <p>SKU: <strong>${sku}</strong></p>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+    printWindow.document.write(`<html><body style="font-family:sans-serif;text-align:center;padding:2rem;">${language === 'fr' ? 'Génération du QR code…' : 'Generating QR code…'}</body></html>`);
+
+    QRCode.toDataURL(sku, { width: 250, margin: 1 }).then((dataUrl) => {
+      printWindow.document.open();
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Imprimer QR Code - ${productName}</title>
+            <style>
+              body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: sans-serif; text-align: center; }
+              h2 { margin-bottom: 5px; }
+              p { margin-top: 5px; color: #555; }
+              img { border: 1px solid #eee; padding: 10px; }
+              @media print {
+                img { max-width: 100%; }
+              }
+            </style>
+          </head>
+          <body onload="window.print(); window.close();">
+            <h2>${productName}</h2>
+            <img src="${dataUrl}" alt="${sku}" />
+            <p>SKU: <strong>${sku}</strong></p>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }).catch(() => {
+      printWindow.close();
+      toast.error(language === 'fr' ? 'Erreur lors de la génération du QR code' : 'Error generating QR code');
+    });
   };
 
   const filteredProducts = products.filter(p => {
