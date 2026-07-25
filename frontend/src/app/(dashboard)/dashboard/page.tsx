@@ -16,25 +16,24 @@ const STATUS_CONFIG = {
 } as const;
 
 function AnimatedNumber({ value, isCurrency = false, suffix = '' }: { value: number; isCurrency?: boolean; suffix?: string }) {
+  const safeValue = isNaN(value) || value == null ? 0 : Number(value);
   const [displayValue, setDisplayValue] = useState(0);
 
   useEffect(() => {
     let start = 0;
-    const end = value;
+    const end = safeValue;
     if (start === end) {
       setDisplayValue(end);
       return;
     }
 
-    const duration = 1000; // milliseconds
+    const duration = 1000;
     const startTime = performance.now();
     let animationFrameId: number;
 
     const updateNumber = (now: number) => {
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      
-      // Easing function (easeOutQuad)
       const easeProgress = progress * (2 - progress);
       const current = Math.floor(easeProgress * end);
       
@@ -49,9 +48,9 @@ function AnimatedNumber({ value, isCurrency = false, suffix = '' }: { value: num
 
     animationFrameId = requestAnimationFrame(updateNumber);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [value]);
+  }, [safeValue]);
 
-  const formatted = new Intl.NumberFormat('fr-FR').format(displayValue);
+  const formatted = new Intl.NumberFormat('fr-FR').format(displayValue || 0);
   return <span>{formatted}{isCurrency ? ' GNF' : ''}{suffix}</span>;
 }
 

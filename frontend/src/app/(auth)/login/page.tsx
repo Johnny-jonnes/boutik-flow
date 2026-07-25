@@ -109,27 +109,27 @@ export default function LoginPage() {
         {/* Logo BF — couleurs guinéennes */}
         <div className="auth-logo">
           <div className="auth-logo-icon">
-            <svg width="48" height="48" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 0 10px rgba(0,148,96,0.6))' }}>
+            <svg width="48" height="48" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 0 10px rgba(0,148,96,0.5))' }}>
               <defs>
-                <linearGradient id="auth-guinea" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#009460" />
+                <linearGradient id="auth-guinea-h" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#CE1126" />
                   <stop offset="50%" stopColor="#FCD116" />
-                  <stop offset="100%" stopColor="#CE1126" />
+                  <stop offset="100%" stopColor="#009460" />
                 </linearGradient>
               </defs>
-              <polygon points="50,3 93,26 93,74 50,97 7,74 7,26" fill="url(#auth-guinea)" opacity="0.97" />
+              <polygon points="50,3 93,26 93,74 50,97 7,74 7,26" fill="url(#auth-guinea-h)" opacity="0.97" />
               <polygon points="50,3 93,26 93,74 50,97 7,74 7,26" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" fill="none" />
               <text x="50" y="62" fontFamily="Arial Black, sans-serif" fontWeight="900" fontSize="38" fill="white" textAnchor="middle" letterSpacing="-3">BF</text>
-              <rect x="22" y="76" width="56" height="3.5" rx="1.75" fill="#CE1126" opacity="0.6" />
+              <rect x="22" y="76" width="56" height="3.5" rx="1.75" fill="#009460" opacity="0.8" />
             </svg>
           </div>
-          <span className="auth-logo-text" style={{ background: 'linear-gradient(135deg, #009460, #FCD116)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 900, fontSize: '1.3rem', letterSpacing: '-0.03em' }}>BoutikFlow</span>
+          <span className="auth-logo-text" style={{ background: 'linear-gradient(90deg, #CE1126 0%, #FCD116 50%, #009460 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 900, fontSize: '1.3rem', letterSpacing: '-0.03em' }}>BoutikFlow</span>
         </div>
 
         <div className="auth-card glass">
           <div className="auth-header">
-            <h1 className="auth-title" style={{ fontSize: '1.5rem' }}>👋 Bon retour !</h1>
-            <p className="auth-subtitle">Entrez vos informations pour continuer</p>
+            <h1 className="auth-title" style={{ fontSize: '1.5rem' }}>Connexion</h1>
+            <p className="auth-subtitle">Entrez vos accès pour accéder à votre espace</p>
           </div>
 
           {/* Bandeau d'état du serveur */}
@@ -249,7 +249,7 @@ export default function LoginPage() {
                   id="boutique_slug"
                   type="text"
                   className="input input-with-prefix"
-                  placeholder="Ex : mamadou-commerce"
+                  placeholder="nom-de-la-boutique"
                   value={form.boutique_slug}
                   onChange={e => setForm(f => ({ ...f, boutique_slug: e.target.value.toLowerCase() }))}
                   required
@@ -266,7 +266,7 @@ export default function LoginPage() {
                 id="email"
                 type="email"
                 className="input"
-                placeholder="Ex : mamadou@gmail.com"
+                placeholder="nom@gmail.com"
                 value={form.email}
                 onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                 required
@@ -277,7 +277,6 @@ export default function LoginPage() {
             <div className="form-group">
               <div className="form-label-row">
                 <label className="form-label" htmlFor="password">Mot de passe</label>
-                <Link href="/forgot-password" className="form-link">Oublié ?</Link>
               </div>
               <div className="password-input-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                 <input

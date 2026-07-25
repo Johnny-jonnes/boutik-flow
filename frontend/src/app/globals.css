@@ -1681,11 +1681,22 @@ body {
     white-space: nowrap;
   }
 
-  .modal { max-height: 85vh !important; border-radius: var(--radius-2xl) var(--radius-2xl) 0 0 !important; margin-bottom: 0; align-self: flex-end; }
-  .modal-overlay { align-items: flex-end; padding: 0; }
+  .modal {
+    max-height: calc(90vh - 80px) !important;
+    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0 !important;
+    margin-bottom: 0;
+    align-self: flex-end;
+    overflow-y: auto !important;
+  }
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0 0 calc(75px + env(safe-area-inset-bottom, 0px)) 0 !important;
+    z-index: 1100 !important;
+  }
   .modal-actions {
     flex-direction: column !important;
     gap: 0.5rem !important;
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px)) !important;
   }
   .modal-actions .btn { width: 100% !important; }
 

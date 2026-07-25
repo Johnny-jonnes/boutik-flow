@@ -529,88 +529,27 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* Modal Créer Multi-produits */}
-      <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Nouvelle commande">
+      {/* Modal Créer Commande */}
+      <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="+ Commande">
         <form onSubmit={handleCreate} className="modal-form">
           <div className="form-group">
-            <label className="form-label">Client *</label>
+            <label className="form-label">Client</label>
             <select className="input" required value={createForm.client_id} onChange={e => setCreateForm({ ...createForm, client_id: e.target.value })}>
-              <option value="">Sélectionner un client</option>
-              {clients.map(c => <option key={c.id} value={c.id}>{c.name} ({c.phone})</option>)}
+              <option value="">Nom du client</option>
+              {clients.map(c => <option key={c.id} value={c.id}>{c.name} {c.phone ? `(${c.phone})` : ''}</option>)}
             </select>
           </div>
           
-          <div className="form-section-title">Articles</div>
-
-          {/* Scanner barcode / SKU */}
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
-            <form onSubmit={handleScannerSubmit} className="scanner-row" style={{ flex: 1, margin: 0 }}>
-              <div className="scanner-input-wrap">
-                <ScanBarcode size={16} className="scanner-icon" />
-                <input
-                  type="text"
-                  className="input scanner-input"
-                  placeholder={t('ord.scan_placeholder')}
-                  value={scannerInput}
-                  onChange={e => setScannerInput(e.target.value)}
-                  autoFocus
-                />
-              </div>
-              <button type="submit" className="btn btn-secondary btn-sm">{t('common.add')}</button>
-            </form>
-            <button 
-              type="button" 
-              className="btn btn-secondary btn-sm" 
-              onClick={() => setIsCameraScanOpen(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap' }}
-              title={t('prod.scan_camera')}
-            >
-              <Camera size={16} />
-              <span>Caméra</span>
-            </button>
+          <div className="form-group">
+            <label className="form-label">Produits</label>
           </div>
 
-          <BarcodeScannerModal
-            isOpen={isCameraScanOpen}
-            onClose={() => setIsCameraScanOpen(false)}
-            title={t('prod.scan_camera')}
-            onScanSuccess={(code) => {
-              setScannerInput(code);
-              // Trigger search with scanned code
-              const matched = products.find(
-                p => (p.barcode && p.barcode === code) || (p.sku && p.sku.toLowerCase() === code.toLowerCase())
-              );
-              if (matched && matched.is_available && matched.stock > 0) {
-                const existingIndex = createForm.items.findIndex(i => i.product_id === matched.id);
-                if (existingIndex >= 0) {
-                  const newItems = [...createForm.items];
-                  newItems[existingIndex] = { ...newItems[existingIndex], quantity: newItems[existingIndex].quantity + 1 };
-                  setCreateForm(prev => ({ ...prev, items: newItems }));
-                } else {
-                  const emptyIndex = createForm.items.findIndex(i => !i.product_id);
-                  if (emptyIndex >= 0) {
-                    const newItems = [...createForm.items];
-                    newItems[emptyIndex] = { product_id: matched.id, quantity: 1 };
-                    setCreateForm(prev => ({ ...prev, items: newItems }));
-                  } else {
-                    setCreateForm(prev => ({ ...prev, items: [...prev.items, { product_id: matched.id, quantity: 1 }] }));
-                  }
-                }
-                toast.success(`${matched.name} ajouté au panier`);
-                setScannerInput('');
-              } else if (!matched) {
-                toast.error(`Aucun produit trouvé pour "${code}"`);
-              } else {
-                toast.error(`${matched.name} est indisponible ou en rupture.`);
-              }
-            }}
-          />
           <div className="items-list">
             {createForm.items.map((item, index) => (
               <div key={index} className="item-row">
                 <div className="form-group" style={{ flex: 1 }}>
                   <select className="input" required value={item.product_id} onChange={e => handleItemChange(index, 'product_id', e.target.value)}>
-                    <option value="">Produit</option>
+                    <option value="">Choisir un produit</option>
                     {products.filter(p => p.is_available && p.stock > 0).map(p => <option key={p.id} value={p.id}>{p.name} - {formatGNF(p.price)}</option>)}
                   </select>
                 </div>
@@ -631,7 +570,7 @@ export default function OrdersPage() {
 
           <div className="form-group" style={{ marginTop: '1rem' }}>
             <label className="form-label">Notes (optionnel)</label>
-            <textarea className="input" rows={2} placeholder="Ex: Livraison urgente" value={createForm.notes} onChange={e => setCreateForm({ ...createForm, notes: e.target.value })} />
+            <textarea className="input" rows={2} placeholder="Remarques ou instructions" value={createForm.notes} onChange={e => setCreateForm({ ...createForm, notes: e.target.value })} />
           </div>
 
           {createForm.client_id && (

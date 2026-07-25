@@ -132,19 +132,8 @@ async function tryRefreshToken(): Promise<boolean> {
 // (générés une fois — ne jamais utiliser de chaînes courtes type 'p1' qui
 // sont rejetées par le backend FastAPI avec "Input should be a valid UUID")
 
-const DEFAULT_PRODUCTS = [
-  { id: '11111111-0001-4000-a000-000000000001', name: "Robe d'été Fleurie",   price: 150000,  stock: 15, sku: 'ROB-FL-01', description: 'Robe légère en coton bio.',              category_id: 'cccc0001-0000-4000-a000-000000000001', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  { id: '11111111-0002-4000-a000-000000000002', name: 'Baskets Sport Max',     price: 350000,  stock: 8,  sku: 'BAS-SP-02', description: 'Chaussures de running ultra confort.',     category_id: 'cccc0002-0000-4000-a000-000000000002', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  { id: '11111111-0003-4000-a000-000000000003', name: 'Rouge à Lèvres Matte', price: 75000,   stock: 24, sku: 'RAL-MA-03', description: 'Tenue 24h sans transfert.',              category_id: 'cccc0003-0000-4000-a000-000000000003', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  { id: '11111111-0004-4000-a000-000000000004', name: 'Crème Hydratante Aloé', price: 120000, stock: 18, sku: 'CRE-HY-04', description: 'Hydratation intense peaux sensibles.',   category_id: 'cccc0003-0000-4000-a000-000000000003', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  { id: '11111111-0005-4000-a000-000000000005', name: 'Smartphone Zed X',     price: 1800000, stock: 4,  sku: 'TEL-ZX-05', description: 'Écran AMOLED, 128 Go.',                  category_id: 'cccc0004-0000-4000-a000-000000000004', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-];
-
-const DEFAULT_CLIENTS = [
-  { id: 'aaaaaaaa-0001-4000-a000-000000000001', name: 'Mamadou Diallo', phone: '622 12 34 56', email: 'diallo@boutik.com', status: 'active', created_at: new Date().toISOString() },
-  { id: 'aaaaaaaa-0002-4000-a000-000000000002', name: 'Mariama Barry',  phone: '628 98 76 54', email: 'barry@boutik.com',  status: 'vip',    created_at: new Date().toISOString() },
-  { id: 'aaaaaaaa-0003-4000-a000-000000000003', name: 'Amadou Camara', phone: '620 45 67 89', email: 'camara@boutik.com', status: 'new',    created_at: new Date().toISOString() },
-];
+const DEFAULT_PRODUCTS: any[] = [];
+const DEFAULT_CLIENTS: any[] = [];
 
 const DEFAULT_CATEGORIES = [
   { id: 'cccc0001-0000-4000-a000-000000000001', name: 'Vêtements',    slug: 'vetements',    created_at: new Date().toISOString() },

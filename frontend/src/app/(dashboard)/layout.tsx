@@ -82,14 +82,14 @@ function Logo({ size = 20 }: { size?: number }) {
         }}
       >
         <defs>
-          <linearGradient id="bf-guinea" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#009460" />
+          <linearGradient id="bf-guinea-h" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#CE1126" />
             <stop offset="50%" stopColor="#FCD116" />
-            <stop offset="100%" stopColor="#CE1126" />
+            <stop offset="100%" stopColor="#009460" />
           </linearGradient>
         </defs>
         {/* Hexagone pointy-top */}
-        <polygon points="50,3 93,26 93,74 50,97 7,74 7,26" fill="url(#bf-guinea)" opacity="0.95" />
+        <polygon points="50,3 93,26 93,74 50,97 7,74 7,26" fill="url(#bf-guinea-h)" opacity="0.95" />
         <polygon points="50,3 93,26 93,74 50,97 7,74 7,26" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" fill="none" />
         {/* Monogramme BF */}
         <text x="50" y="62" fontFamily="Arial Black, sans-serif" fontWeight="900" fontSize="38" fill="white" textAnchor="middle" letterSpacing="-3">BF</text>
@@ -397,7 +397,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         .mobile-boutique-name {
           font-family: var(--font-display);
           font-size: 1.05rem; font-weight: 800;
-          background: linear-gradient(135deg, #FCD116, #CE1126);
+          background: linear-gradient(90deg, #CE1126 0%, #FCD116 50%, #009460 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;

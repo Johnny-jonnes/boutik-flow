@@ -221,44 +221,29 @@ export default function HomePage() {
       {/* Navbar */}
       <nav className="landing-nav glass">
         <div className="nav-logo">
-          <div className="nav-logo-icon">
-            <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <div className="nav-logo-icon" style={{ background: 'transparent', border: 'none', width: 'auto', height: 'auto' }}>
+            <svg width="36" height="36" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
               <defs>
-                <linearGradient id="nav-hex-grad" x1="0" y1="0" x2="40" y2="40">
-                  <stop stopColor="#6dd5c4" />
-                  <stop offset="1" stopColor="#31a292" />
+                <linearGradient id="landing-bf-guinea-h" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#CE1126" />
+                  <stop offset="50%" stopColor="#FCD116" />
+                  <stop offset="100%" stopColor="#009460" />
                 </linearGradient>
-                <linearGradient id="nav-wave-amber" x1="0" y1="0" x2="40" y2="0">
-                  <stop stopColor="#fbbf24" stopOpacity="0" />
-                  <stop offset="0.4" stopColor="#f59e0b" />
-                  <stop offset="1" stopColor="#fbbf24" stopOpacity="0" />
-                </linearGradient>
-                <filter id="nav-glow">
-                  <feGaussianBlur stdDeviation="1.5" result="blur" />
-                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                </filter>
               </defs>
-              {/* Hexagon */}
-              <path d="M20 2L36 11V29L20 38L4 29V11L20 2Z" fill="url(#nav-hex-grad)" opacity="0.95" />
-              <path d="M20 2L36 11V29L20 38L4 29V11L20 2Z" stroke="rgba(109,213,196,0.3)" strokeWidth="0.5" fill="none" />
-              {/* Wave line 1 — top, white, subtle */}
-              <path d="M8 15 Q14 12 20 15 Q26 18 32 15" stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-              {/* Wave line 2 — middle, white bright */}
-              <path d="M8 20 Q14 16 20 20 Q26 24 32 20" stroke="rgba(255,255,255,0.9)" strokeWidth="1.6" fill="none" strokeLinecap="round" />
-              {/* Wave line 2 — amber accent overlay */}
-              <path d="M8 20 Q14 16 20 20 Q26 24 32 20" stroke="url(#nav-wave-amber)" strokeWidth="1.6" fill="none" strokeLinecap="round" opacity="0.7" />
-              {/* Wave line 3 — bottom, white subtle */}
-              <path d="M8 25 Q14 22 20 25 Q26 28 32 25" stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+              <polygon points="50,3 93,26 93,74 50,97 7,74 7,26" fill="url(#landing-bf-guinea-h)" />
+              <polygon points="50,3 93,26 93,74 50,97 7,74 7,26" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />
+              <text x="50" y="62" fontFamily="Arial Black, sans-serif" fontWeight="900" fontSize="38" fill="white" textAnchor="middle" letterSpacing="-3">BF</text>
+              <rect x="22" y="76" width="56" height="3.5" rx="1.75" fill="#009460" opacity="0.8" />
             </svg>
           </div>
-          <span className="nav-logo-text">
-            <span style={{ color: 'var(--text-primary)', fontWeight: 800 }}>Boutik</span><span style={{ background: 'linear-gradient(135deg, #6dd5c4, #31a292)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 700 }}>Flow</span>
+          <span className="nav-logo-text" style={{ background: 'linear-gradient(90deg, #CE1126 0%, #FCD116 50%, #009460 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 900, fontSize: '1.25rem' }}>
+            BoutikFlow
           </span>
         </div>
         <div className="nav-actions">
           <ThemeToggle />
-          <Link href="/login" className="btn btn-ghost" id="btn-nav-login">Se connecter</Link>
-          <Link href="/register" className="btn btn-primary" id="btn-nav-register">Essayer BoutikFlow</Link>
+          <Link href="/login" className="btn btn-ghost hide-on-xs" id="btn-nav-login">Se connecter</Link>
+          <Link href="/register" className="btn btn-primary nav-cta-btn" id="btn-nav-register">Essayer BoutikFlow</Link>
         </div>
       </nav>
 
@@ -973,12 +958,21 @@ export default function HomePage() {
             font-size: 1rem !important;
           }
           .nav-actions {
-            gap: 0.35rem !important;
+            gap: 0.5rem !important;
+            flex-shrink: 0;
           }
           .nav-actions .btn {
-            padding: 0.4rem 0.65rem !important;
-            font-size: 0.75rem !important;
+            padding: 0.45rem 0.75rem !important;
+            font-size: 0.8rem !important;
             height: auto !important;
+            white-space: nowrap !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .hide-on-xs { display: none !important; }
+          .nav-cta-btn {
+            padding: 0.4rem 0.7rem !important;
+            font-size: 0.78rem !important;
           }
         }
         .footer-brand-col {

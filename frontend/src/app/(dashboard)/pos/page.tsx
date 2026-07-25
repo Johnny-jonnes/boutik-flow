@@ -147,8 +147,11 @@ export default function POSPage() {
   const setDirectQty = (id: string, qty: number) =>
     setCart(prev => prev.map(i => {
       if (i.id !== id) return i;
-      if (qty <= 0) return { ...i, cartQuantity: 1 };
-      if (qty > i.stock) return { ...i, cartQuantity: i.stock };
+      if (qty < 0) return { ...i, cartQuantity: 0 };
+      if (qty > i.stock) {
+        toast.error(language === 'fr' ? 'Stock insuffisant' : 'Insufficient stock');
+        return { ...i, cartQuantity: i.stock };
+      }
       return { ...i, cartQuantity: qty };
     }));
 
@@ -269,9 +272,9 @@ export default function POSPage() {
         <div>
           <h1 className="p-title">
             <Zap size={20} style={{ display:'inline', verticalAlign:'middle', marginRight:'0.5rem', color:'var(--color-accent-500)' }}/>
-            {language === 'fr' ? 'Caisse / Vente' : 'Checkout / Sales'}
+            {language === 'fr' ? 'Vendre' : 'Checkout'}
           </h1>
-          <p className="p-subtitle">{language === 'fr' ? 'Enregistrez vos ventes.' : 'Record your sales.'}</p>
+          <p className="p-subtitle">{language === 'fr' ? 'Effectuer une nouvelle vente.' : 'Record a new sale.'}</p>
         </div>
         <button className="btn btn-ghost p-expense-btn" onClick={() => setIsExpenseModalOpen(true)}>
           <ArrowUpRight size={15}/>
@@ -411,8 +414,21 @@ export default function POSPage() {
                   <button className="p-qty-btn" onClick={() => updateQty(item.id, -1)}><Minus size={12}/></button>
                   <input
                     className="p-qty-input"
-                    type="number" value={item.cartQuantity} min="1" max={item.stock}
-                    onChange={e => setDirectQty(item.id, parseInt(e.target.value) || 1)}
+                    type="text"
+                    inputMode="numeric"
+                    value={item.cartQuantity === 0 ? '' : item.cartQuantity}
+                    onChange={e => {
+                      const val = e.target.value;
+                      if (val === '') {
+                        setDirectQty(item.id, 0);
+                      } else {
+                        const parsed = parseInt(val, 10);
+                        if (!isNaN(parsed)) setDirectQty(item.id, parsed);
+                      }
+                    }}
+                    onBlur={() => {
+                      if (!item.cartQuantity || item.cartQuantity <= 0) setDirectQty(item.id, 1);
+                    }}
                   />
                   <button className="p-qty-btn" onClick={() => updateQty(item.id, 1)}><Plus size={12}/></button>
                   <button className="p-remove-btn" onClick={() => removeFromCart(item.id)}><Trash2 size={12}/></button>

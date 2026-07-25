@@ -280,17 +280,24 @@ function ProductsContent() {
     const imgPreview = isEdit ? editImagePreview : addImagePreview;
     return (
       <form onSubmit={onSubmit} className="modal-form">
-        {/* IA Section */}
+        {/* Photo Section */}
         <div className="ai-photo-section">
-          <label className="form-label">📷 Ajouter une photo</label>
+          <label className="form-label">Photo du produit</label>
           <div className="ai-photo-row">
-            <div className="photo-upload-zone">
+            <label
+              htmlFor={isEdit ? "edit-file-input" : "add-file-input"}
+              className="photo-upload-zone"
+              style={{ cursor: 'pointer', flex: 1 }}
+            >
               {imgPreview ? (
-                <img src={imgPreview} alt="Aperçu" className="uploaded-preview-img" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <img src={imgPreview} alt="Aperçu" className="uploaded-preview-img" />
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Changer la photo</span>
+                </div>
               ) : (
-                <div className="upload-placeholder">
-                  <ImageIcon size={18} />
-                  <span>Toucher pour ajouter</span>
+                <div className="upload-placeholder-box">
+                  <Camera size={20} style={{ color: 'var(--text-muted)' }} />
+                  <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>Ajouter une photo</span>
                 </div>
               )}
               <input
@@ -300,10 +307,8 @@ function ProductsContent() {
                 id={isEdit ? "edit-file-input" : "add-file-input"}
                 onChange={(e) => handleImageUpload(e, isEdit)}
               />
-              <label htmlFor={isEdit ? "edit-file-input" : "add-file-input"} className="btn btn-secondary btn-sm upload-btn">
-                Parcourir
-              </label>
-            </div>
+            </label>
+
             {imgPreview && (
               <button
                 type="button"
@@ -312,7 +317,7 @@ function ProductsContent() {
                 onClick={() => handleAIPrefill(isEdit)}
               >
                 <Sparkles size={13} className="sparkle-icon" />
-                {isAILoading ? 'Analyse...' : '✨ Remplir automatiquement'}
+                {isAILoading ? 'Analyse...' : 'Auto-remplir avec l\'IA'}
               </button>
             )}
           </div>
@@ -722,17 +727,20 @@ function ProductsContent() {
           align-items: center;
           gap: 0.75rem;
         }
-        .upload-placeholder {
-          width: 44px;
-          height: 44px;
-          border-radius: 6px;
-          border: 1px dashed var(--border-default);
+        .upload-placeholder-box {
           display: flex;
-          flex-direction: column;
           align-items: center;
-          justify-content: center;
-          font-size: 0.6rem;
-          color: var(--text-muted);
+          gap: 0.625rem;
+          padding: 0.625rem 0.875rem;
+          border: 1px dashed var(--border-default);
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.02);
+          color: var(--text-primary);
+          transition: all 0.2s ease;
+        }
+        .upload-placeholder-box:hover {
+          background: rgba(255, 255, 255, 0.06);
+          border-color: var(--color-brand-500);
         }
         .uploaded-preview-img {
           width: 44px;
