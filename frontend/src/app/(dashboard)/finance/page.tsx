@@ -570,7 +570,7 @@ export default function FinancePage() {
               onClick={() => handleTypeChange('income')}
             >
               <ArrowDownLeft size={18} />
-              <span>{language === 'fr' ? '💰 Argent reçu' : '💰 Income'}</span>
+              <span>{language === 'fr' ? 'Argent reçu' : 'Income'}</span>
             </button>
             <button
               type="button"
@@ -580,7 +580,7 @@ export default function FinancePage() {
               onClick={() => handleTypeChange('expense')}
             >
               <ArrowUpRight size={18} />
-              <span>{language === 'fr' ? '💸 Argent sorti' : '💸 Expense'}</span>
+              <span>{language === 'fr' ? 'Argent sorti' : 'Expense'}</span>
             </button>
           </div>
 
