@@ -770,17 +770,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
           }
 
+          .backdrop { display: block; z-index: 1200 !important; }
+
           .sidebar {
             position: fixed; left: 0; top: 0; bottom: 0;
             width: 280px;
             transform: translateX(-100%);
             transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            z-index: 1050;
-            box-shadow: 12px 0 40px rgba(0,0,0,0.65);
-            padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+            z-index: 1300 !important;
+            box-shadow: 16px 0 50px rgba(0,0,0,0.85);
+            padding-top: calc(0.5rem + env(safe-area-inset-top, 0px));
+            padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
           }
           .sidebar--open { transform: translateX(0); }
-          .backdrop { display: block; }
 
           /* Glassmorphism Floating Dock Fixed Navigation */
           .bottom-nav {

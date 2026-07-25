@@ -596,7 +596,7 @@ export default function POSPage() {
         /* ─── Grid ──────────────────────────────────────────────── */
         .p-grid {
           display: grid;
-          grid-template-columns: 1fr 360px;
+          grid-template-columns: 1fr 420px;
           gap: 0;
           flex: 1;
           min-height: 0;
@@ -606,7 +606,7 @@ export default function POSPage() {
           box-shadow: var(--shadow-lg);
         }
 
-        @media (max-width: 1100px) { .p-grid { grid-template-columns: 1fr 320px; } }
+        @media (max-width: 1200px) { .p-grid { grid-template-columns: 1fr 380px; } }
         @media (max-width: 860px) {
           .p-grid {
             grid-template-columns: 1fr;
@@ -854,8 +854,8 @@ export default function POSPage() {
         }
 
         .p-item {
-          display: flex; align-items: center; gap: 0.5rem;
-          padding: 0.5rem 0.875rem;
+          display: flex; align-items: center; gap: 0.625rem;
+          padding: 0.65rem 0.875rem;
           border-bottom: 1px solid var(--border-subtle);
           transition: background 100ms ease;
           animation: slideUp 0.15s var(--ease-out) both;
@@ -863,18 +863,17 @@ export default function POSPage() {
         .p-item:hover { background: var(--surface-2); }
         .p-item:last-child { border-bottom: none; }
 
-        .p-item-emoji { font-size: 1.1rem; flex-shrink: 0; width: 26px; text-align: center; }
         .p-item-info { flex: 1; min-width: 0; }
         .p-item-name {
-          display: block; font-size: 0.76rem; font-weight: 600;
+          display: block; font-size: 0.86rem; font-weight: 700;
           color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .p-item-total {
-          display: block; font-size: 0.7rem; font-weight: 700;
-          color: var(--color-brand-400); font-family: var(--font-display); margin-top: 1px;
+          display: block; font-size: 0.8rem; font-weight: 800;
+          color: var(--color-brand-400); font-family: var(--font-display); margin-top: 2px;
         }
 
-        .p-item-ctrl { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+        .p-item-ctrl { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
         .p-qty-btn {
           width: 32px; height: 32px; background: var(--surface-2);
           border: 1px solid var(--border-default); border-radius: 8px;
@@ -882,25 +881,25 @@ export default function POSPage() {
           display: flex; align-items: center; justify-content: center;
           transition: all 100ms ease; flex-shrink: 0; padding: 0;
         }
-        .p-qty-btn:hover { background: var(--color-brand-500); border-color: var(--color-brand-600); color: #fff; transform: scale(1.1); }
-        .p-qty-btn:active { transform: scale(0.88); }
+        .p-qty-btn:hover { background: var(--color-brand-500); border-color: var(--color-brand-600); color: #fff; transform: scale(1.06); }
+        .p-qty-btn:active { transform: scale(0.92); }
 
         .p-qty-input {
-          width: 30px; height: 24px; background: var(--surface-0);
-          border: 1px solid var(--border-default); border-radius: 6px;
-          color: var(--text-primary); font-size: 0.72rem; font-weight: 700;
+          width: 42px; height: 32px; background: var(--surface-0);
+          border: 1px solid var(--border-default); border-radius: 8px;
+          color: var(--text-primary); font-size: 0.88rem; font-weight: 800;
           text-align: center; outline: none; transition: border-color 100ms ease;
         }
         .p-qty-input:focus { border-color: var(--color-brand-500); }
         .p-qty-input::-webkit-outer-spin-button, .p-qty-input::-webkit-inner-spin-button { -webkit-appearance: none; }
 
         .p-remove-btn {
-          width: 24px; height: 24px; background: none; border: none;
+          width: 30px; height: 30px; background: none; border: none;
           border-radius: 6px; color: var(--text-disabled);
           cursor: pointer; display: flex; align-items: center; justify-content: center;
           transition: all 100ms ease; flex-shrink: 0; padding: 0;
         }
-        .p-remove-btn:hover { background: rgba(244,63,94,0.1); color: var(--color-error); transform: scale(1.12); }
+        .p-remove-btn:hover { background: rgba(244,63,94,0.1); color: var(--color-error); transform: scale(1.1); }
 
         /* Summary — scrollable zone (sans le bouton validate) */
         .p-summary {

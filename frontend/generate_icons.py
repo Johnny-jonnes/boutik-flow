@@ -105,7 +105,7 @@ def draw_letter_F(pixels, ox, oy, scale, color, w, h):
                         if 0 <= ry < h and 0 <= rx < w:
                             pixels[ry][rx] = list(color) + [255]
 
-def generate_icon(size, path, maskable=False):
+def generate_icon(size, path, maskable=False, opaque_bg=False):
     w = h = size
     pixels = [[[0, 0, 0, 0] for _ in range(w)] for _ in range(h)]
     
@@ -113,10 +113,10 @@ def generate_icon(size, path, maskable=False):
     cy = h / 2
     radius = w * 0.46
     
-    if maskable:
+    if maskable or opaque_bg:
         for y in range(h):
             for x in range(w):
-                pixels[y][x] = [8, 12, 11, 255]
+                pixels[y][x] = [8, 12, 11, 255]  # Dark background for iOS Home Screen & maskable
         radius = w * 0.38
     
     # Dessiner l'hexagone avec le dégradé horizontal
@@ -167,8 +167,9 @@ if __name__ == '__main__':
     for s in [192, 512]:
         generate_icon(s, f"{base}/icon-{s}x{s}-maskable.png", maskable=True)
     
-    generate_icon(180, f"public/apple-touch-icon.png")
-    generate_icon(32, f"public/favicon-32x32.png")
-    generate_icon(16, f"public/favicon-16x16.png")
+    generate_icon(180, f"public/apple-touch-icon.png", opaque_bg=True)
+    generate_icon(180, f"public/apple-touch-icon-precomposed.png", opaque_bg=True)
+    generate_icon(32, f"public/favicon-32x32.png", opaque_bg=True)
+    generate_icon(16, f"public/favicon-16x16.png", opaque_bg=True)
     
-    print("DONE - All icons generated with horizontal Red-Yellow-Green gradient!")
+    print("DONE - All icons generated with horizontal Red-Yellow-Green gradient and opaque iOS Apple touch icon!")

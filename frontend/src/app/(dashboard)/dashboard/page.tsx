@@ -213,8 +213,20 @@ export default function DashboardPage() {
         api.getAnalyticsData(periodFilter, start, end).catch(() => null)
       ]);
       setKpis(kpiData);
-      setRecentOrders(ordersData.items.slice(0, ordersPerPage));
-      setTotalOrders(ordersData.total);
+
+      let filteredOrders = ordersData.items || [];
+      if (start || end) {
+        const startMs = start ? new Date(start + 'T00:00:00').getTime() : 0;
+        const endMs = end ? new Date(end + 'T23:59:59.999').getTime() : Infinity;
+        filteredOrders = filteredOrders.filter((o: any) => {
+          const oMs = new Date(o.created_at || 0).getTime();
+          return oMs >= startMs && oMs <= endMs;
+        });
+      }
+      filteredOrders.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+
+      setRecentOrders(filteredOrders.slice(0, ordersPerPage));
+      setTotalOrders(filteredOrders.length);
       setClients(clientsData.items);
       setProducts(productsData.items);
       setAnalytics(analyticsData);

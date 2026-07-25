@@ -60,6 +60,7 @@ export default function RootLayout({
         <link rel="icon" href="/logo-bf.svg" type="image/svg+xml" />
         <link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="apple-touch-icon-precomposed" href="/apple-touch-icon-precomposed.png" />
         <meta name="msapplication-TileColor" content="#009460" />
         <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
       </head>

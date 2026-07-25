@@ -968,11 +968,13 @@ export default function HomePage() {
             white-space: nowrap !important;
           }
         }
-        @media (max-width: 480px) {
-          .hide-on-xs { display: none !important; }
+        @media (max-width: 640px) {
+          #btn-nav-login, .hide-on-xs { display: none !important; }
           .nav-cta-btn {
-            padding: 0.4rem 0.7rem !important;
-            font-size: 0.78rem !important;
+            padding: 0.45rem 0.8rem !important;
+            font-size: 0.82rem !important;
+            font-weight: 700 !important;
+            white-space: nowrap !important;
           }
         }
         .footer-brand-col {
