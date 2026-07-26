@@ -111,6 +111,10 @@
   --chrome-glass-bg:        rgba(8,12,11,0.92);
   --chrome-glass-bg-strong: rgba(8,12,11,0.85);
   --chrome-shadow:          rgba(0,0,0,0.55);
+  /* Dégradé "drapeau" (nom de boutique) — le jaune vif #FCD116 est
+     illisible en clipping de texte sur fond clair, d'où une variante
+     assombrie dédiée au thème clair (voir .light). */
+  --flag-text-gradient: linear-gradient(90deg, #CE1126 0%, #FCD116 50%, #009460 100%);
 
   /* ── Composants ── */
   --progress-track-bg:    rgba(255,255,255,0.08);
@@ -247,6 +251,7 @@
   --chrome-glass-bg:        rgba(255,255,255,0.92);
   --chrome-glass-bg-strong: rgba(255,255,255,0.90);
   --chrome-shadow:          rgba(9,19,17,0.14);
+  --flag-text-gradient: linear-gradient(90deg, #CE1126 0%, #B8860B 50%, #00723F 100%);
 
   /* ── Composants ── */
   --progress-track-bg:    rgba(9,19,17,0.06);

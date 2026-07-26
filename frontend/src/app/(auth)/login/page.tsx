@@ -123,7 +123,7 @@ export default function LoginPage() {
               <rect x="22" y="76" width="56" height="3.5" rx="1.75" fill="#009460" opacity="0.8" />
             </svg>
           </div>
-          <span className="auth-logo-text" style={{ background: 'linear-gradient(90deg, #CE1126 0%, #FCD116 50%, #009460 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 900, fontSize: '1.3rem', letterSpacing: '-0.03em' }}>BoutikFlow</span>
+          <span className="auth-logo-text" style={{ background: 'var(--flag-text-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 900, fontSize: '1.3rem', letterSpacing: '-0.03em' }}>BoutikFlow</span>
         </div>
 
         <div className="auth-card glass">

@@ -398,7 +398,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         .mobile-boutique-name {
           font-family: var(--font-display);
           font-size: 1.05rem; font-weight: 800;
-          background: linear-gradient(90deg, #CE1126 0%, #FCD116 50%, #009460 100%);
+          background: var(--flag-text-gradient);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
@@ -482,7 +482,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
         .sidebar-plan-badge {
           font-size: 0.67rem; font-weight: 600;
-          color: #6dd5c4;
+          color: var(--sidebar-accent);
           margin-top: 1px;
         }
 
@@ -523,7 +523,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           width: 34px; height: 34px;
           border-radius: 8px;
           background: rgba(109,213,196,0.15);
-          color: #6dd5c4;
+          color: var(--sidebar-accent);
           display: flex; align-items: center; justify-content: center;
           flex-shrink: 0;
         }
@@ -538,7 +538,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
         .boutique-badge {
           font-size: 0.68rem;
-          color: #6dd5c4;
+          color: var(--sidebar-accent);
           font-weight: 600;
           margin-top: 1px;
         }
@@ -618,7 +618,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         .nav-pill-pos {
           font-size: 0.6rem; font-weight: 800;
           background: rgba(109,213,196,0.25);
-          color: #6dd5c4;
+          color: var(--sidebar-accent);
           padding: 0.1rem 0.35rem;
           border-radius: 4px;
           letter-spacing: 0.05em;

@@ -164,7 +164,7 @@ export default function RegisterPage() {
               <rect x="22" y="76" width="56" height="3.5" rx="1.75" fill="#CE1126" opacity="0.6" />
             </svg>
           </div>
-          <span className="auth-logo-text" style={{ background: 'linear-gradient(135deg, #009460, #FCD116)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 900, letterSpacing: '-0.03em' }}>BoutikFlow</span>
+          <span className="auth-logo-text" style={{ background: 'var(--flag-text-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 900, letterSpacing: '-0.03em' }}>BoutikFlow</span>
         </div>
 
         {isSuccess ? (
