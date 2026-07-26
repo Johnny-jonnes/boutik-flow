@@ -160,9 +160,15 @@ export default function OrdersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(25);
 
-  const fetchOrders = async () => {
+  // silent=true pour les rafraîchissements en arrière-plan après une action
+  // (changement de statut, création, retour, sync hors-ligne) : sans ça,
+  // setIsLoading(true) vidait toute la liste au profit d'un gros spinner
+  // plein écran à chaque petite action, donnant l'impression d'un
+  // rechargement de page complet alors qu'il ne s'agit que d'un
+  // rafraîchissement de données.
+  const fetchOrders = async (silent = false) => {
     try {
-      setIsLoading(true);
+      if (!silent) setIsLoading(true);
       // Charge TOUTES les commandes (pas seulement les 100 premières) :
       // sans cette boucle, la page perdait silencieusement les commandes
       // les plus anciennes dès qu'une boutique dépassait 100 commandes —
@@ -178,7 +184,7 @@ export default function OrdersPage() {
     } catch (error) {
       toast.error(language === 'fr' ? 'Erreur lors de la récupération des commandes' : 'Error loading orders');
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
@@ -198,7 +204,7 @@ export default function OrdersPage() {
   useEffect(() => {
     const onSyncComplete = (e: Event) => {
       const detail = (e as CustomEvent).detail as { succeeded: number } | undefined;
-      if (detail?.succeeded) fetchOrders();
+      if (detail?.succeeded) fetchOrders(true);
     };
     window.addEventListener('boutikflow:sync-complete', onSyncComplete);
     return () => window.removeEventListener('boutikflow:sync-complete', onSyncComplete);
@@ -322,7 +328,7 @@ export default function OrdersPage() {
       setDebtAmount(0);
       setDebtDescription('');
       setDebtDueDate('');
-      fetchOrders();
+      fetchOrders(true);
     } catch (err: any) {
       toast.error(err.message || (language === 'fr' ? 'Erreur lors de la création' : 'Error creating order'));
     } finally {
@@ -337,7 +343,7 @@ export default function OrdersPage() {
       toast.success(language === 'fr' ? 'Statut mis à jour' : 'Status updated');
       setViewOrder(null);
       setConfirmingCancel(false);
-      fetchOrders();
+      fetchOrders(true);
     } catch (err: any) {
       toast.error(err.message || (language === 'fr' ? 'Erreur lors de la mise à jour' : 'Error updating status'));
     } finally {
@@ -375,7 +381,7 @@ export default function OrdersPage() {
       await api.returnOrderItems(returnOrder.id, itemsToReturn, returnReason, restockInventory);
       toast.success(language === 'fr' ? 'Retour enregistré avec succès' : 'Return recorded successfully');
       setReturnOrder(null);
-      fetchOrders();
+      fetchOrders(true);
     } catch (err: any) {
       toast.error(err.message || (language === 'fr' ? 'Erreur lors du retour' : 'Error processing return'));
     } finally {
