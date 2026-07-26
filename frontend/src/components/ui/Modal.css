@@ -6,7 +6,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  /* Doit dominer toute la chrome mobile persistante (barre du haut
+     z-index:1100, bottom-nav z-index:1000, sidebar z-index:1300…) sinon
+     ces barres fixes s'affichent PAR-DESSUS la modale et coupent son
+     en-tête/contenu — c'était le cas avec z-index:100. Reste sous le
+     scanner code-barres (9999), volontairement toujours au sommet. */
+  z-index: 1500;
   padding: max(1rem, env(safe-area-inset-top, 0px)) max(1rem, env(safe-area-inset-right, 0px))
            max(1rem, env(safe-area-inset-bottom, 0px)) max(1rem, env(safe-area-inset-left, 0px));
   animation: fadeIn 0.2s ease-out;
