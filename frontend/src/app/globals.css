@@ -100,10 +100,17 @@
   --brand-alpha-20: rgba(109,213,196,0.20);
   --brand-alpha-30: rgba(109,213,196,0.30);
 
-  /* ── Sidebar tokens (toujours sombre) ── */
+  /* ── Sidebar / nav chrome — suit désormais le thème (voir .light) ── */
   --sidebar-bg:           #070a09;
+  --sidebar-bg-gradient:  linear-gradient(180deg, #080c0b 0%, #050807 50%, #030504 100%);
   --sidebar-border:       rgba(109,213,196,0.06);
   --sidebar-gradient-end: #030404;
+  --sidebar-mobile-shadow: rgba(0,0,0,0.85);
+  --sidebar-accent:       #6dd5c4;
+  --sidebar-accent-hover: #98e5d9;
+  --chrome-glass-bg:        rgba(8,12,11,0.92);
+  --chrome-glass-bg-strong: rgba(8,12,11,0.85);
+  --chrome-shadow:          rgba(0,0,0,0.55);
 
   /* ── Composants ── */
   --progress-track-bg:    rgba(255,255,255,0.08);
@@ -228,6 +235,18 @@
   --brand-alpha-15: rgba(109,213,196,0.15);
   --brand-alpha-20: rgba(109,213,196,0.20);
   --brand-alpha-30: rgba(109,213,196,0.30);
+
+  /* ── Sidebar / nav chrome — clair et doux, plus de dégradé noir ── */
+  --sidebar-bg:           #ffffff;
+  --sidebar-bg-gradient:  linear-gradient(180deg, #ffffff 0%, #fcfefd 55%, #f4f8f7 100%);
+  --sidebar-border:       #e6efec;
+  --sidebar-gradient-end: #f4f8f7;
+  --sidebar-mobile-shadow: rgba(9,19,17,0.16);
+  --sidebar-accent:       #1c6b61;
+  --sidebar-accent-hover: #185750;
+  --chrome-glass-bg:        rgba(255,255,255,0.92);
+  --chrome-glass-bg-strong: rgba(255,255,255,0.90);
+  --chrome-shadow:          rgba(9,19,17,0.14);
 
   /* ── Composants ── */
   --progress-track-bg:    rgba(9,19,17,0.06);

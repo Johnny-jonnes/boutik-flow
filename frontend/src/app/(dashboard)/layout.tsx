@@ -103,7 +103,7 @@ function Logo({ size = 20 }: { size?: number }) {
           width: '7px',
           height: '7px',
           borderRadius: '50%',
-          border: '1.5px solid #080c0b',
+          border: '1.5px solid var(--sidebar-bg)',
           backgroundColor: isOnline ? '#22c55e' : '#fbbf24',
           boxShadow: `0 0 5px ${isOnline ? '#22c55e' : '#fbbf24'}`,
           transition: 'background-color 0.3s ease, box-shadow 0.3s ease',
@@ -340,7 +340,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           /* safe-area pour l'encoche iOS / Dynamic Island */
           padding-top: env(safe-area-inset-top, 0px);
           height: calc(56px + env(safe-area-inset-top, 0px));
-          background: rgba(8, 12, 11, 0.92);
+          background: var(--chrome-glass-bg);
           border-bottom: 1px solid rgba(109,213,196,0.15);
           /* max() garde 1rem minimum et s'élargit derrière l'encoche latérale
              en paysage (iPhone) ou la découpe caméra d'un Android bord à bord. */
@@ -411,7 +411,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         .mobile-toggle {
           border: none;
-          background: rgba(255,255,255,0.06);
+          background: var(--overlay-medium);
           width: 36px; height: 36px;
           border-radius: 10px;
           display: flex; align-items: center; justify-content: center;
@@ -420,7 +420,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           transition: background 0.15s ease;
           -webkit-tap-highlight-color: transparent;
         }
-        .mobile-toggle:hover { background: rgba(255,255,255,0.12); }
+        .mobile-toggle:hover { background: var(--overlay-border-strong); }
 
         /* Barre offline positionnée sous la mobile-bar */
         .offline-bar-wrapper {
@@ -437,7 +437,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           height: 100vh;
           position: sticky; top: 0;
           display: flex; flex-direction: column;
-          background: linear-gradient(180deg, #080c0b 0%, #050807 50%, #030504 100%);
+          background: var(--sidebar-bg-gradient);
           border-right: 1px solid rgba(109,213,196,0.14);
           flex-shrink: 0;
           z-index: 50;
@@ -445,7 +445,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           overflow-x: hidden;
           padding-bottom: 1rem;
           scrollbar-width: thin;
-          scrollbar-color: rgba(255,255,255,0.08) transparent;
+          scrollbar-color: var(--overlay-border-strong) transparent;
         }
 
         @media (min-width: 1440px) {
@@ -471,7 +471,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         .sidebar-boutique-name {
           font-family: var(--font-display);
           font-size: 0.95rem; font-weight: 800;
-          color: #ffffff;
+          color: var(--text-primary);
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
           letter-spacing: -0.01em;
           max-width: 160px;
@@ -487,9 +487,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
 
         .sidebar-collapse-btn {
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.08);
-          color: #9898a8;
+          background: var(--overlay-medium);
+          border: 1px solid var(--overlay-border-strong);
+          color: var(--text-muted);
           border-radius: 7px;
           width: 28px; height: 28px;
           min-width: 28px;
@@ -500,8 +500,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           flex-shrink: 0;
         }
         .sidebar-collapse-btn:hover {
-          background: rgba(255,255,255,0.1);
-          color: #f4f4f6;
+          background: var(--overlay-border-strong);
+          color: var(--text-primary);
         }
 
         /* ── Boutique card ────────────────────────── */
@@ -533,7 +533,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
         .boutique-name {
           font-size: 0.83rem; font-weight: 700;
-          color: #f4f4f6;
+          color: var(--text-primary);
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .boutique-badge {
@@ -564,7 +564,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
         .nav-link--active .nav-icon-wrap {
           background: rgba(109,213,196,0.18);
-          color: #6dd5c4;
+          color: var(--sidebar-accent);
         }
 
         .nav-link {
@@ -573,7 +573,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           min-height: 48px;
           border-radius: 12px;
           text-decoration: none;
-          color: rgba(255,255,255,0.5);
+          color: var(--text-secondary);
           font-size: 0.9rem; font-weight: 500;
           position: relative;
           transition: all 0.15s ease;
@@ -585,21 +585,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           -webkit-tap-highlight-color: transparent;
         }
         .nav-link:hover {
-          color: rgba(255,255,255,0.9);
-          background: rgba(255,255,255,0.05);
-          border-color: rgba(255,255,255,0.06);
+          color: var(--text-primary);
+          background: var(--overlay-medium);
+          border-color: var(--overlay-border);
         }
         .nav-link:active { transform: scale(0.98); }
 
         .nav-link--active {
-          color: #6dd5c4;
+          color: var(--sidebar-accent);
           background: rgba(109,213,196,0.10);
           border-color: rgba(109,213,196,0.20);
           font-weight: 700;
         }
         .nav-link--active:hover {
           background: rgba(109,213,196,0.16);
-          color: #98e5d9;
+          color: var(--sidebar-accent-hover);
         }
 
         .nav-icon {
@@ -607,7 +607,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           width: 20px; height: 20px;
           display: inline-block; opacity: 0.85;
         }
-        .nav-link--active .nav-icon { opacity: 1; color: #6dd5c4; }
+        .nav-link--active .nav-icon { opacity: 1; color: var(--sidebar-accent); }
 
         .nav-text {
           flex: 1;
@@ -651,8 +651,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           padding: 0.5rem 0.625rem;
           border-radius: 9px;
           background: transparent;
-          border: 1px solid rgba(255,255,255,0.07);
-          color: rgba(255,255,255,0.4);
+          border: 1px solid var(--overlay-border);
+          color: var(--text-muted);
           font-size: 0.78rem; font-weight: 500;
           cursor: pointer;
           transition: all 0.15s ease;
@@ -660,15 +660,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           width: 100%;
         }
         .lang-toggle:hover {
-          background: rgba(255,255,255,0.05);
-          color: rgba(255,255,255,0.75);
+          background: var(--overlay-medium);
+          color: var(--text-primary);
           border-color: rgba(109,213,196,0.2);
         }
         .lang-flag { margin-left: auto; font-size: 0.9rem; }
 
         .footer-separator {
           height: 1px;
-          background: rgba(255,255,255,0.06);
+          background: var(--overlay-medium);
           margin: 0.375rem 0.25rem 0.625rem;
         }
 
@@ -684,7 +684,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           border: 1px solid transparent;
         }
         .profile-card:hover, .profile-card--open {
-          background: rgba(255,255,255,0.05);
+          background: var(--overlay-medium);
           border-color: rgba(109,213,196,0.2);
         }
 
@@ -705,21 +705,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
 
         .profile-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-        .profile-name { font-size: 0.8rem; font-weight: 600; color: #f4f4f6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .profile-role { font-size: 0.68rem; color: rgba(255,255,255,0.4); margin-top: 1px; }
+        .profile-name { font-size: 0.8rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .profile-role { font-size: 0.68rem; color: var(--text-muted); margin-top: 1px; }
 
-        .profile-chevron { color: rgba(255,255,255,0.3); transition: transform 0.2s ease; flex-shrink: 0; }
+        .profile-chevron { color: var(--text-muted); transition: transform 0.2s ease; flex-shrink: 0; }
         .profile-chevron--rotated { transform: rotate(180deg); }
 
         .profile-dropdown {
           position: absolute;
           bottom: calc(100% + 8px);
           left: 0; right: 0;
-          background: #0e1412;
+          background: var(--profile-dropdown-bg);
           border: 1px solid rgba(109,213,196,0.2);
           border-radius: 12px;
           padding: 0.35rem;
-          box-shadow: 0 16px 40px rgba(0,0,0,0.7);
+          box-shadow: 0 16px 40px var(--chrome-shadow);
           z-index: 60;
           animation: scaleIn 0.18s var(--ease-spring);
         }
@@ -729,14 +729,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           padding: 0.625rem 0.75rem;
           border-radius: 8px;
           font-size: 0.84rem; font-weight: 500;
-          color: #e4e4e6;
+          color: var(--text-primary);
           cursor: pointer;
           transition: all 0.12s ease;
           border: none; background: transparent;
         }
-        .dropdown-item:hover { background: rgba(255,255,255,0.07); color: white; }
-        .dropdown-item--logout { color: #fca5a5; }
-        .dropdown-item--logout:hover { background: rgba(244,63,94,0.15); color: #fff; }
+        .dropdown-item:hover { background: var(--overlay-medium); color: var(--text-primary); }
+        .dropdown-item--logout { color: var(--color-error); }
+        .dropdown-item--logout:hover { background: rgba(244,63,94,0.15); color: var(--color-error); }
 
         /* ══ Main content ═══════════════════════════ */
         .main { flex: 1; min-width: 0; overflow-y: auto; }
@@ -780,7 +780,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             transform: translateX(-100%);
             transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
             z-index: 1300 !important;
-            box-shadow: 16px 0 50px rgba(0,0,0,0.85);
+            box-shadow: 16px 0 50px var(--sidebar-mobile-shadow);
             padding-top: calc(0.5rem + env(safe-area-inset-top, 0px));
             padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
             /* Le tiroir colle au bord gauche : en paysage sur iPhone à
@@ -811,15 +811,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             width: 100%;
             max-width: 440px;
             height: 64px;
-            background: rgba(8, 12, 11, 0.85);
+            background: var(--chrome-glass-bg-strong);
             backdrop-filter: blur(20px) saturate(180%);
             -webkit-backdrop-filter: blur(20px) saturate(180%);
             border: 1px solid rgba(109, 213, 196, 0.24);
             border-radius: 26px;
-            box-shadow: 
-              0 12px 32px rgba(0, 0, 0, 0.55),
+            box-shadow:
+              0 12px 32px var(--chrome-shadow),
               0 2px 10px rgba(109, 213, 196, 0.12),
-              inset 0 1px 0 rgba(255, 255, 255, 0.12);
+              inset 0 1px 0 var(--overlay-border-strong);
             padding: 0 0.4rem;
           }
 
@@ -873,12 +873,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           }
 
           .bottom-nav-item.active .bottom-nav-icon {
-            color: #6dd5c4;
+            color: var(--sidebar-accent);
             transform: translateY(-1px) scale(1.1);
           }
 
           .bottom-nav-item.active .bottom-nav-label {
-            color: #6dd5c4;
+            color: var(--sidebar-accent);
             font-weight: 800;
           }
 
