@@ -36,6 +36,10 @@ class Product(Base):
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     price = Column(Numeric(15, 2), nullable=False)
+    # Prix d'achat — facultatif (produit déjà existant, ajout rapide sans
+    # cette info...). Sert au calcul de la marge réelle quand il est connu ;
+    # jamais estimé quand il ne l'est pas (voir app.core.metrics.product_margin).
+    cost_price = Column(Numeric(15, 2), nullable=True)
     stock = Column(Integer, default=0, nullable=False)
     category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True)
     images = Column(ARRAY(String), default=[], nullable=False)
@@ -107,7 +111,12 @@ class OrderItem(Base):
     order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=False)
     product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"), nullable=False)
     quantity = Column(Integer, nullable=False, default=1)
-    unit_price = Column(Numeric(15, 2), nullable=False)  # Prix au moment de la commande
+    unit_price = Column(Numeric(15, 2), nullable=False)  # Prix de vente au moment de la commande
+    # Prix d'achat au moment de la commande (copié depuis Product.cost_price
+    # à la création de la ligne) — NULL si le produit n'en avait pas.
+    # Fige la marge de cette vente même si le prix d'achat du produit change
+    # ensuite : un historique de marge ne doit pas bouger rétroactivement.
+    cost_price = Column(Numeric(15, 2), nullable=True)
 
     order = relationship("Order", back_populates="items")
     product = relationship("Product", back_populates="order_items")

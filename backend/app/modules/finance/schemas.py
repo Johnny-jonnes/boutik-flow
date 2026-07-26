@@ -37,6 +37,13 @@ class FinanceSummary(BaseModel):
     total_expense: Decimal
     net_balance: Decimal
     transactions_count: int
+    # Marge brute réelle (prix de vente − prix d'achat) sur les produits
+    # vendus dans cette même période — calculée UNIQUEMENT sur les articles
+    # dont le produit a un prix d'achat renseigné (facultatif), jamais
+    # estimée pour le reste. `product_margin_coverage` indique le % du CA
+    # que cette marge couvre réellement.
+    product_margin: Decimal = Decimal("0.00")
+    product_margin_coverage: float = 0.0
 
 
 class TransactionListResponse(BaseModel):

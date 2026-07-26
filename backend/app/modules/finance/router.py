@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_owner_or_manager, CurrentUser
 from app.core.period import resolve_period
-from app.core.metrics import financial_totals
+from app.core.metrics import financial_totals, product_margin
 from app.modules.finance.models import FinancialTransaction
 from app.modules.finance.schemas import (
     TransactionCreate,
@@ -75,11 +75,18 @@ def list_transactions(
         category_filter=category,
     )
 
+    # Marge produits sur la même fenêtre de dates — indépendante du filtre
+    # type/catégorie de la liste, qui ne concerne que les transactions
+    # affichées, pas les ventes de produits sous-jacentes.
+    margin = product_margin(db, current_user.tenant_id, start, end)
+
     summary = FinanceSummary(
         total_income=totals.total_income,
         total_expense=totals.total_expense,
         net_balance=totals.net_balance,
         transactions_count=totals.transactions_count,
+        product_margin=margin.gross_margin,
+        product_margin_coverage=margin.coverage_pct,
     )
 
     return TransactionListResponse(

@@ -335,13 +335,17 @@ def create_order(
                 detail=f"Stock insuffisant pour {product.name} (Reste: {product.stock}).",
             )
 
-        # Créer OrderItem
+        # Créer OrderItem — cost_price est figé au prix d'achat actuel du
+        # produit (souvent NULL, le prix d'achat étant facultatif) : la
+        # marge de cette vente ne doit pas changer si le prix d'achat du
+        # produit est modifié plus tard.
         order_item = OrderItem(
             id=uuid.uuid4(),
             order_id=order.id,
             product_id=product.id,
             quantity=item.quantity,
             unit_price=product.price,
+            cost_price=product.cost_price,
         )
         db.add(order_item)
 

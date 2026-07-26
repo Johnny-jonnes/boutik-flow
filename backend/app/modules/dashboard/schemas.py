@@ -27,6 +27,12 @@ class DashboardKPIs(BaseModel):
     # Clients créés pendant la période (les autres compteurs clients sont des
     # totaux cumulés : ils décrivent le fichier client, pas l'activité).
     new_clients: int = 0
+    # Marge brute réelle (prix de vente − prix d'achat), calculée UNIQUEMENT
+    # sur les articles dont le produit a un prix d'achat renseigné — jamais
+    # estimée pour le reste. `product_margin_coverage` indique le % du CA
+    # que cette marge couvre réellement (voir app.core.metrics.product_margin).
+    product_margin: Decimal = Decimal("0.00")
+    product_margin_coverage: float = 0.0
     # Bornes réellement appliquées, pour que le frontend puisse les afficher
     # et vérifier qu'il regarde bien la période qu'il a demandée.
     period_start: datetime | None = None
@@ -72,6 +78,8 @@ class AnalyticsKPIs(BaseModel):
     total_expenses: Decimal = Decimal("0.00")
     net_balance: Decimal = Decimal("0.00")
     items_sold: int = 0
+    product_margin: Decimal = Decimal("0.00")
+    product_margin_coverage: float = 0.0
 
 
 class AnalyticsData(BaseModel):

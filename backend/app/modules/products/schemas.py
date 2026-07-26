@@ -46,7 +46,10 @@ class ProductCreate(BaseModel):
     """Création d'un produit."""
     name: str = Field(..., min_length=2, max_length=255, description="Nom du produit")
     description: str | None = Field(None, max_length=2000)
-    price: Decimal = Field(..., ge=0, description="Prix du produit")
+    price: Decimal = Field(..., ge=0, description="Prix de vente du produit")
+    cost_price: Decimal | None = Field(
+        None, ge=0, description="Prix d'achat (facultatif) — sert au calcul de la marge réelle"
+    )
     stock: int = Field(0, ge=0, description="Quantité en stock")
     category_id: uuid.UUID | None = None
     images: list[str] = Field(default_factory=list, description="URLs des images")
@@ -60,6 +63,7 @@ class ProductUpdate(BaseModel):
     name: str | None = Field(None, min_length=2, max_length=255)
     description: str | None = Field(None, max_length=2000)
     price: Decimal | None = Field(None, ge=0)
+    cost_price: Decimal | None = Field(None, ge=0)
     stock: int | None = Field(None, ge=0)
     category_id: uuid.UUID | None = None
     images: list[str] | None = None
@@ -75,6 +79,7 @@ class ProductResponse(BaseModel):
     name: str
     description: str | None
     price: Decimal
+    cost_price: Decimal | None = None
     stock: int
     category_id: uuid.UUID | None
     category_rel: CategoryResponse | None = None

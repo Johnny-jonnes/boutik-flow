@@ -1396,79 +1396,19 @@ body {
 
 /* ═══════════════════════════════════════════════════════════════════
    MODAL
-   ═══════════════════════════════════════════════════════════════════ */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.65);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: max(1rem, env(safe-area-inset-top, 0px)) max(1rem, env(safe-area-inset-right, 0px))
-           max(1rem, env(safe-area-inset-bottom, 0px)) max(1rem, env(safe-area-inset-left, 0px));
-  animation: fadeIn 0.2s var(--ease-out);
-}
-
-.modal {
-  background: var(--surface-1);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-2xl);
-  box-shadow: var(--shadow-xl);
-  width: 100%;
-  max-width: 520px;
-  max-height: 90vh;
-  overflow-y: auto;
-  animation: scaleIn 0.25s var(--ease-spring);
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.125rem 1.5rem;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: var(--surface-1);
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.modal-title {
-  font-family: var(--font-display);
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  letter-spacing: -0.01em;
-}
-
-.modal-close {
-  width: 32px;
-  height: 32px;
-  background: var(--surface-2);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  color: var(--text-muted);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--transition-fast);
-  flex-shrink: 0;
-}
-.modal-close:hover {
-  background: var(--surface-3);
-  color: var(--text-primary);
-  transform: scale(1.05);
-}
-.modal-close:active { transform: scale(0.92); }
-
-.modal-body {
-  padding: 1.25rem 1.5rem;
-}
-
+   ═══════════════════════════════════════════════════════════════════
+   Le conteneur de modale (overlay, carte, en-tête, corps) est défini une
+   seule fois dans components/ui/Modal.css, utilisé par le composant
+   <Modal> partagé par toute l'application. Une seconde définition de
+   .modal-overlay/.modal/.modal-header/.modal-title/.modal-close/.modal-body
+   vivait ici : comme ce sont de simples classes globales sans lien entre
+   les deux fichiers, les deux définitions s'appliquaient à la FOIS aux
+   mêmes éléments, le gagnant pour chaque propriété dépendant de l'ordre
+   d'assemblage du build plutôt que d'une intention explicite — un titre
+   de modale pouvait ainsi hériter de la police d'un fichier et de la
+   couleur de l'autre. Seul .modal-actions reste ici : c'est une classe
+   utilitaire pour la rangée de boutons, utilisée par le CONTENU de
+   chaque page à l'intérieur de <Modal>, indépendante du conteneur. */
 .modal-actions {
   display: flex;
   gap: 0.75rem;
@@ -1624,18 +1564,6 @@ body {
     white-space: nowrap;
   }
 
-  .modal {
-    max-height: calc(90vh - 80px) !important;
-    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0 !important;
-    margin-bottom: 0;
-    align-self: flex-end;
-    overflow-y: auto !important;
-  }
-  .modal-overlay {
-    align-items: flex-end;
-    padding: 0 0 calc(75px + env(safe-area-inset-bottom, 0px)) 0 !important;
-    z-index: 1100 !important;
-  }
   .modal-actions {
     flex-direction: column !important;
     gap: 0.5rem !important;

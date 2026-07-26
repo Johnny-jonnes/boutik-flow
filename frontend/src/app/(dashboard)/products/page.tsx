@@ -36,7 +36,7 @@ function ProductsContent() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addForm, setAddForm] = useState({
-    name: '', price: '', stock: '', category_id: '', description: '', is_available: true, sku: '', barcode: '',
+    name: '', price: '', cost_price: '', stock: '', category_id: '', description: '', is_available: true, sku: '', barcode: '',
   });
 
   // View modal
@@ -46,7 +46,7 @@ function ProductsContent() {
   // Edit modal
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [editForm, setEditForm] = useState({
-    name: '', price: '', stock: '', category_id: '', description: '', is_available: true, sku: '', barcode: '',
+    name: '', price: '', cost_price: '', stock: '', category_id: '', description: '', is_available: true, sku: '', barcode: '',
   });
   const [isEditing, setIsEditing] = useState(false);
 
@@ -92,6 +92,7 @@ function ProductsContent() {
       await api.createProduct({
         name: addForm.name,
         price: Number(addForm.price),
+        cost_price: addForm.cost_price.trim() ? Number(addForm.cost_price) : undefined,
         stock: addForm.stock ? Number(addForm.stock) : 0,
         category_id: addForm.category_id || undefined,
         description: addForm.description || undefined,
@@ -102,7 +103,7 @@ function ProductsContent() {
       });
       toast.success('Produit ajouté avec succès');
       setIsAddOpen(false);
-      setAddForm({ name: '', price: '', stock: '', category_id: '', description: '', is_available: true, sku: '', barcode: '' });
+      setAddForm({ name: '', price: '', cost_price: '', stock: '', category_id: '', description: '', is_available: true, sku: '', barcode: '' });
       setAddImagePreview(null);
       fetchProductsAndCategories();
     } catch (err: any) {
@@ -118,6 +119,7 @@ function ProductsContent() {
     setEditForm({
       name: product.name,
       price: String(product.price),
+      cost_price: product.cost_price != null ? String(product.cost_price) : '',
       stock: String(product.stock),
       category_id: product.category_id || '',
       description: product.description || '',
@@ -137,6 +139,9 @@ function ProductsContent() {
       await api.updateProduct(editProduct.id, {
         name: editForm.name,
         price: Number(editForm.price),
+        // null explicite (pas undefined) : permet de vider un prix d'achat
+        // déjà renseigné, puisque le champ est facultatif.
+        cost_price: editForm.cost_price.trim() ? Number(editForm.cost_price) : null,
         stock: Number(editForm.stock),
         category_id: editForm.category_id || undefined,
         description: editForm.description || undefined,
@@ -379,7 +384,7 @@ function ProductsContent() {
 
         <div className="form-row">
           <div className="form-group" style={{ flex: 1 }}>
-            <label className="form-label">Prix</label>
+            <label className="form-label">Prix de vente</label>
             <input type="number" className="input" required min="0" placeholder="Ex : 150 000" value={form.price}
               onChange={e => setForm({ ...form, price: e.target.value })} />
           </div>
@@ -387,6 +392,24 @@ function ProductsContent() {
             <label className="form-label">En stock</label>
             <input type="number" className="input" required min="0" placeholder="Ex : 50" value={form.stock}
               onChange={e => setForm({ ...form, stock: e.target.value })} />
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group" style={{ flex: 1 }}>
+            <label className="form-label">
+              Prix d&apos;achat <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(facultatif)</span>
+            </label>
+            <input type="number" className="input" min="0" placeholder="Ex : 100 000" value={form.cost_price}
+              onChange={e => setForm({ ...form, cost_price: e.target.value })} />
+          </div>
+          <div className="form-group" style={{ flex: 1 }}>
+            <label className="form-label">Marge estimée</label>
+            <div className="margin-preview">
+              {form.price && form.cost_price
+                ? formatGNF(Number(form.price) - Number(form.cost_price))
+                : '—'}
+            </div>
           </div>
         </div>
 
@@ -603,7 +626,11 @@ function ProductsContent() {
             <div className="detail-row"><span className="detail-label">Nom</span><span className="detail-value">{viewProduct.name}</span></div>
             <div className="detail-row"><span className="detail-label">SKU</span><span className="detail-value">{viewProduct.sku || '—'}</span></div>
             <div className="detail-row"><span className="detail-label">Code-barres</span><span className="detail-value">{viewProduct.barcode || '—'}</span></div>
-            <div className="detail-row"><span className="detail-label">Prix</span><span className="detail-value product-price">{formatGNF(viewProduct.price)}</span></div>
+            <div className="detail-row"><span className="detail-label">Prix de vente</span><span className="detail-value product-price">{formatGNF(viewProduct.price)}</span></div>
+            <div className="detail-row"><span className="detail-label">Prix d&apos;achat</span><span className="detail-value">{viewProduct.cost_price != null ? formatGNF(viewProduct.cost_price) : '—'}</span></div>
+            {viewProduct.cost_price != null && (
+              <div className="detail-row"><span className="detail-label">Marge</span><span className="detail-value product-price">{formatGNF(viewProduct.price - viewProduct.cost_price)}</span></div>
+            )}
             <div className="detail-row"><span className="detail-label">Stock</span><span className="detail-value">{viewProduct.stock}</span></div>
             <div className="detail-row"><span className="detail-label">Catégorie</span><span className="detail-value">{viewProduct.category_rel?.name || '—'}</span></div>
             <div className="detail-row"><span className="detail-label">Description</span><span className="detail-value">{viewProduct.description || '—'}</span></div>
@@ -703,6 +730,12 @@ function ProductsContent() {
         .form-group { display: flex; flex-direction: column; gap: 0.375rem; }
         .form-label { font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); }
         .form-row { display: flex; gap: 1rem; }
+        .margin-preview {
+          min-height: 44px; display: flex; align-items: center;
+          padding: 0 0.875rem; border-radius: var(--radius-md);
+          background: var(--surface-2); border: 1px solid var(--border-subtle);
+          font-weight: 700; color: var(--color-brand-400);
+        }
         .checkbox-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; cursor: pointer; color: var(--text-secondary); }
         .modal-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem; }
 

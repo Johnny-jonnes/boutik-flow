@@ -132,7 +132,9 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 1rem;
+          overflow-y: auto;
+          padding: max(1rem, env(safe-area-inset-top, 0px)) max(1rem, env(safe-area-inset-right, 0px))
+                   max(1rem, env(safe-area-inset-bottom, 0px)) max(1rem, env(safe-area-inset-left, 0px));
         }
 
         .scanner-modal-content {
@@ -142,6 +144,8 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           padding: 1.5rem;
           width: 100%;
           max-width: 480px;
+          max-height: 100%;
+          overflow-y: auto;
           color: white;
           box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
         }

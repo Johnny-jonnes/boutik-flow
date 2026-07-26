@@ -42,7 +42,16 @@ export function PinLock({ onVerify, error, onClearError }: PinLockProps) {
       position: 'fixed', inset: 0, zIndex: 99999,
       background: 'var(--surface-0, #090d16)',
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      gap: '2rem', padding: '2rem'
+      gap: '2rem',
+      // Écran plein écran bloquant : jamais couvert par le Modal partagé,
+      // doit donc gérer lui-même les zones de sécurité (encoche, barre de
+      // gestes, encoche latérale en paysage).
+      padding: '2rem',
+      paddingTop: 'max(2rem, env(safe-area-inset-top, 0px))',
+      paddingBottom: 'max(2rem, env(safe-area-inset-bottom, 0px))',
+      paddingLeft: 'max(2rem, env(safe-area-inset-left, 0px))',
+      paddingRight: 'max(2rem, env(safe-area-inset-right, 0px))',
+      overflowY: 'auto',
     }}>
       {/* Logo */}
       <div style={{ textAlign: 'center' }}>

@@ -22,7 +22,7 @@ from sqlalchemy import func, and_
 from app.core.database import get_db
 from app.core.deps import get_current_user, CurrentUser
 from app.core.period import resolve_period, previous_period
-from app.core.metrics import financial_totals, sales_metrics, format_change
+from app.core.metrics import financial_totals, sales_metrics, product_margin, format_change
 from app.modules.products.models import Order, OrderStatusEnum, OrderItem, Product
 from app.modules.finance.models import FinancialTransaction, TransactionTypeEnum
 from app.modules.crm.models import Client, ClientStatusEnum
@@ -75,6 +75,7 @@ def get_kpis(
 
     money = financial_totals(db, tenant_id, start, end)
     sales = sales_metrics(db, tenant_id, start, end)
+    margin = product_margin(db, tenant_id, start, end)
 
     base_client_query = db.query(Client).filter(
         and_(
@@ -105,6 +106,8 @@ def get_kpis(
         active_clients=active_clients,
         vip_clients=vip_clients,
         new_clients=new_clients,
+        product_margin=margin.gross_margin,
+        product_margin_coverage=margin.coverage_pct,
         period_start=start,
         period_end=end,
     )
@@ -184,6 +187,7 @@ def get_analytics(
 
     money = financial_totals(db, tenant_id, start, end)
     sales = sales_metrics(db, tenant_id, start, end)
+    margin = product_margin(db, tenant_id, start, end)
 
     # ── Comparaison avec la période précédente de même durée ──
     prev_start, prev_end = previous_period(start, end)
@@ -334,6 +338,8 @@ def get_analytics(
         orders_change=format_change(sales.total_orders, prev_orders),
         aov_change=format_change(sales.average_order_value, prev_aov),
         conversion_change=format_change(conversion, prev_conversion),
+        product_margin=margin.gross_margin,
+        product_margin_coverage=margin.coverage_pct,
     )
 
     return AnalyticsData(

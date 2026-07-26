@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Search, Plus, Minus, Trash2, CreditCard, Banknote,
   Smartphone, ShoppingCart, ArrowUpRight, CheckCircle, X,
-  Zap, Package,
+  Zap, Package, ChevronDown,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { api } from '@/lib/api/client';
@@ -31,6 +31,11 @@ export default function POSPage() {
   const [loading, setLoading]           = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [successAnim, setSuccessAnim]   = useState(false);
+  // Sur mobile, le panier n'est plus empilé sous la grille de produits
+  // (il fallait tout faire défiler pour l'atteindre) : il devient un
+  // bottom sheet ouvert via un bouton flottant. Sans effet sur desktop,
+  // où le panneau latéral reste en permanence visible.
+  const [isCartSheetOpen, setIsCartSheetOpen] = useState(false);
 
   // Dette
   const [isDebt, setIsDebt]               = useState(false);
@@ -234,6 +239,7 @@ export default function POSPage() {
       // Reset
       setCart([]); setDiscount(0); setSelectedClientId('');
       setIsDebt(false); setDebtDescription(''); setDebtDueDate('');
+      setIsCartSheetOpen(false);
     } catch (err: any) {
       SoundEffects.playError();
       triggerHaptic([100, 50, 100]);
@@ -362,10 +368,20 @@ export default function POSPage() {
         </section>
 
         {/* ── Panier ──────────────────────────────────────────────── */}
-        <aside className="p-cart">
+        <aside className={`p-cart ${isCartSheetOpen ? 'p-cart--sheet-open' : ''}`}>
+
+          {/* Poignée du bottom sheet — mobile uniquement, purement visuelle */}
+          <div className="p-cart-sheet-handle" onClick={() => setIsCartSheetOpen(false)} />
 
           {/* Header */}
           <div className="p-cart-header">
+            <button
+              className="p-cart-collapse-mobile"
+              onClick={() => setIsCartSheetOpen(false)}
+              aria-label={language === 'fr' ? 'Réduire le panier' : 'Collapse cart'}
+            >
+              <ChevronDown size={20}/>
+            </button>
             <span className="p-cart-title">
               <ShoppingCart size={16} style={{ opacity: 0.7 }}/>
               {language === 'fr' ? 'Panier' : 'Cart'}
@@ -524,6 +540,27 @@ export default function POSPage() {
         </aside>
       </div>
 
+      {/* ── Bouton flottant Panier + fond — mobile uniquement (CSS) ── */}
+      {/* Le panier reste accessible en un tap, quel que soit le nombre de
+          produits affichés : plus besoin de faire défiler toute la page. */}
+      {!isCartSheetOpen && (
+        <button className="p-cart-fab" onClick={() => setIsCartSheetOpen(true)}>
+          <span className="p-cart-fab-icon">
+            <ShoppingCart size={20}/>
+            {totalItems > 0 && <span className="p-cart-fab-badge">{totalItems}</span>}
+          </span>
+          <span className="p-cart-fab-text">
+            {totalItems > 0
+              ? (language === 'fr' ? `Panier (${totalItems})` : `Cart (${totalItems})`)
+              : (language === 'fr' ? 'Panier vide' : 'Empty cart')}
+          </span>
+          {totalItems > 0 && <span className="p-cart-fab-amount">{fmt(total)}</span>}
+        </button>
+      )}
+      {isCartSheetOpen && (
+        <div className="p-cart-backdrop" onClick={() => setIsCartSheetOpen(false)} />
+      )}
+
       {/* ── Reçu ─────────────────────────────────────────────────── */}
       {receiptData && (
         <ReceiptModal
@@ -615,11 +652,97 @@ export default function POSPage() {
            aucun effet sur "machine". */
         @media (min-width: 1600px) { .p-grid { grid-template-columns: minmax(0, 1fr) 500px; } }
         @media (max-width: 1200px) { .p-grid { grid-template-columns: minmax(0, 1fr) 400px; } }
+
+        /* ─── Panier flottant (mobile) ──────────────────────────────
+           Caché sur desktop : le panneau latéral y est déjà en permanence
+           visible, pas besoin d'un bouton flottant en plus. */
+        .p-cart-fab, .p-cart-backdrop, .p-cart-sheet-handle, .p-cart-collapse-mobile {
+          display: none;
+        }
+
         @media (max-width: 860px) {
+          /* Le panier n'est plus empilé sous la grille de produits — il
+             flotte en overlay (bottom sheet), position:fixed, sorti du
+             flux normal. La page redevient donc un document qui défile
+             normalement, et la grille de produits n'a plus besoin d'être
+             comprimée pour lui faire de la place. */
+          .pos-page-container {
+            height: auto;
+            max-height: none;
+            overflow: visible;
+          }
           .p-grid {
             grid-template-columns: 1fr;
-            grid-template-rows: 1fr auto;
             height: auto;
+          }
+          .p-products-zone { border-right: none; }
+
+          /* .p-cart lui-même (position, hauteur, transform) est redéfini
+             plus bas, juste après sa règle de base : une media query
+             placée trop tôt dans le fichier perd face à une règle de
+             même sélecteur qui la suit dans l'ordre du fichier, quelle
+             que soit la correspondance de @media — même bug de cascade
+             que celui déjà rencontré et corrigé sur la hauteur du panier. */
+
+          .p-cart-sheet-handle {
+            display: block;
+            width: 40px; height: 4px; border-radius: 999px;
+            background: var(--border-strong, var(--border-default));
+            margin: 0.6rem auto 0;
+            flex-shrink: 0;
+            cursor: pointer;
+          }
+
+          .p-cart-collapse-mobile {
+            display: flex; align-items: center; justify-content: center;
+            width: 30px; height: 30px; margin-right: 0.2rem;
+            background: none; border: none; color: var(--text-muted);
+            cursor: pointer; flex-shrink: 0; border-radius: 8px;
+          }
+          .p-cart-collapse-mobile:hover { background: var(--surface-3); }
+
+          .p-cart-backdrop {
+            display: block;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1440;
+            animation: fadeIn 200ms ease;
+          }
+
+          /* Bouton flottant Panier — toujours au-dessus du dock de
+             navigation du bas, quel que soit le nombre de produits
+             affichés au-dessus. */
+          .p-cart-fab {
+            display: flex; align-items: center; gap: 0.7rem;
+            position: fixed;
+            left: 1rem; right: 1rem;
+            bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+            z-index: 1420;
+            padding: 0.85rem 1.1rem;
+            background: linear-gradient(135deg, var(--color-brand-500), var(--color-brand-600));
+            border: none; border-radius: 999px;
+            box-shadow: 0 10px 28px rgba(0,0,0,0.35), 0 3px 10px rgba(109,213,196,0.35);
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+          }
+          .p-cart-fab:active { transform: scale(0.97); }
+
+          .p-cart-fab-icon { position: relative; color: #fff; display: flex; flex-shrink: 0; }
+          .p-cart-fab-badge {
+            position: absolute; top: -8px; right: -9px;
+            background: #fff; color: var(--color-brand-600);
+            min-width: 18px; height: 18px; border-radius: 999px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 0.65rem; padding: 0 3px;
+          }
+          .p-cart-fab-text {
+            flex: 1; text-align: left; color: #fff;
+            font-weight: 700; font-size: 0.9rem;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          }
+          .p-cart-fab-amount {
+            color: #fff; font-weight: 800; font-size: 0.9rem;
+            font-family: var(--font-display); flex-shrink: 0;
           }
         }
 
@@ -816,6 +939,24 @@ export default function POSPage() {
              n'avaient plus aucun espace visible pour s'afficher. */
           overflow-y: auto;
           overflow-x: hidden;
+        }
+
+        /* Sur mobile, .p-cart devient le bottom sheet flottant plutôt que
+           le panneau latéral en colonne fixe — placé ici, juste après la
+           règle de base, pour que ces valeurs gagnent bien la cascade. */
+        @media (max-width: 860px) {
+          .p-cart {
+            position: fixed;
+            left: 0; right: 0; bottom: 0;
+            width: auto;
+            height: 87vh; max-height: 87vh;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -12px 40px rgba(0,0,0,0.35);
+            transform: translateY(100%);
+            transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 1450;
+          }
+          .p-cart--sheet-open { transform: translateY(0); }
         }
 
         .p-cart-header {
@@ -1080,20 +1221,7 @@ export default function POSPage() {
         }
 
         @media (max-width: 768px) {
-          .pos-page-container {
-            height: auto;
-            max-height: none;
-            overflow: visible;
-          }
           .p-products-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
-          .p-grid { height: auto; }
-          .p-items { max-height: 200px; }
-          .p-summary { max-height: none; }
-          .p-validate-footer {
-            position: sticky;
-            bottom: 0;
-            z-index: 10;
-          }
         }
       `}</style>
     </div>

@@ -18,7 +18,13 @@
   border-radius: var(--radius-lg);
   width: 100%;
   max-width: 500px;
+  /* dvh (dynamic viewport height) suit le clavier mobile qui s'ouvre —
+     vh reste figé à la hauteur d'écran d'origine sur beaucoup de
+     navigateurs mobiles, ce qui poussait le bas de la modale (souvent le
+     bouton de validation) sous le clavier, hors d'atteinte. La ligne vh
+     reste en repli pour les navigateurs qui ne connaissent pas dvh. */
   max-height: 90vh;
+  max-height: 90dvh;
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
@@ -30,9 +36,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1rem;
   padding: 1.25rem 1.5rem;
   border-bottom: 1px solid var(--border-subtle);
   background: var(--surface-2);
+  flex-shrink: 0;
 }
 
 .modal-title {
@@ -53,6 +61,10 @@
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
+  /* Zone cliquable confortable au doigt, même si l'icône elle-même reste petite. */
+  min-width: 36px;
+  min-height: 36px;
+  flex-shrink: 0;
 }
 
 .modal-close:hover {
@@ -62,7 +74,14 @@
 
 .modal-body {
   padding: 1.5rem;
+  /* Garantit un espace en bas même sans safe-area (clavier virtuel,
+     boutons collés en fin de formulaire) : jamais moins que le padding
+     habituel, jamais moins que la zone de sécurité si elle est plus grande. */
+  padding-bottom: max(1.5rem, calc(1rem + env(safe-area-inset-bottom, 0px)));
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  min-height: 0;
 }
 
 @keyframes fadeIn {
@@ -73,4 +92,38 @@
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(10px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ─── Mobile : la modale devient un tiroir ancré en bas ───────────────
+   Même largeur que l'écran, coins arrondis uniquement en haut, toujours
+   entièrement défilable et jamais plus proche du bord que la zone de
+   sécurité (encoche / barre de gestes). */
+@media (max-width: 768px) {
+  .modal-overlay {
+    align-items: flex-end;
+    padding-left: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+  }
+
+  .modal-content {
+    max-width: 100%;
+    max-height: 92vh;
+    max-height: 92dvh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    animation: slideUpSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .modal-body {
+    padding: 1.25rem;
+    padding-bottom: max(1.5rem, calc(1.25rem + env(safe-area-inset-bottom, 0px)));
+  }
+}
+
+@keyframes slideUpSheet {
+  from { opacity: 0; transform: translateY(100%); }
+  to { opacity: 1; transform: translateY(0); }
 }

@@ -313,6 +313,7 @@ def create_product(
         name=payload.name,
         description=payload.description,
         price=payload.price,
+        cost_price=payload.cost_price,
         stock=payload.stock,
         category_id=payload.category_id,
         images=payload.images,

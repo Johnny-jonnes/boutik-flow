@@ -48,6 +48,27 @@ class FinancialTotals:
 
 
 @dataclass(frozen=True)
+class ProductMargin:
+    """
+    Marge brute réelle des produits vendus (prix de vente − prix d'achat).
+
+    Le prix d'achat est facultatif sur un produit : cette marge n'est donc
+    jamais une estimation globale, elle ne compte QUE les articles pour
+    lesquels un prix d'achat était connu au moment de la vente.
+    `coverage_pct` dit quelle part du chiffre d'affaires cette marge
+    couvre réellement, pour ne jamais faire croire à un chiffre complet
+    quand il ne l'est pas.
+    """
+
+    gross_margin: Decimal
+    revenue_with_cost: Decimal
+    revenue_total: Decimal
+    items_with_cost: int
+    items_total: int
+    coverage_pct: float
+
+
+@dataclass(frozen=True)
 class SalesMetrics:
     """Volume d'activité commerciale sur une période."""
 
@@ -169,6 +190,67 @@ def sales_metrics(
         items_sold=items_sold,
         orders_total=orders_total,
         average_order_value=average,
+    )
+
+
+def product_margin(
+    db: Session,
+    tenant_id: uuid.UUID,
+    start: datetime | None = None,
+    end: datetime | None = None,
+) -> ProductMargin:
+    """
+    Marge brute (prix de vente − prix d'achat) sur les articles vendus.
+
+    Les commandes annulées et supprimées sont exclues, comme pour
+    `sales_metrics`. Le calcul se fait ligne par ligne car il doit
+    distinguer les articles avec prix d'achat connu de ceux sans —
+    une agrégation SQL directe masquerait cette distinction.
+    """
+    query = (
+        db.query(OrderItem.quantity, OrderItem.unit_price, OrderItem.cost_price)
+        .join(Order, Order.id == OrderItem.order_id)
+        .filter(
+            Order.tenant_id == tenant_id,
+            Order.deleted_at.is_(None),
+            Order.status != OrderStatusEnum.cancelled,
+        )
+    )
+    query = _apply_window(query, Order.created_at, start, end)
+
+    gross_margin = ZERO
+    revenue_with_cost = ZERO
+    revenue_total = ZERO
+    items_with_cost = 0
+    items_total = 0
+
+    for quantity, unit_price, cost_price in query.all():
+        qty = int(quantity or 0)
+        price = Decimal(str(unit_price or 0))
+        line_revenue = price * qty
+
+        revenue_total += line_revenue
+        items_total += qty
+
+        if cost_price is not None:
+            cost = Decimal(str(cost_price))
+            gross_margin += (price - cost) * qty
+            revenue_with_cost += line_revenue
+            items_with_cost += qty
+
+    coverage_pct = (
+        round(float(revenue_with_cost / revenue_total * 100), 1)
+        if revenue_total > 0
+        else 0.0
+    )
+
+    return ProductMargin(
+        gross_margin=gross_margin,
+        revenue_with_cost=revenue_with_cost,
+        revenue_total=revenue_total,
+        items_with_cost=items_with_cost,
+        items_total=items_total,
+        coverage_pct=coverage_pct,
     )
 
 

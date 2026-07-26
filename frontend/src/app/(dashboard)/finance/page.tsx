@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Filter,
   Layers,
+  TrendingUp,
 } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
@@ -309,6 +310,25 @@ export default function FinancePage() {
           <div className="kpi-footer">
             <span className="kpi-subtext">
               {summary?.transactions_count ?? 0} {language === 'fr' ? 'transaction(s) au total' : 'total transaction(s)'}
+            </span>
+          </div>
+        </div>
+
+        {/* Marge Produits — calculée seulement sur les articles avec prix
+            d'achat connu (facultatif), jamais estimée pour le reste. */}
+        <div className="kpi-card kpi-margin">
+          <div className="kpi-header">
+            <span className="kpi-label">{language === 'fr' ? 'Marge Produits' : 'Product Margin'}</span>
+            <div className="kpi-icon kpi-icon-purple">
+              <TrendingUp size={20} />
+            </div>
+          </div>
+          <div className="kpi-value text-purple">
+            {formatGNF(summary?.product_margin ?? 0)}
+          </div>
+          <div className="kpi-footer">
+            <span className="kpi-subtext">
+              {(summary?.product_margin_coverage ?? 0).toFixed(0)}% {language === 'fr' ? 'du CA couvert' : 'of revenue covered'}
             </span>
           </div>
         </div>
@@ -804,6 +824,11 @@ export default function FinancePage() {
           color: #3b82f6;
         }
 
+        .kpi-icon-purple {
+          background: rgba(139, 92, 246, 0.12);
+          color: #8b5cf6;
+        }
+
         .kpi-value {
           font-size: 1.75rem;
           font-weight: 700;
@@ -820,6 +845,10 @@ export default function FinancePage() {
 
         .text-blue {
           color: #3b82f6;
+        }
+
+        .text-purple {
+          color: #8b5cf6;
         }
 
         .kpi-footer {

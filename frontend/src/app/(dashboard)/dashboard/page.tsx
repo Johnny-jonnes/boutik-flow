@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CircleDollarSign, ShoppingBag, Users, Clock, Crown, CheckCircle, BarChart3, MessageCircle, ArrowDownRight, Wallet, Package } from 'lucide-react';
+import { CircleDollarSign, ShoppingBag, Users, Clock, Crown, CheckCircle, BarChart3, MessageCircle, ArrowDownRight, Wallet, Package, TrendingUp } from 'lucide-react';
 import type { DashboardKPIs, Order, AnalyticsData } from '@/types';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
@@ -337,6 +337,18 @@ export default function DashboardPage() {
       change: language === 'fr' ? 'Solde net' : 'Net balance',
       icon: <Wallet size={20} style={{ color: '#3ea39b' }} />,
       color: 'rgba(62,163,155,0.12)',
+      isCurrency: true,
+    },
+    {
+      // Marge réelle (vente − achat), calculée uniquement sur les articles
+      // dont le prix d'achat est connu (facultatif) — jamais estimée pour
+      // le reste. Le % couvert est affiché pour ne jamais faire croire à
+      // un chiffre complet quand il ne l'est pas.
+      title: language === 'fr' ? 'Marge Produits' : 'Product Margin',
+      value: kpis.product_margin || 0,
+      change: `${(kpis.product_margin_coverage ?? 0).toFixed(0)}% ${language === 'fr' ? 'du CA couvert' : 'of revenue covered'}`,
+      icon: <TrendingUp size={20} style={{ color: '#8b5cf6' }} />,
+      color: 'rgba(139,92,246,0.12)',
       isCurrency: true,
     },
     {

@@ -126,6 +126,8 @@ export interface Product {
   name: string;
   description: string | null;
   price: number;
+  /** Prix d'achat — facultatif, sert au calcul de la marge réelle quand il est renseigné. */
+  cost_price: number | null;
   stock: number;
   category_id: string | null;
   category_rel: Category | null;
@@ -140,6 +142,8 @@ export interface Product {
 export interface ProductCreate {
   name: string;
   price: number;
+  /** number | null (explicite pour vider le champ à l'édition) | undefined (omis à la création). */
+  cost_price?: number | null;
   stock?: number;
   description?: string;
   category_id?: string;
@@ -196,6 +200,10 @@ export interface DashboardKPIs {
   items_sold?: number;
   /** Clients créés pendant la période (les autres compteurs sont cumulés). */
   new_clients?: number;
+  /** Marge brute réelle (vente − achat), calculée seulement sur les articles avec prix d'achat connu. */
+  product_margin?: number;
+  /** % du chiffre d'affaires couvert par un prix d'achat connu. */
+  product_margin_coverage?: number;
   period_start?: string | null;
   period_end?: string | null;
 }
@@ -274,6 +282,8 @@ export interface AnalyticsKPIs {
   total_expenses?: number;
   net_balance?: number;
   items_sold?: number;
+  product_margin?: number;
+  product_margin_coverage?: number;
 }
 
 export interface AnalyticsData {
@@ -489,6 +499,8 @@ export interface FinanceSummary {
   total_expense: number;
   net_balance: number;
   transactions_count: number;
+  product_margin?: number;
+  product_margin_coverage?: number;
 }
 
 export interface TransactionListResponse {
