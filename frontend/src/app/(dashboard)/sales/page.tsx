@@ -96,6 +96,20 @@ export default function SalesHistoryPage() {
     api.getProducts(1, 100).then(res => setProducts(res.items)).catch(() => {});
   }, []);
 
+  // Une vente conclue hors connexion n'existe nulle part côté serveur tant
+  // qu'elle n'a pas été synchronisée : sans ce rafraîchissement, l'historique
+  // restait affiché avec des ventes à identifiant local jusqu'à un
+  // rechargement manuel de la page.
+  useEffect(() => {
+    const onSyncComplete = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { succeeded: number } | undefined;
+      if (detail?.succeeded) fetchSales();
+    };
+    window.addEventListener('boutikflow:sync-complete', onSyncComplete);
+    return () => window.removeEventListener('boutikflow:sync-complete', onSyncComplete);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const getClientName = (clientId: string) => {
     const client = clients.find(c => c.id === clientId);
     if (client) return client.name;

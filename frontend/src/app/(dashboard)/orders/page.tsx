@@ -191,6 +191,20 @@ export default function OrdersPage() {
     api.getProducts(1, 100).then(res => setProducts(res.items)).catch(() => {});
   }, []);
 
+  // Une commande créée hors connexion n'existe nulle part côté serveur tant
+  // qu'elle n'a pas été synchronisée : sans ce rafraîchissement, la liste
+  // restait affichée avec des commandes à identifiant local jusqu'à un
+  // rechargement manuel de la page.
+  useEffect(() => {
+    const onSyncComplete = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { succeeded: number } | undefined;
+      if (detail?.succeeded) fetchOrders();
+    };
+    window.addEventListener('boutikflow:sync-complete', onSyncComplete);
+    return () => window.removeEventListener('boutikflow:sync-complete', onSyncComplete);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Multi-product handlers
   const handleAddItem = () => {
     setCreateForm(prev => ({ ...prev, items: [...prev.items, { product_id: '', quantity: 1 }] }));

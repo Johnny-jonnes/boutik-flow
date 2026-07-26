@@ -256,6 +256,20 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [language, periodFilter, customStartDate, customEndDate]);
 
+  // Une vente créée hors connexion ne compte nulle part tant qu'elle n'a
+  // pas été rejouée contre le serveur : sans ce rafraîchissement, le
+  // Tableau de bord restait affiché avec des chiffres d'avant la
+  // synchronisation jusqu'à ce que l'utilisateur change un filtre à la main.
+  useEffect(() => {
+    const onSyncComplete = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { succeeded: number } | undefined;
+      if (detail?.succeeded) fetchData();
+    };
+    window.addEventListener('boutikflow:sync-complete', onSyncComplete);
+    return () => window.removeEventListener('boutikflow:sync-complete', onSyncComplete);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [periodFilter, customStartDate, customEndDate]);
+
   // Changer de période invalide la page courante : sans ce reset, rester
   // sur la page 3 après un nouveau filtre pouvait afficher une page vide.
   useEffect(() => {

@@ -1,54 +1,87 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Wifi, WifiOff, RefreshCw, Check } from 'lucide-react';
+import { WifiOff, RefreshCw, Check, AlertTriangle } from 'lucide-react';
+import { getSyncQueueStatus } from '@/lib/api/client';
 
-type SyncStatus = 'online' | 'offline' | 'syncing' | 'synced';
+type SyncStatus = 'online' | 'offline' | 'syncing' | 'synced' | 'issues';
 
 export function OfflineStatusBar() {
   const [status, setStatus] = useState<SyncStatus>('online');
+  const [pendingCount, setPendingCount] = useState(0);
+  const [failedCount, setFailedCount] = useState(0);
 
-  const updateStatus = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    if (!navigator.onLine) {
-      setStatus('offline');
-    }
+  const refreshQueueCounts = useCallback(() => {
+    const { pendingCount: pending, failed } = getSyncQueueStatus();
+    setPendingCount(pending);
+    setFailedCount(failed.length);
+    return { pending, failedCount: failed.length };
   }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    setStatus(navigator.onLine ? 'online' : 'offline');
-
-    const goOnline = () => {
+    const { pending: initialPending, failedCount: initialFailed } = refreshQueueCounts();
+    if (!navigator.onLine) {
+      setStatus('offline');
+    } else if (initialFailed > 0) {
+      setStatus('issues');
+    } else if (initialPending > 0) {
+      // Une file existait déjà (session précédente) : le sync automatique
+      // au chargement du module va démarrer sous peu, on l'annonce déjà.
       setStatus('syncing');
-      // Tenter la synchronisation
-      const syncEvent = new CustomEvent('boutikflow:sync-request');
-      window.dispatchEvent(syncEvent);
-      // Auto-transition vers 'synced' après 2s (ou sur event)
-      setTimeout(() => {
+    } else {
+      setStatus('online');
+    }
+
+    const goOffline = () => {
+      refreshQueueCounts();
+      setStatus('offline');
+    };
+
+    // La synchronisation elle-même est déclenchée automatiquement par
+    // lib/api/client.ts dès l'événement "online" (ou au chargement si déjà
+    // en ligne) : ce composant se contente d'en refléter la progression
+    // réelle via ces événements, il ne simule plus rien lui-même.
+    const onSyncStart = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { count: number } | undefined;
+      if (detail?.count) setPendingCount(detail.count);
+      setStatus('syncing');
+    };
+
+    const onSyncComplete = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { succeeded: number; failed: number } | undefined;
+      const { failedCount } = refreshQueueCounts();
+      if (failedCount > 0) {
+        setStatus('issues');
+      } else if (detail?.succeeded) {
         setStatus('synced');
-        setTimeout(() => setStatus('online'), 2500);
-      }, 1500);
+        setTimeout(() => setStatus('online'), 3000);
+      } else {
+        setStatus('online');
+      }
     };
 
-    const goOffline = () => setStatus('offline');
-
-    const onSynced = () => {
-      setStatus('synced');
-      setTimeout(() => setStatus('online'), 2500);
+    const onQueueChanged = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { pending: number; failed: number } | undefined;
+      if (detail) {
+        setPendingCount(detail.pending);
+        setFailedCount(detail.failed);
+      }
     };
 
-    window.addEventListener('online', goOnline);
     window.addEventListener('offline', goOffline);
-    window.addEventListener('boutikflow:synced', onSynced);
+    window.addEventListener('boutikflow:sync-start', onSyncStart);
+    window.addEventListener('boutikflow:sync-complete', onSyncComplete);
+    window.addEventListener('boutikflow:queue-changed', onQueueChanged);
 
     return () => {
-      window.removeEventListener('online', goOnline);
       window.removeEventListener('offline', goOffline);
-      window.removeEventListener('boutikflow:synced', onSynced);
+      window.removeEventListener('boutikflow:sync-start', onSyncStart);
+      window.removeEventListener('boutikflow:sync-complete', onSyncComplete);
+      window.removeEventListener('boutikflow:queue-changed', onQueueChanged);
     };
-  }, []);
+  }, [refreshQueueCounts]);
 
   if (status === 'online') return null;
 
@@ -58,19 +91,30 @@ export function OfflineStatusBar() {
         {status === 'offline' && (
           <>
             <WifiOff size={13} />
-            <span>Hors ligne</span>
+            <span>
+              Hors ligne
+              {pendingCount > 0 && ` — ${pendingCount} en attente de synchronisation`}
+            </span>
           </>
         )}
         {status === 'syncing' && (
           <>
             <RefreshCw size={13} className="offline-bar-spin" />
-            <span>Synchronisation...</span>
+            <span>Synchronisation{pendingCount > 0 ? ` (${pendingCount})` : ''}...</span>
           </>
         )}
         {status === 'synced' && (
           <>
             <Check size={13} />
             <span>Synchronisé</span>
+          </>
+        )}
+        {status === 'issues' && (
+          <>
+            <AlertTriangle size={13} />
+            <span>
+              {failedCount} opération{failedCount > 1 ? 's' : ''} n&apos;{failedCount > 1 ? 'ont' : 'a'} pas pu être synchronisée{failedCount > 1 ? 's' : ''} — vérifiez vos ventes récentes
+            </span>
           </>
         )}
       </div>
@@ -81,7 +125,8 @@ export function OfflineStatusBar() {
           align-items: center;
           justify-content: center;
           gap: 0.4rem;
-          height: 28px;
+          min-height: 28px;
+          padding: 0.2rem 0.75rem;
           font-size: 0.72rem;
           font-weight: 700;
           letter-spacing: 0.02em;
@@ -89,6 +134,7 @@ export function OfflineStatusBar() {
           animation: slideDown 0.25s var(--ease-out);
           user-select: none;
           width: 100%;
+          text-align: center;
         }
         .offline-bar--offline {
           background: rgba(245, 158, 11, 0.15);
@@ -104,10 +150,16 @@ export function OfflineStatusBar() {
           background: rgba(16, 185, 129, 0.12);
           color: #10b981;
           border-bottom: 1px solid rgba(16, 185, 129, 0.18);
-          animation: slideDown 0.25s var(--ease-out), fadeOut 0.4s ease 2s forwards;
+          animation: slideDown 0.25s var(--ease-out), fadeOut 0.4s ease 2.6s forwards;
+        }
+        .offline-bar--issues {
+          background: rgba(244, 63, 94, 0.15);
+          color: #f43f5e;
+          border-bottom: 1px solid rgba(244, 63, 94, 0.25);
         }
         .offline-bar-spin {
           animation: spin 1s linear infinite;
+          flex-shrink: 0;
         }
         @keyframes slideDown {
           from { opacity: 0; transform: translateY(-100%); }

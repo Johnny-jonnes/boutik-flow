@@ -165,6 +165,19 @@ export default function FinancePage() {
     fetchTransactions();
   }, [fetchTransactions]);
 
+  // Une transaction créée hors connexion (vente, dépense...) ne compte
+  // nulle part tant qu'elle n'a pas été rejouée contre le serveur : sans ce
+  // rafraîchissement, les totaux Finance restaient affichés avec des
+  // chiffres d'avant la synchronisation jusqu'à un changement de filtre manuel.
+  useEffect(() => {
+    const onSyncComplete = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { succeeded: number } | undefined;
+      if (detail?.succeeded) fetchTransactions();
+    };
+    window.addEventListener('boutikflow:sync-complete', onSyncComplete);
+    return () => window.removeEventListener('boutikflow:sync-complete', onSyncComplete);
+  }, [fetchTransactions]);
+
   // Handle Type toggle in Modal Form
   const handleTypeChange = (newType: TransactionType) => {
     const defaultCategory = newType === 'income' ? 'sale' : 'supplier_purchase';
