@@ -1022,7 +1022,13 @@ export default function POSPage() {
            la place d'au moins un article, même sous forte contrainte de
            hauteur (c'est .p-cart qui défile désormais si besoin, plus
            cette zone toute seule). */
-        .p-items { flex: 1; overflow-y: visible; padding: 0.4rem 0; min-height: 170px; }
+        /* flex-shrink:0 est essentiel : avec beaucoup d'articles, laisser
+           flex-shrink par défaut (1) compresse cette zone vers min-height
+           tout en gardant overflow:visible — le contenu réel (plus grand)
+           déborde alors hors de sa boîte et se superpose au résumé/bouton
+           Valider juste en dessous. En bloquant le rétrécissement, .p-cart
+           (overflow-y:auto) grandit et défile proprement à la place. */
+        .p-items { flex: 1 0 auto; overflow-y: visible; padding: 0.4rem 0; min-height: 170px; }
 
         .p-cart-empty {
           display: flex; flex-direction: column; align-items: center; justify-content: center;
