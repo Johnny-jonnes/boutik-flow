@@ -845,65 +845,6 @@ body {
 .light .table tr:nth-child(even) td { background: rgba(0,0,0,0.015); }
 
 /* ═══════════════════════════════════════════════════════════════════
-   SIDEBAR — Toujours sombre, indigo brand
-   ═══════════════════════════════════════════════════════════════════ */
-.sidebar {
-  --surface-0: #0d0d10;
-  --surface-1: #111116;
-  --surface-2: #18181d;
-  --surface-3: #1f1f25;
-  --surface-4: #2c2c35;
-  --surface-hover: rgba(99,102,241,0.08);
-  --surface-active: rgba(99,102,241,0.15);
-  --sidebar-gradient-end: #090910;
-  --border-subtle: rgba(255,255,255,0.06);
-  --border-default: rgba(255,255,255,0.10);
-  --border-strong: rgba(255,255,255,0.16);
-  --text-primary: #f4f4f6;
-  --text-secondary: #9898a8;
-  --text-muted: #606070;
-  --color-brand-400: #818cf8;
-  --color-brand-500: #6366f1;
-  --overlay-subtle: rgba(255,255,255,0.02);
-  --overlay-light: rgba(255,255,255,0.04);
-  --overlay-medium: rgba(255,255,255,0.08);
-  --brand-alpha-08: rgba(99,102,241,0.10);
-  --brand-alpha-10: rgba(99,102,241,0.15);
-}
-
-/* Sidebar text overrides for light mode */
-.sidebar .brand-text,
-.sidebar .boutique-name { color: #f4f4f6 !important; }
-.sidebar .boutique-badge { color: #818cf8 !important; }
-.sidebar .nav-section-title { color: #606070 !important; }
-.sidebar .nav-section-title:hover { color: #f4f4f6 !important; }
-.sidebar .nav-link { color: #9898a8 !important; }
-.sidebar .nav-link:hover {
-  color: #f4f4f6 !important;
-  background: rgba(99,102,241,0.08) !important;
-}
-.sidebar .nav-link--active {
-  color: #818cf8 !important;
-  background: rgba(99,102,241,0.15) !important;
-}
-.sidebar .profile-name { color: #f4f4f6 !important; }
-.sidebar .profile-role { color: #9898a8 !important; }
-.sidebar .profile-chevron, .sidebar .boutique-chevron { color: #606070 !important; }
-.sidebar .plan-usage-header { color: #606070 !important; }
-.sidebar .plan-percentage { color: #9898a8 !important; }
-.sidebar .progress-track { background: rgba(255,255,255,0.08) !important; }
-.sidebar .progress-bar { background: #6366f1 !important; }
-.sidebar .sidebar-collapse-btn {
-  background: rgba(255,255,255,0.04) !important;
-  border-color: rgba(255,255,255,0.08) !important;
-  color: #9898a8 !important;
-}
-.sidebar .sidebar-collapse-btn:hover {
-  color: #f4f4f6 !important;
-  background: rgba(255,255,255,0.08) !important;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
    THEME TOGGLE
    ═══════════════════════════════════════════════════════════════════ */
 .theme-toggle {
