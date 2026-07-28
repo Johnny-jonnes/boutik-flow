@@ -63,6 +63,16 @@ export default function RootLayout({
         <link rel="apple-touch-icon-precomposed" href="/apple-touch-icon-precomposed.png?v=7" />
         <meta name="msapplication-TileColor" content="#009460" />
         <meta name="msapplication-TileImage" content="/icons/icon-144x144.png?v=7" />
+        {/* Enregistrement du Service Worker AVANT même l'hydratation React
+            (PWARegister ne s'exécute qu'après le montage du composant, ce
+            qui laisse une fenêtre où la toute première navigation — souvent
+            "Vendre", premier réflexe en ouvrant l'app — part sans aucune
+            protection du cache si le réseau flanche à cet instant précis). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(function(){});}`,
+          }}
+        />
       </head>
       <body>
         <LanguageProvider>

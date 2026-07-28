@@ -25,10 +25,24 @@ const CACHE_VERSION = 'v2';
 const RUNTIME_CACHE = `boutikflow-runtime-${CACHE_VERSION}`;
 const OFFLINE_FALLBACK_URL = '/offline.html';
 
+// Routes critiques précachées dès l'installation : sans ça, la toute
+// première navigation vers l'une d'elles après ouverture de l'app (le plus
+// souvent "Vendre", premier réflexe du vendeur) n'a AUCUNE version en
+// cache à servir si le réseau flanche à cet instant précis — elle doit
+// attendre une visite antérieure réussie pour bénéficier du repli cache.
+// Chaque échec est individuellement ignoré (catch) pour qu'une seule
+// route indisponible au moment de l'installation ne bloque pas les autres.
+const PRECACHE_ROUTES = ['/dashboard', '/pos', '/products', '/orders', '/crm', '/finance'];
+
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(RUNTIME_CACHE).then((cache) => cache.add(OFFLINE_FALLBACK_URL).catch(() => {}))
+    caches.open(RUNTIME_CACHE).then((cache) =>
+      Promise.all([
+        cache.add(OFFLINE_FALLBACK_URL).catch(() => {}),
+        ...PRECACHE_ROUTES.map((route) => cache.add(route).catch(() => {})),
+      ])
+    )
   );
 });
 
