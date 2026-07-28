@@ -560,6 +560,12 @@ export default function HomePage() {
           display: flex;
           align-items: center;
           justify-content: space-between;
+          /* Filet de sécurité si jamais le bouton ne se compacte pas
+             (par ex. un navigateur qui rapporte mal la largeur de
+             viewport) : plutôt que de déborder hors écran, la ligne
+             d'actions passe à la ligne suivante au lieu d'être coupée. */
+          flex-wrap: wrap;
+          row-gap: 0.5rem;
           padding: max(1rem, env(safe-area-inset-top, 0px)) max(2.5rem, env(safe-area-inset-right, 0px))
                    1rem max(2.5rem, env(safe-area-inset-left, 0px));
           border-bottom: 1px solid var(--border-subtle);
@@ -568,6 +574,7 @@ export default function HomePage() {
           display: flex;
           align-items: center;
           gap: 0.625rem;
+          flex-shrink: 0;
         }
         .nav-logo-icon {
           width: 36px;
@@ -592,6 +599,7 @@ export default function HomePage() {
           display: flex;
           gap: 0.75rem;
           align-items: center;
+          margin-left: auto;
         }
 
         /* Hero */
