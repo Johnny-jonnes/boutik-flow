@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
-import { Search, ImageIcon, Pencil, Trash2, Eye, Plus, Sparkles, Download, Printer, Camera } from 'lucide-react';
+import { Search, ImageIcon, Pencil, Trash2, Eye, Plus, Sparkles, Download, Printer, Camera, Layers } from 'lucide-react';
 import type { Product } from '@/types';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
 import { BarcodeScannerModal } from '@/components/ui/BarcodeScannerModal';
 import { SKUPrintModal } from '@/components/ui/SKUPrintModal';
+import { BulkAddProductsModal } from '@/components/ui/BulkAddProductsModal';
 import { useLanguage } from '@/context/LanguageContext';
 import type { Category } from '@/types';
 import { compressImage } from '@/lib/utils/imageCompressor';
@@ -34,6 +35,7 @@ function ProductsContent() {
 
   // Add modal
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isBulkAddOpen, setIsBulkAddOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addForm, setAddForm] = useState({
     name: '', price: '', cost_price: '', stock: '', category_id: '', description: '', is_available: true, sku: '', barcode: '',
@@ -491,6 +493,11 @@ function ProductsContent() {
             <span>{t('common.download')}</span>
           </button>
 
+          <button className="btn btn-ghost" id="btn-bulk-add-products" onClick={() => setIsBulkAddOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Layers size={16} />
+            <span>{language === 'fr' ? 'Créer en groupe' : 'Bulk create'}</span>
+          </button>
+
           <button className="btn btn-primary" id="btn-add-product" onClick={() => setIsAddOpen(true)}>
             <Plus size={16} /> {t('prod.add')}
           </button>
@@ -613,6 +620,14 @@ function ProductsContent() {
       <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Nouveau produit">
         {renderProductForm(addForm, setAddForm, handleAdd, isSubmitting, 'Ajouter', () => setIsAddOpen(false), false)}
       </Modal>
+
+      {/* Modal Création groupée */}
+      <BulkAddProductsModal
+        isOpen={isBulkAddOpen}
+        onClose={() => setIsBulkAddOpen(false)}
+        categories={categories}
+        onCreated={fetchProductsAndCategories}
+      />
 
       {/* Modal Voir */}
       <Modal isOpen={!!viewProduct} onClose={() => setViewProduct(null)} title="Détails du produit">
