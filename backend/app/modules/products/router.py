@@ -27,6 +27,9 @@ from app.modules.products.schemas import (
     ProductBulkCreate,
     ProductBulkCreateResponse,
     ProductBulkCreateError,
+    StockBulkIn,
+    StockBulkInResponse,
+    StockBulkInError,
     CategoryCreate,
     CategoryUpdate,
     CategoryResponse,
@@ -458,6 +461,69 @@ def create_products_bulk(
         len(created), len(errors), current_user.tenant_id,
     )
     return ProductBulkCreateResponse(created=created, errors=errors)
+
+
+# ──────────────────────────── POST /products/stock/bulk-in ─────────────────
+
+@router.post(
+    "/stock/bulk-in",
+    response_model=StockBulkInResponse,
+    summary="Entrée de stock groupée (réception fournisseur, inventaire...)",
+)
+def bulk_stock_in(
+    payload: StockBulkIn,
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    idempotency_key: IdempotencyHeader = None,
+) -> StockBulkInResponse:
+    """
+    Ajoute une quantité au stock EXISTANT de plusieurs produits en une
+    seule opération, typiquement après une livraison fournisseur — plutôt
+    que d'ouvrir chaque produit un par un pour modifier son stock. Chaque
+    ligne est traitée dans son propre savepoint : un produit introuvable
+    n'empêche pas les autres d'être mis à jour.
+    """
+    cached = get_cached_response(db, current_user.tenant_id, "products.stock_bulk_in", idempotency_key)
+    if cached:
+        return cached[1]
+
+    updated: list[ProductResponse] = []
+    errors: list[StockBulkInError] = []
+
+    for index, item in enumerate(payload.items):
+        savepoint = db.begin_nested()
+        try:
+            product = db.query(Product).filter(
+                and_(
+                    Product.id == item.product_id,
+                    Product.tenant_id == current_user.tenant_id,
+                    Product.deleted_at.is_(None),
+                )
+            ).first()
+            if not product:
+                raise ValueError("Produit introuvable.")
+
+            old_stock = product.stock
+            product.stock = old_stock + item.quantity
+            db.flush()
+            _create_inventory_log(
+                db, current_user.tenant_id, product.id, current_user.user_id,
+                "stock_in_bulk", str(old_stock), str(product.stock),
+            )
+            savepoint.commit()
+            updated.append(ProductResponse.model_validate(product))
+        except Exception as e:
+            savepoint.rollback()
+            errors.append(StockBulkInError(index=index, product_id=str(item.product_id), error=str(e)))
+
+    db.commit()
+    logger.info(
+        "Entrée de stock groupée : %d mis à jour, %d erreurs (tenant=%s)",
+        len(updated), len(errors), current_user.tenant_id,
+    )
+    response = StockBulkInResponse(updated=updated, errors=errors)
+    store_response(db, current_user.tenant_id, "products.stock_bulk_in", idempotency_key, status.HTTP_200_OK, jsonable_encoder(response))
+    return response
 
 
 # ──────────────────────────── PUT /products/{id} ────────────────────────────

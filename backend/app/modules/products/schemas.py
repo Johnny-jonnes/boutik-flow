@@ -115,3 +115,27 @@ class ProductBulkCreateError(BaseModel):
 class ProductBulkCreateResponse(BaseModel):
     created: list[ProductResponse]
     errors: list[ProductBulkCreateError]
+
+
+class StockBulkInItem(BaseModel):
+    """Une ligne d'entrée de stock groupée — quantité AJOUTÉE au stock
+    existant (pas une valeur de remplacement), pour éviter d'écraser un
+    stock qui aurait changé entre l'ouverture du formulaire et l'envoi."""
+    product_id: uuid.UUID
+    quantity: int = Field(..., gt=0, description="Quantité ajoutée au stock existant")
+
+
+class StockBulkIn(BaseModel):
+    items: list[StockBulkInItem] = Field(..., min_length=1, max_length=200)
+    reason: str | None = Field(None, max_length=255, description="Ex: réception fournisseur, inventaire...")
+
+
+class StockBulkInError(BaseModel):
+    index: int
+    product_id: str
+    error: str
+
+
+class StockBulkInResponse(BaseModel):
+    updated: list[ProductResponse]
+    errors: list[StockBulkInError]

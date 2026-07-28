@@ -1229,6 +1229,14 @@ export const api = {
     return request('/products/bulk', { method: 'POST', body: JSON.stringify({ products }) });
   },
 
+  bulkStockIn(items: { product_id: string; quantity: number }[], reason?: string): Promise<{ updated: Product[]; errors: { index: number; product_id: string; error: string }[] }> {
+    return request('/products/stock/bulk-in', {
+      method: 'POST',
+      body: JSON.stringify({ items, reason: reason || undefined }),
+      headers: withIdempotencyKey(generateIdempotencyKey()),
+    });
+  },
+
   updateProduct(id: string, data: ProductUpdate): Promise<Product> {
     return request(`/products/${id}`, { method: 'PUT', body: JSON.stringify(data) });
   },

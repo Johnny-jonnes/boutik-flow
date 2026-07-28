@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
-import { Search, ImageIcon, Pencil, Trash2, Eye, Plus, Sparkles, Download, Printer, Camera, Layers } from 'lucide-react';
+import { Search, ImageIcon, Pencil, Trash2, Eye, Plus, Sparkles, Download, Printer, Camera, Layers, Wallet, Package, PackagePlus } from 'lucide-react';
 import type { Product } from '@/types';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui/Modal';
 import { BarcodeScannerModal } from '@/components/ui/BarcodeScannerModal';
 import { SKUPrintModal } from '@/components/ui/SKUPrintModal';
 import { BulkAddProductsModal } from '@/components/ui/BulkAddProductsModal';
+import { BulkStockInModal } from '@/components/ui/BulkStockInModal';
 import { useLanguage } from '@/context/LanguageContext';
 import type { Category } from '@/types';
 import { compressImage } from '@/lib/utils/imageCompressor';
@@ -33,9 +34,14 @@ function ProductsContent() {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [activeScanField, setActiveScanField] = useState<'search' | 'add' | 'edit'>('search');
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage, setPerPage] = useState(25);
+
   // Add modal
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isBulkAddOpen, setIsBulkAddOpen] = useState(false);
+  const [isBulkStockInOpen, setIsBulkStockInOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addForm, setAddForm] = useState({
     name: '', price: '', cost_price: '', stock: '', category_id: '', description: '', is_available: true, sku: '', barcode: '',
@@ -308,6 +314,18 @@ function ProductsContent() {
     return matchesSearch && matchesCategory;
   });
 
+  // Un catalogue important rendu d'un coup dans le tableau ralentissait la
+  // page (et rejoue le même problème déjà rencontré sur la grille Vendre).
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / perPage));
+  const paginatedProducts = filteredProducts.slice((currentPage - 1) * perPage, currentPage * perPage);
+
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, categoryIdFromUrl, perPage]);
+
+  // Indicateurs de catalogue — toujours calculés sur l'ensemble des
+  // produits chargés, pas seulement la page ou le filtre courant.
+  const totalStockValue = products.reduce((sum, p) => sum + p.price * p.stock, 0);
+  const totalStockUnits = products.reduce((sum, p) => sum + p.stock, 0);
+
   const renderProductForm = (
     form: typeof addForm,
     setForm: (f: typeof addForm) => void,
@@ -517,6 +535,11 @@ function ProductsContent() {
             <span>{t('common.download')}</span>
           </button>
 
+          <button className="btn btn-ghost" id="btn-bulk-stock-in" onClick={() => setIsBulkStockInOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <PackagePlus size={16} />
+            <span>{language === 'fr' ? 'Entrée de stock' : 'Stock-in'}</span>
+          </button>
+
           <button className="btn btn-ghost" id="btn-bulk-add-products" onClick={() => setIsBulkAddOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <Layers size={16} />
             <span>{language === 'fr' ? 'Créer en groupe' : 'Bulk create'}</span>
@@ -525,6 +548,24 @@ function ProductsContent() {
           <button className="btn btn-primary" id="btn-add-product" onClick={() => setIsAddOpen(true)}>
             <Plus size={16} /> {t('prod.add')}
           </button>
+        </div>
+      </div>
+
+      <div className="kpi-grid" style={{ marginBottom: '1.25rem' }}>
+        <div className="kpi-card">
+          <div className="kpi-icon-wrap kpi-icon-green"><Wallet size={20} /></div>
+          <span className="kpi-label">{language === 'fr' ? 'Valeur du stock' : 'Stock value'}</span>
+          <span className="kpi-value">{formatGNF(totalStockValue)}</span>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-icon-wrap kpi-icon-indigo"><Package size={20} /></div>
+          <span className="kpi-label">{language === 'fr' ? 'Produits en catalogue' : 'Products in catalog'}</span>
+          <span className="kpi-value">{products.length}</span>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-icon-wrap kpi-icon-amber"><Layers size={20} /></div>
+          <span className="kpi-label">{language === 'fr' ? 'Unités en stock' : 'Units in stock'}</span>
+          <span className="kpi-value">{totalStockUnits.toLocaleString('fr-FR')}</span>
         </div>
       </div>
 
@@ -587,7 +628,7 @@ function ProductsContent() {
             </tr>
           </thead>
           <tbody>
-            {filteredProducts.map(product => (
+            {paginatedProducts.map(product => (
               <tr key={product.id} className={!product.is_available ? 'row-disabled' : ''}>
                 <td>
                   <div className="product-cell">
@@ -640,6 +681,25 @@ function ProductsContent() {
         </table>
       </div>
 
+      {totalPages > 1 && (
+        <div className="pagination-bar">
+          <div className="per-page-wrap">
+            <span className="per-page-label">{language === 'fr' ? 'Par page' : 'Per page'} :</span>
+            <select className="input" style={{ width: '80px' }} value={perPage} onChange={e => setPerPage(Number(e.target.value))}>
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+          <div className="page-nav">
+            <button className="btn btn-ghost btn-sm" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>{language === 'fr' ? 'Précédent' : 'Previous'}</button>
+            <span className="page-indicator">{language === 'fr' ? 'Page' : 'Page'} {currentPage} {language === 'fr' ? 'sur' : 'of'} {totalPages}</span>
+            <button className="btn btn-ghost btn-sm" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>{language === 'fr' ? 'Suivant' : 'Next'}</button>
+          </div>
+        </div>
+      )}
+
       {/* Modal Ajouter */}
       <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Nouveau produit">
         {renderProductForm(addForm, setAddForm, handleAdd, isSubmitting, 'Ajouter', () => setIsAddOpen(false), false)}
@@ -651,6 +711,14 @@ function ProductsContent() {
         onClose={() => setIsBulkAddOpen(false)}
         categories={categories}
         onCreated={fetchProductsAndCategories}
+      />
+
+      {/* Modal Entrée de stock groupée */}
+      <BulkStockInModal
+        isOpen={isBulkStockInOpen}
+        onClose={() => setIsBulkStockInOpen(false)}
+        products={products}
+        onUpdated={fetchProductsAndCategories}
       />
 
       {/* Modal Voir */}
@@ -739,6 +807,13 @@ function ProductsContent() {
         .data-table { width: 100%; border-collapse: collapse; text-align: left; }
         .data-table th, .data-table td { padding: 0.875rem 1.25rem; border-bottom: 1px solid var(--border-subtle); }
         .data-table th { font-weight: 600; color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        /* Pagination */
+        .pagination-bar { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; gap: 1rem; flex-wrap: wrap; }
+        .per-page-wrap { display: flex; align-items: center; gap: 0.5rem; }
+        .per-page-label { font-size: 0.85rem; color: var(--text-muted); }
+        .page-nav { display: flex; align-items: center; gap: 0.75rem; }
+        .page-indicator { font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; }
         .data-table tr:hover td { background: var(--surface-hover); }
         .data-table tr:last-child td { border-bottom: none; }
         .row-disabled td { opacity: 0.6; }
