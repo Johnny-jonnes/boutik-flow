@@ -102,7 +102,7 @@ export default function POSPage() {
     if (cached.length > 0) { setProducts(cached); setLoading(false); } else { setLoading(true); }
     // 2. Silent background refresh from server
     try {
-      const data = await api.getProducts(1, 200);
+      const data = await api.getProducts(1, 100);
       const items = Array.isArray(data) ? data : (data?.items ?? []);
       if (items.length > 0) {
         setProducts(items);
@@ -116,6 +116,14 @@ export default function POSPage() {
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  // Rendre la grille entière (jusqu'à 100 cartes avec image) d'un coup,
+  // à chaque frappe de recherche, pèse sur la mémoire d'un téléphone
+  // d'entrée de gamme — plafonné et étendu par lots plutôt que tout
+  // afficher d'un coup, quelle que soit la taille du catalogue.
+  const [visibleCount, setVisibleCount] = useState(48);
+  useEffect(() => { setVisibleCount(48); }, [searchQuery]);
+  const visibleProducts = filteredProducts.slice(0, visibleCount);
 
   // ─── Panier ──────────────────────────────────────────────────────
   const addToCart = (product: Product) => {
@@ -343,7 +351,7 @@ export default function POSPage() {
                 )}
               </div>
             ) : (
-              filteredProducts.map((product, idx) => {
+              visibleProducts.map((product, idx) => {
                 const disabled = product.stock <= 0;
                 const inCart   = cart.find(i => i.id === product.id);
                 return (
@@ -377,6 +385,17 @@ export default function POSPage() {
                   </button>
                 );
               })
+            )}
+            {visibleCount < filteredProducts.length && (
+              <button
+                type="button"
+                className="btn btn-ghost p-load-more-btn"
+                onClick={() => setVisibleCount(c => c + 48)}
+              >
+                {language === 'fr'
+                  ? `Voir plus (${filteredProducts.length - visibleCount} restants)`
+                  : `Show more (${filteredProducts.length - visibleCount} left)`}
+              </button>
             )}
           </div>
         </section>
@@ -803,6 +822,10 @@ export default function POSPage() {
           gap: 0.625rem;
           padding: 0.875rem;
           overflow-y: auto; flex: 1; align-content: start;
+        }
+        .p-load-more-btn {
+          grid-column: 1 / -1;
+          justify-content: center;
         }
 
         /* Card produit */
