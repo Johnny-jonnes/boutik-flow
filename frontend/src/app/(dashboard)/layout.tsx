@@ -21,6 +21,7 @@ import {
   Volume2,
   Volume1,
   VolumeX,
+  Bell,
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -28,8 +29,10 @@ import { useLanguage } from '@/context/LanguageContext';
 import { ScrollToTop } from '@/components/ScrollToTop';
 import { PinLock } from '@/components/ui/PinLock';
 import { usePinLock } from '@/hooks/usePinLock';
-import { getSoundVolumePreference, setSoundVolumePreference, VolumeLevel } from '@/lib/audio';
+import { getSoundVolumePreference, setSoundVolumePreference, VolumeLevel, SoundEffects, triggerHaptic } from '@/lib/audio';
 import { OfflineStatusBar } from '@/components/ui/OfflineStatusBar';
+import { api } from '@/lib/api/client';
+import { toast } from 'sonner';
 
 /* ─── Navigation simplifiée ─────────────────────────────────────── */
 const NAV_ITEMS = [
@@ -167,6 +170,43 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, []);
 
+  /* Alerte admin en temps réel — cloche + son quand une nouvelle demande
+     d'inscription arrive, quel que soit l'appareil ou la distance du
+     demandeur. Sans ce polling, la seule façon de voir une nouvelle
+     demande était d'ouvrir /admin manuellement et de le rafraîchir. */
+  const [unreadAdminCount, setUnreadAdminCount] = useState(0);
+  const prevUnreadCountRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (userInfo.role?.toLowerCase() !== 'admin') return;
+
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const stats = await api.getAdminStats();
+        if (cancelled) return;
+        const count = stats.unread_notifications || 0;
+        if (prevUnreadCountRef.current !== null && count > prevUnreadCountRef.current) {
+          SoundEffects.playNotification();
+          triggerHaptic(200);
+          toast.info(
+            language === 'fr'
+              ? 'Nouvelle demande d\'inscription reçue'
+              : 'New registration request received'
+          );
+        }
+        prevUnreadCountRef.current = count;
+        setUnreadAdminCount(count);
+      } catch {
+        // Polling silencieux : une erreur réseau ponctuelle ne doit pas gêner l'utilisateur.
+      }
+    };
+
+    poll();
+    const interval = setInterval(poll, 25000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [userInfo.role, language]);
+
   /* Close dropdown on outside click */
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -203,6 +243,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <ThemeToggle />
+          {userInfo.role?.toLowerCase() === 'admin' && (
+            <Link href="/admin" className="mobile-toggle admin-bell-btn" aria-label="Notifications admin">
+              <Bell size={18} />
+              {unreadAdminCount > 0 && (
+                <span className="admin-bell-badge">{unreadAdminCount > 9 ? '9+' : unreadAdminCount}</span>
+              )}
+            </Link>
+          )}
           <button className="mobile-toggle" onClick={handleCycleVolume} aria-label="Volume">
             {soundVolume === 'normal' && <Volume2 size={18} />}
             {soundVolume === 'discret' && <Volume1 size={18} />}
@@ -264,7 +312,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Footer */}
         <div className="sidebar__footer">
-          <ThemeToggle />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <ThemeToggle />
+            {userInfo.role?.toLowerCase() === 'admin' && (
+              <Link href="/admin" className="admin-bell-btn admin-bell-btn--sidebar" aria-label="Notifications admin">
+                <Bell size={15} />
+                {unreadAdminCount > 0 && (
+                  <span className="admin-bell-badge">{unreadAdminCount > 9 ? '9+' : unreadAdminCount}</span>
+                )}
+              </Link>
+            )}
+          </div>
           <button className="lang-toggle" onClick={() => setLanguage(language === 'fr' ? 'en' : 'fr')}>
             <Globe size={14} />
             <span>{language === 'fr' ? 'Français' : 'English'}</span>
@@ -421,6 +479,42 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           -webkit-tap-highlight-color: transparent;
         }
         .mobile-toggle:hover { background: var(--overlay-border-strong); }
+
+        /* ══ Cloche notifications admin ═════════════ */
+        .admin-bell-btn {
+          position: relative;
+          text-decoration: none;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .admin-bell-btn--sidebar {
+          width: 32px; height: 32px;
+          border-radius: var(--radius-sm, 8px);
+          background: var(--overlay-subtle);
+          border: 1px solid var(--overlay-border);
+          color: var(--text-muted);
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer;
+          transition: all var(--transition-fast, 120ms ease);
+          flex-shrink: 0;
+        }
+        .admin-bell-btn--sidebar:hover {
+          background: var(--overlay-medium);
+          color: var(--text-primary);
+          border-color: var(--overlay-border-strong);
+        }
+        .admin-bell-badge {
+          position: absolute;
+          top: -4px; right: -4px;
+          min-width: 16px; height: 16px;
+          border-radius: 99px;
+          background: var(--color-error);
+          color: #fff;
+          font-size: 0.62rem; font-weight: 800;
+          display: flex; align-items: center; justify-content: center;
+          padding: 0 3px;
+          border: 1.5px solid var(--sidebar-bg);
+          animation: scaleIn 0.2s var(--ease-spring);
+        }
 
         /* Barre offline positionnée sous la mobile-bar */
         .offline-bar-wrapper {
