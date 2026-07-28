@@ -44,6 +44,7 @@ const NAV_ITEMS = [
   { href: '/sales',      icon: History,         label: 'Ventes',      labelEn: 'Sales',      id: 'nav-sales' },
   { href: '/finance',    icon: Wallet,          label: 'Finances',    labelEn: 'Finances',   id: 'nav-finance' },
   { href: '/team',       icon: UserCog,         label: 'Équipe',      labelEn: 'Team',       id: 'nav-team' },
+  { href: '/settings',   icon: Settings,        label: 'Paramètres',  labelEn: 'Settings',   id: 'nav-settings' },
 ];
 
 /* Bottom nav — 5 raccourcis mobiles */
