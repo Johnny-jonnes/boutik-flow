@@ -359,7 +359,7 @@ export default function POSPage() {
                     
                     <div className="p-card-image-box">
                       {product.images?.[0] ? (
-                        <img src={product.images[0]} alt={product.name} className="p-card-img" />
+                        <img src={product.images[0]} alt={product.name} className="p-card-img" loading="lazy" decoding="async" />
                       ) : (
                         <div className="p-card-img-placeholder">
                           <span className="p-card-emoji"><Package size={24} style={{ color: 'var(--color-brand-400)' }} /></span>
