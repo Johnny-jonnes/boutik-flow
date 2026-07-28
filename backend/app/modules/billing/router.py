@@ -47,6 +47,7 @@ async def initiate_checkout(
     admin_notif = AdminNotification(
         id=uuid.uuid4(),
         type=AdminNotificationTypeEnum.new_registration,
+        title=f"Demande de passage en {request_data.plan_id.upper()} — {tenant_name}",
         message=f"Demande de changement de forfait ({request_data.plan_id.upper()}) pour la boutique '{tenant_name}' ({tenant_slug}) — Contact: {request_data.phone_number}",
         tenant_id=current_user.tenant_id,
         is_read=False,

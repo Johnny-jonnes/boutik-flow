@@ -146,12 +146,35 @@ def register(
  
     db.commit()
     db.refresh(user)
- 
+
+    # Notifie l'équipe admin : sans ceci, aucune trace de la demande
+    # n'apparaissait nulle part (ni notification in-app, ni email) — la
+    # seule façon de la voir était de parcourir manuellement la liste des
+    # boutiques en attente. AdminNotification était importé mais jamais
+    # instancié ici, et send_admin_new_registration_notification jamais
+    # appelée : la demande n'était donc jamais "reçue", quel que soit
+    # l'appareil ou la distance.
+    admin_notif = AdminNotification(
+        id=uuid.uuid4(),
+        type=AdminNotificationTypeEnum.new_registration,
+        title=f"Nouvelle demande d'inscription — {tenant.name}",
+        message=f"Boutique « {tenant.name} » ({tenant.slug}) — propriétaire {user.full_name or ''} <{user.email}>.",
+        tenant_id=tenant.id,
+        is_read=False,
+    )
+    db.add(admin_notif)
+    db.commit()
+
+    background_tasks.add_task(
+        send_admin_new_registration_notification,
+        tenant.name, tenant.slug, user.email, user.full_name,
+    )
+
     logger.info(
         "Nouvelle demande de boutique enregistrée : %s (slug=%s, owner=%s)",
         tenant.name, tenant.slug, user.email,
     )
- 
+
     return RegisterResponse(
         message="Inscription réussie ! Votre demande de création de boutique a bien été envoyée. Veuillez attendre l'acceptation des administrateurs pour vous connecter.",
         boutique_slug=tenant.slug,
