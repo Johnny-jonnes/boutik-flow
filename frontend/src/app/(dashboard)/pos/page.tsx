@@ -375,7 +375,7 @@ export default function POSPage() {
                     
                     <div className="p-card-image-box">
                       {product.images?.[0] ? (
-                        <img src={product.images[0]} alt={product.name} className="p-card-img" loading="lazy" decoding="async" />
+                        <img src={product.images[0]} alt={product.name} className="p-card-img" />
                       ) : (
                         <div className="p-card-img-placeholder">
                           <span className="p-card-emoji"><Package size={24} style={{ color: 'var(--color-brand-400)' }} /></span>
@@ -845,6 +845,10 @@ export default function POSPage() {
           display: flex; flex-direction: column;
           text-align: left;
           position: relative; overflow: hidden;
+          /* Garde-fou : la carte ne doit jamais pouvoir s'écraser à une
+             simple ligne, quelle que soit la cause (image lente/absente,
+             intervention navigateur, etc.). */
+          min-height: 180px;
           transition:
             border-color 100ms ease,
             background 100ms ease,
@@ -876,6 +880,7 @@ export default function POSPage() {
           position: relative;
           width: 100%;
           height: 120px;
+          flex-shrink: 0;
           background: var(--surface-2);
           overflow: hidden;
           border-bottom: 1px solid var(--border-subtle);
