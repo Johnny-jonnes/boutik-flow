@@ -88,6 +88,20 @@ function ProductsContent() {
     return () => controller.abort();
   }, []);
 
+  // Après une synchronisation réussie, le stock local (décrémenté de façon
+  // optimiste par des ventes hors-ligne) doit refléter le vrai stock
+  // serveur — d'éventuelles ventes faites entretemps sur un autre appareil
+  // ne sont sinon jamais reflétées ici.
+  useEffect(() => {
+    const onSyncComplete = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { succeeded: number } | undefined;
+      if (detail?.succeeded) fetchProductsAndCategories();
+    };
+    window.addEventListener('boutikflow:sync-complete', onSyncComplete);
+    return () => window.removeEventListener('boutikflow:sync-complete', onSyncComplete);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const generateClientSku = (name: string): string => {
     const cleanName = name.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6);
     const prefix = cleanName || 'PROD';

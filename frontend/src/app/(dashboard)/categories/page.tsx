@@ -44,6 +44,18 @@ export default function CategoriesPage() {
     fetchCategories();
   }, []);
 
+  // Après une synchronisation réussie (catégorie créée hors-ligne, etc.),
+  // la liste doit refléter les vrais identifiants serveur.
+  useEffect(() => {
+    const onSyncComplete = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { succeeded: number } | undefined;
+      if (detail?.succeeded) fetchCategories();
+    };
+    window.addEventListener('boutikflow:sync-complete', onSyncComplete);
+    return () => window.removeEventListener('boutikflow:sync-complete', onSyncComplete);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
