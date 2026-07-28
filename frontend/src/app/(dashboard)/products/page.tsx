@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Search, ImageIcon, Pencil, Trash2, Eye, Plus, Sparkles, Download, Printer, Camera, Layers, Wallet, Package, PackagePlus } from 'lucide-react';
 import type { Product } from '@/types';
 import { api } from '@/lib/api/client';
@@ -11,10 +12,10 @@ import { SKUPrintModal } from '@/components/ui/SKUPrintModal';
 import { BulkAddProductsModal } from '@/components/ui/BulkAddProductsModal';
 import { BulkStockInModal } from '@/components/ui/BulkStockInModal';
 import { useLanguage } from '@/context/LanguageContext';
-import type { Category } from '@/types';
 import { compressImage } from '@/lib/utils/imageCompressor';
 import { useSearchParams, useRouter } from 'next/navigation';
 import QRCode from 'qrcode';
+import { useProductsQuery, useCategoriesQuery, queryKeys } from '@/lib/queries';
 
 function formatGNF(amount: number) {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' GNF';
@@ -27,10 +28,17 @@ function ProductsContent() {
   const searchParams = useSearchParams();
   const categoryIdFromUrl = searchParams.get('category_id');
   const router = useRouter();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const queryClient = useQueryClient();
+  // Couche mémoire globale : ces deux requêtes partagent leur clé de cache
+  // avec le Dashboard, Vendre et Clients — la première de ces pages
+  // visitée charge les données, les suivantes les trouvent déjà en
+  // mémoire (isLoading ne redevient jamais true après le premier chargement,
+  // seule une revalidation silencieuse a lieu en arrière-plan).
+  const { data: productsData, isLoading } = useProductsQuery();
+  const { data: categoriesData } = useCategoriesQuery();
+  const products = productsData?.items ?? [];
+  const categories = categoriesData?.items ?? [];
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [activeScanField, setActiveScanField] = useState<'search' | 'add' | 'edit'>('search');
 
@@ -67,46 +75,19 @@ function ProductsContent() {
   const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
   const [isAILoading, setIsAILoading] = useState(false);
 
-  const fetchProductsAndCategories = async (signal?: AbortSignal) => {
-    try {
-      const [prodRes, catRes] = await Promise.all([
-        api.getProducts(1, 100, undefined, undefined, undefined, signal),
-        api.getCategories(1, 100, signal)
-      ]);
-      setProducts(prodRes.items);
-      setCategories(catRes.items);
-    } catch (error) {
-      if ((error as { name?: string })?.name === 'AbortError') return;
-      toast.error('Erreur lors de la récupération des données');
-    } finally {
-      setIsLoading(false);
-    }
+  // Ré-appelle les deux requêtes (produits + catégories) en arrière-plan —
+  // utilisé après une opération groupée (import en masse, entrée de stock
+  // groupée) où patcher le cache produit par produit serait plus fragile
+  // qu'une revalidation silencieuse de la liste entière.
+  const fetchProductsAndCategories = () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.products() });
+    queryClient.invalidateQueries({ queryKey: queryKeys.categories() });
   };
-
-  // Annule la requête si l'utilisateur quitte la page avant qu'elle
-  // n'aboutisse (ex: navigation rapide vers une autre page pendant le
-  // chargement) — sinon elle continue d'occuper une connexion jusqu'à son
-  // timeout, ce qui peut faire échouer la requête de la page suivante par
-  // épuisement du nombre de connexions simultanées autorisées.
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchProductsAndCategories(controller.signal);
-    return () => controller.abort();
-  }, []);
 
   // Après une synchronisation réussie, le stock local (décrémenté de façon
   // optimiste par des ventes hors-ligne) doit refléter le vrai stock
-  // serveur — d'éventuelles ventes faites entretemps sur un autre appareil
-  // ne sont sinon jamais reflétées ici.
-  useEffect(() => {
-    const onSyncComplete = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { succeeded: number } | undefined;
-      if (detail?.succeeded) fetchProductsAndCategories();
-    };
-    window.addEventListener('boutikflow:sync-complete', onSyncComplete);
-    return () => window.removeEventListener('boutikflow:sync-complete', onSyncComplete);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // serveur — la revalidation est déjà déclenchée globalement par
+  // QueryProvider (voir boutikflow:sync-complete), rien à faire ici.
 
   const generateClientSku = (name: string): string => {
     const cleanName = name.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6);
@@ -121,7 +102,7 @@ function ProductsContent() {
     setIsSubmitting(true);
     try {
       const finalSku = addForm.sku.trim() || generateClientSku(addForm.name);
-      await api.createProduct({
+      const created = await api.createProduct({
         name: addForm.name,
         price: Number(addForm.price),
         cost_price: addForm.cost_price.trim() ? Number(addForm.cost_price) : undefined,
@@ -137,7 +118,12 @@ function ProductsContent() {
       setIsAddOpen(false);
       setAddForm({ name: '', price: '', cost_price: '', stock: '', category_id: '', description: '', is_available: true, sku: '', barcode: '' });
       setAddImagePreview(null);
-      fetchProductsAndCategories();
+      // Mise à jour locale immédiate du cache partagé — pas de rechargement
+      // complet, le nouveau produit apparaît instantanément dans la liste
+      // (ici et sur Dashboard/Vendre) sans re-frapper le serveur.
+      queryClient.setQueryData(queryKeys.products(), (old: typeof productsData) =>
+        old ? { ...old, items: [created, ...old.items], total: old.total + 1 } : old
+      );
     } catch (err: any) {
       toast.error(err.message || "Erreur lors de l'ajout");
     } finally {
@@ -168,7 +154,7 @@ function ProductsContent() {
     setIsEditing(true);
     try {
       const finalSku = editForm.sku.trim() || generateClientSku(editForm.name);
-      await api.updateProduct(editProduct.id, {
+      const updated = await api.updateProduct(editProduct.id, {
         name: editForm.name,
         price: Number(editForm.price),
         // null explicite (pas undefined) : permet de vider un prix d'achat
@@ -184,7 +170,9 @@ function ProductsContent() {
       });
       toast.success('Produit modifié avec succès');
       setEditProduct(null);
-      fetchProductsAndCategories();
+      queryClient.setQueryData(queryKeys.products(), (old: typeof productsData) =>
+        old ? { ...old, items: old.items.map(p => (p.id === updated.id ? updated : p)) } : old
+      );
     } catch (err: any) {
       toast.error(err.message || 'Erreur lors de la modification');
     } finally {
@@ -199,8 +187,11 @@ function ProductsContent() {
     try {
       await api.deleteProduct(deleteTarget.id);
       toast.success('Produit supprimé');
+      const deletedId = deleteTarget.id;
       setDeleteTarget(null);
-      fetchProductsAndCategories();
+      queryClient.setQueryData(queryKeys.products(), (old: typeof productsData) =>
+        old ? { ...old, items: old.items.filter(p => p.id !== deletedId), total: Math.max(0, old.total - 1) } : old
+      );
     } catch (err: any) {
       toast.error(err.message || 'Erreur lors de la suppression');
     } finally {

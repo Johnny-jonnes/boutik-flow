@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
 import { buildPeriodParams, isWithinPeriod, periodLabel, type PeriodKey } from '@/lib/period';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useProductsQuery, useClientsQuery } from '@/lib/queries';
 
 const STATUS_CONFIG = {
   pending: { label_fr: 'En attente', label_en: 'Pending', cls: 'badge-warning' },
@@ -176,8 +177,12 @@ export default function DashboardPage() {
   const [periodFilter, setPeriodFilter] = useState<PeriodKey>('30j');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
-  const [clients, setClients] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
+  // Cache partagé avec Produits, Vendre et Clients — visiter le Dashboard
+  // en premier préchauffe leur cache ; les revisiter ensuite est instantané.
+  const { data: productsData } = useProductsQuery();
+  const { data: clientsData } = useClientsQuery();
+  const clients = clientsData?.items ?? [];
+  const products = productsData?.items ?? [];
   const [greeting, setGreeting] = useState('Bonjour');
   const [isLoading, setIsLoading] = useState(true);
   const { t, language } = useLanguage();
@@ -212,14 +217,12 @@ export default function DashboardPage() {
       // les deux écrans affichent les mêmes chiffres pour une même période.
       const range = buildPeriodParams(periodFilter, customStartDate, customEndDate);
 
-      const [kpiData, ordersData, clientsData, productsData, analyticsData] = await Promise.all([
+      const [kpiData, ordersData, analyticsData] = await Promise.all([
         api.getDashboardKPIs(range.period, range.start_date, range.end_date),
         // Un seul lot des commandes les plus récentes (borne max de l'API) :
         // la pagination affichée en dessous ne fait que re-découper ce même
         // tableau, elle ne redemande jamais une autre page au serveur.
         api.getOrders(1, undefined, 100),
-        api.getClients(1, 100),
-        api.getProducts(1, 100),
         api.getAnalyticsData(range.period, range.start_date, range.end_date).catch(() => null)
       ]);
 
@@ -237,8 +240,6 @@ export default function DashboardPage() {
         .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
 
       setFilteredOrders(ordersInPeriod);
-      setClients(clientsData.items);
-      setProducts(productsData.items);
       setAnalytics(analyticsData);
     } catch (error) {
       if (requestId === fetchIdRef.current) {

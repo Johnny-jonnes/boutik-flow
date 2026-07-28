@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Search, Plus, Minus, Trash2, CreditCard, Banknote,
   Smartphone, ShoppingCart, ArrowUpRight, CheckCircle, X,
@@ -14,6 +15,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Product } from '@/types';
 import { SoundEffects, triggerHaptic } from '@/lib/audio';
 import { buildSaleNotes } from '@/lib/saleNotes';
+import { useProductsQuery, useClientsQuery, queryKeys } from '@/lib/queries';
 
 interface CartItem extends Product { cartQuantity: number; }
 
@@ -21,14 +23,21 @@ const fmt = (n: number) => n.toLocaleString('fr-FR') + ' GNF';
 
 export default function POSPage() {
   const { language } = useLanguage();
-  const [products, setProducts]         = useState<Product[]>([]);
-  const [clients, setClients]           = useState<{ id: string; name: string; phone?: string }[]>([]);
+  const queryClient = useQueryClient();
+  // Cache partagé avec Dashboard, Produits et Clients — voir products/page.tsx.
+  // En arrivant sur Vendre après avoir déjà visité une de ces pages (ou
+  // l'inverse), les produits/clients sont déjà en mémoire : aucun écran de
+  // chargement, l'écran de caisse s'ouvre instantanément.
+  const { data: productsData, isLoading: isLoadingProducts, refetch: refetchProducts } = useProductsQuery();
+  const { data: clientsData } = useClientsQuery();
+  const products = productsData?.items ?? [];
+  const clients = clientsData?.items ?? [];
   const [selectedClientId, setSelectedClientId] = useState('');
   const [cart, setCart]                 = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery]   = useState('');
   const [discount, setDiscount]         = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'orange_money' | 'transfer'>('cash');
-  const [loading, setLoading]           = useState(true);
+  const loading = isLoadingProducts;
   const [isProcessing, setIsProcessing] = useState(false);
   const [successAnim, setSuccessAnim]   = useState(false);
   // Sur mobile, le panier n'est plus empilé sous la grille de produits
@@ -56,16 +65,11 @@ export default function POSPage() {
   const [isSubmittingExpense, setIsSubmittingExpense]     = useState(false);
 
   // ─── Init ──────────────────────────────────────────────────────────
-  // Annule les requêtes encore en vol si l'utilisateur quitte la page avant
-  // qu'elles n'aboutissent (ex: navigation rapide Vendre → Produits →
-  // Vendre) : sans ça, sur une connexion lente, ces requêtes abandonnées
-  // continuent d'occuper une connexion jusqu'à leur timeout et peuvent
-  // faire échouer la requête de navigation suivante par épuisement du
-  // nombre de connexions simultanées autorisées vers le serveur.
+  // Produits/clients viennent désormais du cache mémoire partagé
+  // (useProductsQuery/useClientsQuery) — plus besoin de les charger ni de
+  // les dupliquer dans localStorage ici ; la revalidation après
+  // synchronisation offline→online est gérée globalement par QueryProvider.
   useEffect(() => {
-    const controller = new AbortController();
-    loadProducts(controller.signal);
-    loadClients(controller.signal);
     try {
       const token = localStorage.getItem('boutikflow_access_token');
       if (token) {
@@ -75,49 +79,7 @@ export default function POSPage() {
         if (raw) { const n = raw.split('@')[0]; setSellerName(n.charAt(0).toUpperCase() + n.slice(1)); }
       }
     } catch {}
-    return () => controller.abort();
   }, []);
-
-  // Après une synchronisation réussie, le stock local (décrémenté de façon
-  // optimiste pendant la vente hors-ligne) doit refléter le vrai stock
-  // serveur — d'éventuelles ventes faites entretemps sur un autre appareil
-  // ne sont sinon jamais reflétées ici.
-  useEffect(() => {
-    const onSyncComplete = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { succeeded: number } | undefined;
-      if (detail?.succeeded) { loadProducts(); loadClients(); }
-    };
-    window.addEventListener('boutikflow:sync-complete', onSyncComplete);
-    return () => window.removeEventListener('boutikflow:sync-complete', onSyncComplete);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const loadClients = async (signal?: AbortSignal) => {
-    const cached = (() => { try { const c = localStorage.getItem('offline_clients'); if (c) { const parsed = JSON.parse(c); if (Array.isArray(parsed) && parsed.length > 0) return parsed; } } catch {} return []; })();
-    if (cached.length > 0) setClients(cached);
-    try { const r = await api.getClients(1, 100, undefined, undefined, signal); const items = r.items || []; if (items.length > 0) { setClients(items); try { localStorage.setItem('offline_clients', JSON.stringify(items)); } catch {} } } catch {}
-  };
-
-  const loadProducts = async (signal?: AbortSignal) => {
-    // 1. Instant load from cache (zero latency - never shows error)
-    const cached = (() => {
-      try {
-        const p = localStorage.getItem('offline_products');
-        if (p) { const parsed = JSON.parse(p); if (Array.isArray(parsed) && parsed.length > 0) return parsed; }
-      } catch {}
-      return [];
-    })();
-    if (cached.length > 0) { setProducts(cached); setLoading(false); } else { setLoading(true); }
-    // 2. Silent background refresh from server
-    try {
-      const data = await api.getProducts(1, 100, undefined, undefined, undefined, signal);
-      const items = Array.isArray(data) ? data : (data?.items ?? []);
-      if (items.length > 0) {
-        setProducts(items);
-        try { localStorage.setItem('offline_products', JSON.stringify(items)); } catch {}
-      }
-    } catch { /* silent - cache already loaded */ } finally { setLoading(false); }
-  };
 
   // ─── Filtrage ────────────────────────────────────────────────────
   const filteredProducts = products.filter(p =>
@@ -242,11 +204,20 @@ export default function POSPage() {
         } catch { /* Finance non bloquante */ }
       }
 
-      // Mise à jour stock local
-      setProducts(prev => prev.map(p => {
-        const ci = cart.find(c => c.id === p.id);
-        return ci ? { ...p, stock: Math.max(0, p.stock - ci.cartQuantity) } : p;
-      }));
+      // Mise à jour stock local — patch direct du cache partagé, sans
+      // rechargement : le nouveau stock se reflète aussi immédiatement sur
+      // Produits et Dashboard s'ils sont déjà en mémoire.
+      queryClient.setQueryData(queryKeys.products(), (old: typeof productsData) =>
+        old
+          ? {
+              ...old,
+              items: old.items.map(p => {
+                const ci = cart.find(c => c.id === p.id);
+                return ci ? { ...p, stock: Math.max(0, p.stock - ci.cartQuantity) } : p;
+              }),
+            }
+          : old
+      );
 
       // Animation succès
       SoundEffects.playSuccess();
@@ -353,7 +324,7 @@ export default function POSPage() {
                 <Package size={36} opacity={0.2}/>
                 <span>{searchQuery ? (language === 'fr' ? 'Aucun résultat' : 'No results') : (language === 'fr' ? 'Aucun produit' : 'No products')}</span>
                 {!searchQuery && (
-                  <button className="btn btn-ghost btn--sm" onClick={() => loadProducts()} style={{ marginTop: '0.5rem' }}>
+                  <button className="btn btn-ghost btn--sm" onClick={() => refetchProducts()} style={{ marginTop: '0.5rem' }}>
                     ↻ {language === 'fr' ? 'Recharger' : 'Reload'}
                   </button>
                 )}

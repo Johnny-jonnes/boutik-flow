@@ -3,6 +3,7 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import { Toaster } from '@/components/ui/sonner';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { PWARegister } from "@/components/PWARegister";
+import { QueryProvider } from "@/components/QueryProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -75,11 +76,13 @@ export default function RootLayout({
       </head>
       <body>
         <LanguageProvider>
-          <ThemeProvider>
-            <PWARegister />
-            {children}
-            <Toaster richColors position="top-right" />
-          </ThemeProvider>
+          <QueryProvider>
+            <ThemeProvider>
+              <PWARegister />
+              {children}
+              <Toaster richColors position="top-right" />
+            </ThemeProvider>
+          </QueryProvider>
         </LanguageProvider>
       </body>
     </html>

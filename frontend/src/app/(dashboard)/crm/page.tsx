@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Search, Eye, Pencil, Trash2, UserPlus, CreditCard, DollarSign } from 'lucide-react';
 import type { Client, ClientStatus, ClientDebt } from '@/types';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
 import { useLanguage } from '@/context/LanguageContext';
+import { useClientsQuery, queryKeys } from '@/lib/queries';
 
 const STATUS_COLORS: Record<string, string> = {
   nouveau: 'badge-info',
@@ -17,9 +19,11 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function CRMPage() {
   const { t, language } = useLanguage();
-  const [clients, setClients] = useState<Client[]>([]);
+  const queryClient = useQueryClient();
+  // Cache partagé avec Dashboard, Vendre et Produits — voir products/page.tsx.
+  const { data: clientsData, isLoading } = useClientsQuery();
+  const clients = clientsData?.items ?? [];
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
 
   // Add modal
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -48,17 +52,6 @@ export default function CRMPage() {
   // Delete
   const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  const fetchClients = async () => {
-    try {
-      const response = await api.getClients(1, 100);
-      setClients(response.items);
-    } catch (error) {
-      toast.error('Erreur lors de la récupération des clients');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const fetchClientDebts = async (clientId: string) => {
     setIsLoadingDebts(true);
@@ -110,26 +103,15 @@ export default function CRMPage() {
     }
   };
 
-  useEffect(() => { fetchClients(); }, []);
-
-  // Après une synchronisation réussie (client créé hors-ligne, etc.), la
-  // liste doit refléter les vrais identifiants serveur.
-  useEffect(() => {
-    const onSyncComplete = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { succeeded: number } | undefined;
-      if (detail?.succeeded) fetchClients();
-    };
-    window.addEventListener('boutikflow:sync-complete', onSyncComplete);
-    return () => window.removeEventListener('boutikflow:sync-complete', onSyncComplete);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // La revalidation après synchronisation offline→online est gérée
+  // globalement par QueryProvider (clé de cache partagée avec cette page).
 
   // Add client
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await api.createClient({
+      const created = await api.createClient({
         ...addForm,
         email: addForm.email || undefined,
         notes: addForm.notes || undefined,
@@ -137,7 +119,9 @@ export default function CRMPage() {
       toast.success('Client ajouté avec succès');
       setIsAddOpen(false);
       setAddForm({ name: '', phone: '', email: '', status: 'nouveau', notes: '' });
-      fetchClients();
+      queryClient.setQueryData(queryKeys.clients(), (old: typeof clientsData) =>
+        old ? { ...old, items: [created, ...old.items], total: old.total + 1 } : old
+      );
     } catch (err: any) {
       toast.error(err.message || "Erreur lors de l'ajout");
     } finally {
@@ -162,7 +146,7 @@ export default function CRMPage() {
     if (!editClient) return;
     setIsEditing(true);
     try {
-      await api.updateClient(editClient.id, {
+      const updated = await api.updateClient(editClient.id, {
         name: editForm.name,
         phone: editForm.phone,
         email: editForm.email || undefined,
@@ -171,7 +155,9 @@ export default function CRMPage() {
       });
       toast.success('Client modifié avec succès');
       setEditClient(null);
-      fetchClients();
+      queryClient.setQueryData(queryKeys.clients(), (old: typeof clientsData) =>
+        old ? { ...old, items: old.items.map(c => (c.id === updated.id ? updated : c)) } : old
+      );
     } catch (err: any) {
       toast.error(err.message || 'Erreur lors de la modification');
     } finally {
@@ -186,8 +172,11 @@ export default function CRMPage() {
     try {
       await api.deleteClient(deleteTarget.id);
       toast.success('Client supprimé');
+      const deletedId = deleteTarget.id;
       setDeleteTarget(null);
-      fetchClients();
+      queryClient.setQueryData(queryKeys.clients(), (old: typeof clientsData) =>
+        old ? { ...old, items: old.items.filter(c => c.id !== deletedId), total: Math.max(0, old.total - 1) } : old
+      );
     } catch (err: any) {
       toast.error(err.message || 'Erreur lors de la suppression');
     } finally {
