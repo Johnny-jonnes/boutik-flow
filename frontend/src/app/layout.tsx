@@ -63,11 +63,11 @@ export default function RootLayout({
         <link rel="apple-touch-icon-precomposed" href="/apple-touch-icon-precomposed.png?v=7" />
         <meta name="msapplication-TileColor" content="#009460" />
         <meta name="msapplication-TileImage" content="/icons/icon-144x144.png?v=7" />
-        {/* Enregistrement du Service Worker AVANT même l'hydratation React
-            (PWARegister ne s'exécute qu'après le montage du composant, ce
-            qui laisse une fenêtre où la toute première navigation — souvent
-            "Vendre", premier réflexe en ouvrant l'app — part sans aucune
-            protection du cache si le réseau flanche à cet instant précis). */}
+        {/* Enregistrement du Service Worker avant même l'hydratation React
+            (PWARegister ne s'exécute qu'après le montage du composant) —
+            le cache des fichiers statiques Next.js (voir sw.js) devient
+            actif un peu plus tôt. Le Service Worker n'intercepte PAS les
+            pages/navigations elles-mêmes (voir sw.js pour pourquoi). */}
         <script
           dangerouslySetInnerHTML={{
             __html: `if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(function(){});}`,
