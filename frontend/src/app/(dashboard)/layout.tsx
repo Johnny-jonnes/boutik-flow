@@ -347,6 +347,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             {isProfileDropdownOpen && (
               <div className="profile-dropdown">
+                <Link href="/settings" className="dropdown-item" onClick={() => setIsProfileDropdownOpen(false)}>
+                  <Settings size={14} />
+                  <span>{language === 'fr' ? 'Paramètres' : 'Settings'}</span>
+                </Link>
                 <div className="dropdown-item dropdown-item--logout" onClick={handleLogout}>
                   <LogOut size={14} />
                   <span>{language === 'fr' ? 'Déconnexion' : 'Logout'}</span>
@@ -824,6 +828,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           border-radius: 8px;
           font-size: 0.84rem; font-weight: 500;
           color: var(--text-primary);
+          text-decoration: none;
           cursor: pointer;
           transition: all 0.12s ease;
           border: none; background: transparent;

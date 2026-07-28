@@ -45,6 +45,9 @@ from app.modules.auth.schemas import (
     UpdateUserStatusRequest,
     TeamMemberResponse,
     ChangePasswordRequest,
+    UpdateMeRequest,
+    ChangeMyPasswordRequest,
+    UpdateTenantRequest,
 )
 
 logger = logging.getLogger(__name__)
@@ -452,6 +455,80 @@ def get_me(
     return UserResponse.model_validate(user)
 
 
+# ──────────────────────────── PUT /me ────────────────────────────
+
+@router.put(
+    "/me",
+    response_model=UserResponse,
+    summary="Modifier son propre profil (nom, email, téléphone)",
+)
+def update_me(
+    payload: UpdateMeRequest,
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> UserResponse:
+    """Chaque utilisateur peut modifier son propre profil — aucun rôle requis."""
+    user = db.query(User).filter(
+        and_(User.id == current_user.user_id, User.deleted_at.is_(None))
+    ).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur introuvable")
+
+    if payload.email is not None and payload.email != user.email:
+        existing = db.query(User).filter(
+            and_(
+                User.email == payload.email,
+                User.tenant_id == current_user.tenant_id,
+                User.id != user.id,
+                User.deleted_at.is_(None),
+            )
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Cet email est déjà utilisé pour cette boutique.",
+            )
+        user.email = payload.email
+
+    if payload.full_name is not None:
+        user.full_name = payload.full_name
+    if payload.phone is not None:
+        user.phone = payload.phone
+
+    db.commit()
+    db.refresh(user)
+    logger.info("Profil mis à jour : %s", user.id)
+    return UserResponse.model_validate(user)
+
+
+# ──────────────────────────── PUT /me/password ────────────────────────────
+
+@router.put(
+    "/me/password",
+    summary="Changer son propre mot de passe",
+)
+def change_my_password(
+    payload: ChangeMyPasswordRequest,
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> dict:
+    """Contrairement au changement fait par un owner/manager sur un membre de
+    l'équipe, celui-ci exige le mot de passe actuel pour confirmer l'identité."""
+    user = db.query(User).filter(
+        and_(User.id == current_user.user_id, User.deleted_at.is_(None))
+    ).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur introuvable")
+
+    if not verify_password(payload.current_password, user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Mot de passe actuel incorrect.")
+
+    user.hashed_password = hash_password(payload.new_password)
+    db.commit()
+    logger.info("Mot de passe modifié par l'utilisateur : %s", user.id)
+    return {"message": "Mot de passe mis à jour avec succès"}
+
+
 # ──────────────────────────── GET /tenant ────────────────────────────
 
 @router.get(
@@ -474,6 +551,37 @@ def get_tenant(
             detail="Boutique introuvable",
         )
 
+    return TenantResponse.model_validate(tenant)
+
+
+# ──────────────────────────── PUT /tenant ────────────────────────────
+
+@router.put(
+    "/tenant",
+    response_model=TenantResponse,
+    summary="Modifier les informations de la boutique (propriétaire uniquement)",
+)
+def update_tenant(
+    payload: UpdateTenantRequest,
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> TenantResponse:
+    if current_user.role != "owner":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Seul le propriétaire peut modifier les informations de la boutique.",
+        )
+
+    tenant = db.query(Tenant).filter(
+        and_(Tenant.id == current_user.tenant_id, Tenant.deleted_at.is_(None))
+    ).first()
+    if not tenant:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Boutique introuvable")
+
+    tenant.name = payload.name
+    db.commit()
+    db.refresh(tenant)
+    logger.info("Boutique renommée : %s (tenant=%s)", tenant.name, tenant.id)
     return TenantResponse.model_validate(tenant)
 
 

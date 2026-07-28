@@ -80,7 +80,7 @@ export default function CRMPage() {
 
   const handlePaySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!payDebt) return;
+    if (!payDebt || isPayingDebt) return;
     const amountNum = parseFloat(payForm.amount);
     if (isNaN(amountNum) || amountNum <= 0) {
       toast.error('Veuillez entrer un montant valide supérieur à 0.');

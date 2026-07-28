@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>BoutikFlow — Hors ligne</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    padding-top: max(2rem, env(safe-area-inset-top));
+    padding-bottom: max(2rem, env(safe-area-inset-bottom));
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: #f4f8f7;
+    color: #091312;
+    text-align: center;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { background: #080c0b; color: #fafafa; }
+  }
+  .card { max-width: 360px; }
+  .logo {
+    width: 64px; height: 64px; margin: 0 auto 1.25rem;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #6dd5c4 0%, #4ebfae 50%, #31a292 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 1.4rem; color: #080c0b;
+  }
+  h1 { font-size: 1.2rem; margin: 0 0 0.5rem; }
+  p { font-size: 0.9rem; opacity: 0.7; line-height: 1.5; margin: 0 0 1.5rem; }
+  button {
+    border: none; border-radius: 12px; padding: 0.75rem 1.5rem;
+    font-size: 0.9rem; font-weight: 700; cursor: pointer;
+    background: linear-gradient(135deg, #4ebfae 0%, #31a292 100%);
+    color: #fff;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">BF</div>
+    <h1>Cette page n'est pas encore disponible hors ligne</h1>
+    <p>Connexion instable ou coupée, et cette page n'a pas encore été chargée sur cet appareil. Réessayez dès que la connexion revient.</p>
+    <button onclick="location.reload()">Réessayer</button>
+  </div>
+</body>
+</html>

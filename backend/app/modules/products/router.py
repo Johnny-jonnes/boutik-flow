@@ -22,6 +22,9 @@ from app.modules.products.schemas import (
     ProductUpdate,
     ProductResponse,
     ProductListResponse,
+    ProductBulkCreate,
+    ProductBulkCreateResponse,
+    ProductBulkCreateError,
     CategoryCreate,
     CategoryUpdate,
     CategoryResponse,
@@ -335,6 +338,117 @@ def create_product(
     
     logger.info("Produit créé : %s (tenant=%s)", product.name, current_user.tenant_id)
     return ProductResponse.model_validate(product)
+
+
+# ──────────────────────────── POST /products/bulk ────────────────────────────
+
+@router.post(
+    "/bulk",
+    response_model=ProductBulkCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Créer plusieurs produits en une seule fois",
+)
+def create_products_bulk(
+    payload: ProductBulkCreate,
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> ProductBulkCreateResponse:
+    """
+    Ajoute jusqu'à 200 produits en un seul envoi, au lieu de répéter le
+    formulaire un par un. Chaque produit est traité dans son propre
+    savepoint : une erreur sur un article (code-barres en doublon dans le
+    lot, par exemple) n'empêche pas les autres d'être créés.
+    """
+    created: list[ProductResponse] = []
+    errors: list[ProductBulkCreateError] = []
+    # Codes-barres déjà vus DANS ce lot (le doublon en base est vérifié par
+    # item, mais deux lignes du même envoi avec le même code-barres doivent
+    # aussi être détectées avant d'atteindre la base).
+    seen_barcodes: set[str] = set()
+    seen_skus: set[str] = set()
+
+    for index, item in enumerate(payload.products):
+        savepoint = db.begin_nested()
+        try:
+            if item.barcode:
+                if item.barcode in seen_barcodes:
+                    raise ValueError("Code-barres en double dans ce lot.")
+                existing_barcode = db.query(Product).filter(
+                    and_(
+                        Product.tenant_id == current_user.tenant_id,
+                        Product.barcode == item.barcode,
+                        Product.deleted_at.is_(None),
+                    )
+                ).first()
+                if existing_barcode:
+                    raise ValueError("Ce code-barres est déjà utilisé pour un autre produit.")
+
+            sku_val = item.sku
+            if sku_val:
+                if sku_val in seen_skus:
+                    raise ValueError("SKU en double dans ce lot.")
+                existing_sku = db.query(Product).filter(
+                    and_(
+                        Product.tenant_id == current_user.tenant_id,
+                        Product.sku == sku_val,
+                        Product.deleted_at.is_(None),
+                    )
+                ).first()
+                if existing_sku:
+                    raise ValueError("Ce SKU est déjà utilisé pour un autre produit.")
+            else:
+                for _ in range(5):
+                    generated = _generate_sku(item.name)
+                    conflict = (
+                        generated in seen_skus
+                        or db.query(Product).filter(
+                            and_(
+                                Product.tenant_id == current_user.tenant_id,
+                                Product.sku == generated,
+                                Product.deleted_at.is_(None),
+                            )
+                        ).first()
+                    )
+                    if not conflict:
+                        sku_val = generated
+                        break
+                else:
+                    sku_val = f"SKU-{uuid.uuid4().hex[:8].upper()}"
+
+            product = Product(
+                id=uuid.uuid4(),
+                tenant_id=current_user.tenant_id,
+                name=item.name,
+                description=item.description,
+                price=item.price,
+                cost_price=item.cost_price,
+                stock=item.stock,
+                category_id=item.category_id,
+                images=item.images,
+                is_available=item.is_available,
+                sku=sku_val,
+                barcode=item.barcode,
+            )
+            db.add(product)
+            db.flush()
+            _create_inventory_log(
+                db, current_user.tenant_id, product.id, current_user.user_id,
+                "creation", "None", f"stock:{item.stock}, price:{item.price}"
+            )
+            savepoint.commit()
+            seen_barcodes.add(item.barcode) if item.barcode else None
+            seen_skus.add(sku_val)
+            created.append(ProductResponse.model_validate(product))
+        except Exception as e:
+            savepoint.rollback()
+            errors.append(ProductBulkCreateError(index=index, name=item.name, error=str(e)))
+
+    db.commit()
+    logger.info(
+        "Création groupée : %d créés, %d erreurs (tenant=%s)",
+        len(created), len(errors), current_user.tenant_id,
+    )
+    return ProductBulkCreateResponse(created=created, errors=errors)
 
 
 # ──────────────────────────── PUT /products/{id} ────────────────────────────

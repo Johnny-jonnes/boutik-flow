@@ -99,3 +99,19 @@ class ProductListResponse(BaseModel):
     total: int
     page: int
     per_page: int
+
+
+class ProductBulkCreate(BaseModel):
+    """Création groupée — jusqu'à 200 produits en un seul envoi."""
+    products: list[ProductCreate] = Field(..., min_length=1, max_length=200)
+
+
+class ProductBulkCreateError(BaseModel):
+    index: int
+    name: str
+    error: str
+
+
+class ProductBulkCreateResponse(BaseModel):
+    created: list[ProductResponse]
+    errors: list[ProductBulkCreateError]

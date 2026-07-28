@@ -287,6 +287,10 @@ export default function OrdersPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Garde contre une double soumission (touche Entrée + clic quasi
+    // simultanés, ou double-tap avant que le bouton ne se désactive) :
+    // le disabled du bouton seul ne bloque pas une soumission via Entrée.
+    if (isSubmitting) return;
     if (!createForm.client_id || createForm.items.length === 0 || createForm.items.some(i => !i.product_id)) {
       toast.error(language === 'fr' ? 'Veuillez remplir tous les champs obligatoires' : 'Please fill in all required fields');
       return;

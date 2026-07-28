@@ -202,6 +202,7 @@ export default function FinancePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     const numericAmount = parseFloat(formData.amount);
     if (isNaN(numericAmount) || numericAmount <= 0) {
       toast.error('Veuillez saisir un montant valide supérieur à 0');

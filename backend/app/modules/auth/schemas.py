@@ -180,6 +180,24 @@ class TeamMemberResponse(BaseModel):
 
 # ──────────────────────────── Change Password ────────────────────────────
 
+class UpdateMeRequest(BaseModel):
+    """Modification du profil de l'utilisateur connecté (self-service)."""
+    full_name: str | None = Field(None, min_length=2, max_length=255)
+    email: EmailStr | None = None
+    phone: str | None = Field(None, max_length=20)
+
+
+class ChangeMyPasswordRequest(BaseModel):
+    """Changement de son propre mot de passe — exige l'ancien pour confirmer l'identité."""
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+
+class UpdateTenantRequest(BaseModel):
+    """Modification des informations de la boutique (propriétaire uniquement)."""
+    name: str = Field(..., min_length=2, max_length=255)
+
+
 class ChangePasswordRequest(BaseModel):
     """Changement de mot de passe d'un membre de l'équipe."""
     new_password: str = Field(..., min_length=6, max_length=128, description="Nouveau mot de passe")

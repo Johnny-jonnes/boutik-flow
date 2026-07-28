@@ -128,6 +128,29 @@ async function tryRefreshToken(): Promise<boolean> {
   return result;
 }
 
+// ─── Idempotence des écritures critiques ───────────────────────────────────
+//
+// Sur une connexion INSTABLE (pas seulement coupée), une requête peut très
+// bien atteindre le serveur et être traitée avec succès, mais sa réponse se
+// perdre (timeout, coupure pendant la réponse). Le client ne sait alors pas
+// si l'action a réellement eu lieu — et la retente, créant une vente, une
+// transaction ou une dette EN DOUBLE côté serveur si aucune protection
+// n'existe. generateIdempotencyKey() est appelée UNE SEULE FOIS par action
+// utilisateur (voir chaque appel createOrder/createFinanceTransaction/
+// createDebt/recordDebtPayment) ; la même clé est ensuite réutilisée pour
+// toute nouvelle tentative — y compris un rejeu ultérieur depuis la file de
+// synchronisation hors-ligne — pour que le serveur puisse reconnaître un
+// doublon et renvoyer la réponse déjà traitée au lieu de recréer la
+// ressource.
+function generateIdempotencyKey(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return `idem-${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function withIdempotencyKey(key: string): HeadersInit {
+  return { 'Idempotency-Key': key };
+}
+
 // ─── IDs UUID v4 stables pour les données offline par défaut ───────────────
 // (générés une fois — ne jamais utiliser de chaînes courtes type 'p1' qui
 // sont rejetées par le backend FastAPI avec "Input should be a valid UUID")
@@ -271,6 +294,10 @@ interface QueuedOperation {
    *  référence (ex: une dette liée à une commande créée hors-ligne) une
    *  fois que le serveur a attribué le véritable ID. */
   localId?: string;
+  /** Même clé que la tentative en ligne d'origine (voir generateIdempotencyKey) —
+   *  rejouée telle quelle pour que le serveur reconnaisse un doublon si la
+   *  requête d'origine avait en réalité déjà été traitée. */
+  idempotencyKey?: string;
 }
 
 function readSyncQueue(): QueuedOperation[] {
@@ -300,7 +327,7 @@ function writeSyncQueue(queue: QueuedOperation[]) {
   }));
 }
 
-function enqueueOperation(method: string, path: string, body: string | undefined, localId?: string) {
+function enqueueOperation(method: string, path: string, body: string | undefined, localId?: string, idempotencyKey?: string) {
   if (method === 'GET' || typeof window === 'undefined') return;
   const queue = readSyncQueue();
   queue.push({
@@ -312,6 +339,7 @@ function enqueueOperation(method: string, path: string, body: string | undefined
     status: 'pending',
     attempts: 0,
     localId,
+    idempotencyKey,
   });
   writeSyncQueue(queue);
 }
@@ -387,12 +415,21 @@ export async function syncOfflineQueue(): Promise<{ succeeded: number; failed: n
       const headers = new Headers();
       if (op.body) headers.set('Content-Type', 'application/json');
       if (token) headers.set('Authorization', `Bearer ${token}`);
+      // Même clé que la tentative d'origine : si celle-ci avait en réalité
+      // déjà atteint le serveur (réponse perdue à cause d'une connexion
+      // instable), le serveur renvoie la réponse déjà traitée au lieu de
+      // recréer la ressource.
+      if (op.idempotencyKey) headers.set('Idempotency-Key', op.idempotencyKey);
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
       const res = await fetch(`${API_BASE_URL}${op.path}`, {
         method: op.method,
         headers,
         body: op.body,
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
 
       if (res.ok) {
         succeeded++;
@@ -850,6 +887,13 @@ function handleOfflineRequest<T>(path: string, options: RequestInit = {}): Promi
   return Promise.resolve({} as any as T);
 }
 
+function extractHeader(headers: HeadersInit | undefined, name: string): string | undefined {
+  if (!headers) return undefined;
+  if (headers instanceof Headers) return headers.get(name) || undefined;
+  if (Array.isArray(headers)) return headers.find(([k]) => k.toLowerCase() === name.toLowerCase())?.[1];
+  return (headers as Record<string, string>)[name];
+}
+
 /**
  * Simule la réponse hors-ligne ET, pour toute écriture, l'enregistre dans
  * la file de synchronisation pour un rejeu ultérieur contre le vrai
@@ -861,12 +905,27 @@ async function handleOfflineRequestAndQueue<T>(path: string, options: RequestIni
   const method = (options.method || 'GET').toUpperCase();
   if (method !== 'GET') {
     const localId = (result as { id?: string } | null)?.id;
-    enqueueOperation(method, path, options.body as string | undefined, localId);
+    const idempotencyKey = extractHeader(options.headers, 'Idempotency-Key');
+    enqueueOperation(method, path, options.body as string | undefined, localId, idempotencyKey);
   }
   return result;
 }
 
 // ─── Helper requête générique ───────────────────────────────────────────────
+//
+// navigator.onLine ne reflète que l'état de la carte réseau (WiFi/données
+// connecté ou non) — PAS la capacité réelle à joindre le serveur. Sur une
+// connexion instable (signal faible, portail captif, congestion), il reste
+// à `true` alors que chaque requête échoue en pratique : sans adaptation,
+// l'utilisateur attendrait le plein timeout (pensé pour tolérer un cold
+// start Render) à CHAQUE action, ce qui se ressent comme une app figée.
+// consecutiveNetworkFailures raccourcit ce délai dès le deuxième échec
+// d'affilée, et revient au délai généreux dès qu'une requête aboutit.
+let consecutiveNetworkFailures = 0;
+
+function currentTimeoutMs(): number {
+  return consecutiveNetworkFailures > 0 ? 3500 : 8000;
+}
 
 async function request<T>(
   path: string,
@@ -889,10 +948,13 @@ async function request<T>(
   let res: Response;
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout (cold start Render)
+    const timeoutId = setTimeout(() => controller.abort(), currentTimeoutMs());
     res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers, signal: controller.signal });
     clearTimeout(timeoutId);
-    
+    // La requête a abouti (quel que soit le status) : le réseau fonctionne,
+    // on redonne sa chance au délai généreux pour la prochaine tentative.
+    consecutiveNetworkFailures = 0;
+
     // Pour TOUT GET échouant (offline, timeout, 5xx, 404, 422) → fallback offline immédiat
     if (method === 'GET' && !res.ok) {
       return handleOfflineRequestAndQueue<T>(path, options);
@@ -901,6 +963,7 @@ async function request<T>(
     // fetch a levé (réseau coupé en cours de requête, timeout...) : une
     // écriture ici doit aussi rejoindre la file de synchronisation, pas
     // seulement recevoir une réponse simulée.
+    consecutiveNetworkFailures++;
     return handleOfflineRequestAndQueue<T>(path, options);
   }
 
@@ -1087,6 +1150,18 @@ export const api = {
     return request('/auth/me');
   },
 
+  updateMe(data: { full_name?: string; email?: string; phone?: string }): Promise<UserInfo> {
+    return request('/auth/me', { method: 'PUT', body: JSON.stringify(data) });
+  },
+
+  changeMyPassword(data: { current_password: string; new_password: string }): Promise<{ message: string }> {
+    return request('/auth/me/password', { method: 'PUT', body: JSON.stringify(data) });
+  },
+
+  updateTenant(data: { name: string }): Promise<TenantInfo> {
+    return request('/auth/tenant', { method: 'PUT', body: JSON.stringify(data) });
+  },
+
   forgotPassword(data: { boutique_slug: string; email: string }): Promise<{ message: string }> {
     return request('/auth/forgot-password', { method: 'POST', body: JSON.stringify(data) });
   },
@@ -1134,7 +1209,7 @@ export const api = {
 
   // ── CRM — Debts ───────────────────────────────────────────────────────
   async createDebt(data: { client_id: string; order_id?: string; original_amount: number; description?: string; due_date?: string }): Promise<{ id: string; message: string; remaining_amount: number }> {
-    return request('/crm/debts', { method: 'POST', body: JSON.stringify(data) });
+    return request('/crm/debts', { method: 'POST', body: JSON.stringify(data), headers: withIdempotencyKey(generateIdempotencyKey()) });
   },
   async getDebts(clientId?: string, statusFilter?: string): Promise<ClientDebt[]> {
     const params = new URLSearchParams();
@@ -1143,7 +1218,7 @@ export const api = {
     return request(`/crm/debts?${params.toString()}`);
   },
   async recordDebtPayment(debtId: string, data: { amount: number; payment_method: string; notes?: string }): Promise<{ message: string; remaining_amount: number; status: string }> {
-    return request(`/crm/debts/${debtId}/pay`, { method: 'POST', body: JSON.stringify(data) });
+    return request(`/crm/debts/${debtId}/pay`, { method: 'POST', body: JSON.stringify(data), headers: withIdempotencyKey(generateIdempotencyKey()) });
   },
 
   // ── CRM — Segments ────────────────────────────────────────────────────
@@ -1208,6 +1283,10 @@ export const api = {
     return request('/products', { method: 'POST', body: JSON.stringify(data) });
   },
 
+  createProductsBulk(products: ProductCreate[]): Promise<{ created: Product[]; errors: { index: number; name: string; error: string }[] }> {
+    return request('/products/bulk', { method: 'POST', body: JSON.stringify({ products }) });
+  },
+
   updateProduct(id: string, data: ProductUpdate): Promise<Product> {
     return request(`/products/${id}`, { method: 'PUT', body: JSON.stringify(data) });
   },
@@ -1229,7 +1308,7 @@ export const api = {
   },
 
   createOrder(data: OrderCreate): Promise<Order> {
-    return request('/orders', { method: 'POST', body: JSON.stringify(data) });
+    return request('/orders', { method: 'POST', body: JSON.stringify(data), headers: withIdempotencyKey(generateIdempotencyKey()) });
   },
 
   updateOrderStatus(orderId: string, status: OrderStatus | string, note?: string): Promise<Order> {
@@ -1406,7 +1485,7 @@ export const api = {
   },
 
   createFinanceTransaction(data: TransactionCreatePayload): Promise<FinancialTransaction> {
-    return request('/finance', { method: 'POST', body: JSON.stringify(data) });
+    return request('/finance', { method: 'POST', body: JSON.stringify(data), headers: withIdempotencyKey(generateIdempotencyKey()) });
   },
 };
 
