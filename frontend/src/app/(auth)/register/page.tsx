@@ -201,7 +201,7 @@ export default function RegisterPage() {
           {/* Form */}
           <div className="auth-card glass">
             <div className="auth-header">
-              <h1 className="auth-title" style={{ fontSize: '1.4rem' }}>🏪 Ouvrir ma boutique</h1>
+              <h1 className="auth-title" style={{ fontSize: '1.4rem' }}>Ouvrir ma boutique</h1>
               <p className="auth-subtitle">Inscrivez-vous en 2 étapes</p>
             </div>
 
