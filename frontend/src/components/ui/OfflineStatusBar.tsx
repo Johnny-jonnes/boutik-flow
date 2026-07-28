@@ -11,8 +11,8 @@ export function OfflineStatusBar() {
   const [pendingCount, setPendingCount] = useState(0);
   const [failedCount, setFailedCount] = useState(0);
 
-  const refreshQueueCounts = useCallback(() => {
-    const { pendingCount: pending, failed } = getSyncQueueStatus();
+  const refreshQueueCounts = useCallback(async () => {
+    const { pendingCount: pending, failed } = await getSyncQueueStatus();
     setPendingCount(pending);
     setFailedCount(failed.length);
     return { pending, failedCount: failed.length };
@@ -21,18 +21,23 @@ export function OfflineStatusBar() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const { pending: initialPending, failedCount: initialFailed } = refreshQueueCounts();
-    if (!navigator.onLine) {
-      setStatus('offline');
-    } else if (initialFailed > 0) {
-      setStatus('issues');
-    } else if (initialPending > 0) {
-      // Une file existait déjà (session précédente) : le sync automatique
-      // au chargement du module va démarrer sous peu, on l'annonce déjà.
-      setStatus('syncing');
-    } else {
-      setStatus('online');
-    }
+    let cancelled = false;
+
+    (async () => {
+      const { pending: initialPending, failedCount: initialFailed } = await refreshQueueCounts();
+      if (cancelled) return;
+      if (!navigator.onLine) {
+        setStatus('offline');
+      } else if (initialFailed > 0) {
+        setStatus('issues');
+      } else if (initialPending > 0) {
+        // Une file existait déjà (session précédente) : le sync automatique
+        // au chargement du module va démarrer sous peu, on l'annonce déjà.
+        setStatus('syncing');
+      } else {
+        setStatus('online');
+      }
+    })();
 
     const goOffline = () => {
       refreshQueueCounts();
@@ -49,9 +54,9 @@ export function OfflineStatusBar() {
       setStatus('syncing');
     };
 
-    const onSyncComplete = (e: Event) => {
+    const onSyncComplete = async (e: Event) => {
       const detail = (e as CustomEvent).detail as { succeeded: number; failed: number } | undefined;
-      const { failedCount } = refreshQueueCounts();
+      const { failedCount } = await refreshQueueCounts();
       if (failedCount > 0) {
         setStatus('issues');
       } else if (detail?.succeeded) {
@@ -76,6 +81,7 @@ export function OfflineStatusBar() {
     window.addEventListener('boutikflow:queue-changed', onQueueChanged);
 
     return () => {
+      cancelled = true;
       window.removeEventListener('offline', goOffline);
       window.removeEventListener('boutikflow:sync-start', onSyncStart);
       window.removeEventListener('boutikflow:sync-complete', onSyncComplete);

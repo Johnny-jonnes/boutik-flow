@@ -50,6 +50,7 @@ import type {
   TransactionCreatePayload,
   ClientDebt,
 } from '@/types';
+import { OfflineDB, OfflineQueue, type QueuedOp } from '@/lib/offlineDb';
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
@@ -151,12 +152,9 @@ function withIdempotencyKey(key: string): HeadersInit {
   return { 'Idempotency-Key': key };
 }
 
-// ─── IDs UUID v4 stables pour les données offline par défaut ───────────────
-// (générés une fois — ne jamais utiliser de chaînes courtes type 'p1' qui
-// sont rejetées par le backend FastAPI avec "Input should be a valid UUID")
-
-const DEFAULT_PRODUCTS: any[] = [];
-const DEFAULT_CLIENTS: any[] = [];
+// ─── Catégories par défaut (première utilisation, hors-ligne) ──────────────
+// (UUID v4 fixes — jamais de chaînes courtes type 'p1', rejetées par le
+// backend FastAPI avec "Input should be a valid UUID")
 
 const DEFAULT_CATEGORIES = [
   { id: 'cccc0001-0000-4000-a000-000000000001', name: 'Vêtements',    slug: 'vetements',    created_at: new Date().toISOString() },
@@ -165,183 +163,40 @@ const DEFAULT_CATEGORIES = [
   { id: 'cccc0004-0000-4000-a000-000000000004', name: 'Électronique', slug: 'electronique', created_at: new Date().toISOString() },
 ];
 
-const OfflineDB = {
-  getProducts(): any[] {
-    if (typeof window === 'undefined') return [];
-    let p = localStorage.getItem('offline_products');
-    if (p) {
-      try {
-        const parsed = JSON.parse(p);
-        if (parsed.length > 0 && String(parsed[0].id).length < 30) {
-          localStorage.removeItem('offline_products');
-          p = null;
-        }
-      } catch { p = null; }
-    }
-    if (!p) {
-      localStorage.setItem('offline_products', JSON.stringify(DEFAULT_PRODUCTS));
-      return DEFAULT_PRODUCTS;
-    }
-    return JSON.parse(p);
-  },
-  saveProducts(products: any[]) {
-    if (typeof window === 'undefined') return;
-    // Les images produit (base64, plusieurs dizaines de Ko chacune) faisaient
-    // dépasser le quota localStorage (~5-10 Mo) dès qu'un catalogue en
-    // comptait beaucoup — l'écriture entière échouait alors silencieusement
-    // (QuotaExceededError), laissant le cache hors-ligne périmé ou vide.
-    // Une image manquante affiche déjà un pictogramme de remplacement dans
-    // l'UI ; ce n'est pas nécessaire pour le repli hors-ligne du catalogue.
-    const lightweight = products.map(({ images, ...rest }) => rest);
-    try {
-      localStorage.setItem('offline_products', JSON.stringify(lightweight));
-    } catch (e) {
-      console.warn('Offline caching error (produits, même allégés)', e);
-    }
-  },
-  getClients(): any[] {
-    if (typeof window === 'undefined') return [];
-    let c = localStorage.getItem('offline_clients');
-    if (c) {
-      try {
-        const parsed = JSON.parse(c);
-        if (parsed.length > 0 && String(parsed[0].id).length < 30) {
-          localStorage.removeItem('offline_clients');
-          c = null;
-        }
-      } catch { c = null; }
-    }
-    if (!c) {
-      localStorage.setItem('offline_clients', JSON.stringify(DEFAULT_CLIENTS));
-      return DEFAULT_CLIENTS;
-    }
-    return JSON.parse(c);
-  },
-  saveClients(clients: any[]) {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('offline_clients', JSON.stringify(clients));
-  },
-  getCategories(): any[] {
-    if (typeof window === 'undefined') return [];
-    let c = localStorage.getItem('offline_categories');
-    if (c) {
-      try {
-        const parsed = JSON.parse(c);
-        if (parsed.length > 0 && String(parsed[0].id).length < 30) {
-          localStorage.removeItem('offline_categories');
-          c = null;
-        }
-      } catch { c = null; }
-    }
-    if (!c) {
-      localStorage.setItem('offline_categories', JSON.stringify(DEFAULT_CATEGORIES));
-      return DEFAULT_CATEGORIES;
-    }
-    return JSON.parse(c);
-  },
-  saveCategories(categories: any[]) {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('offline_categories', JSON.stringify(categories));
-  },
-  getOrders(): any[] {
-    if (typeof window === 'undefined') return [];
-    const o = localStorage.getItem('offline_orders');
-    return o ? JSON.parse(o) : [];
-  },
-  saveOrders(orders: any[]) {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('offline_orders', JSON.stringify(orders));
-  },
-  getDebts(): any[] {
-    if (typeof window === 'undefined') return [];
-    const d = localStorage.getItem('offline_debts');
-    return d ? JSON.parse(d) : [];
-  },
-  saveDebts(debts: any[]) {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('offline_debts', JSON.stringify(debts));
-  },
-  getTransactions(): any[] {
-    if (typeof window === 'undefined') return [];
-    const t = localStorage.getItem('offline_transactions');
-    return t ? JSON.parse(t) : [];
-  },
-  saveTransactions(transactions: any[]) {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('offline_transactions', JSON.stringify(transactions));
-  }
-};
+async function ensureSeedCategories(): Promise<any[]> {
+  const existing = await OfflineDB.getCategories();
+  if (existing.length > 0) return existing;
+  await OfflineDB.saveCategories(DEFAULT_CATEGORIES);
+  return DEFAULT_CATEGORIES;
+}
 
 // ─── File d'attente de synchronisation hors-ligne ──────────────────────────
 //
-// Une vente (ou toute autre écriture) tentée hors connexion était jusqu'ici
-// seulement SIMULÉE localement (voir handleOfflineRequest ci-dessous) : un
-// identifiant local était généré, la donnée écrite dans le cache du
-// navigateur, et l'interface affichait un succès — mais RIEN n'était
-// jamais envoyé au serveur. Au retour de connexion, aucun mécanisme
-// n'existait pour rejouer ces opérations : la vente restait une donnée
-// locale invisible du Tableau de bord, des Finances, ou de tout autre
-// appareil. Le bandeau "Synchronisé" affiché au retour de connexion était
-// une façade — un minuteur de 1,5 s, sans aucune synchronisation réelle
-// derrière (`boutikflow:sync-request` n'était écouté nulle part).
-//
-// Cette file corrige ça : chaque écriture tentée hors-ligne est enregistrée
-// ici, dans l'ordre de création, puis rejouée séquentiellement contre le
-// vrai serveur dès que la connexion revient.
+// Chaque écriture tentée hors connexion (vente, produit, client, dette...)
+// est enregistrée ici — sur IndexedDB, PAS localStorage (voir lib/offlineDb
+// pour le pourquoi : une file de plusieurs dizaines d'opérations, certaines
+// avec une photo produit en base64, peut largement dépasser le quota
+// localStorage, laissant des ventes silencieusement non synchronisées).
+// La file est rejouée séquentiellement, dans l'ordre de création, dès que
+// la connexion revient — avec backoff exponentiel par opération pour ne
+// pas marteler le serveur sur une connexion qui reste instable.
 
-const SYNC_QUEUE_KEY = 'boutikflow_sync_queue';
-
-interface QueuedOperation {
-  id: string;
-  method: string;
-  path: string;
-  body: string | undefined;
-  createdAt: number;
-  status: 'pending' | 'failed';
-  errorMessage?: string;
-  attempts: number;
-  /** ID local généré par handleOfflineRequest pour une création (POST) —
-   *  sert à réécrire les opérations suivantes de la file qui y font
-   *  référence (ex: une dette liée à une commande créée hors-ligne) une
-   *  fois que le serveur a attribué le véritable ID. */
-  localId?: string;
-  /** Même clé que la tentative en ligne d'origine (voir generateIdempotencyKey) —
-   *  rejouée telle quelle pour que le serveur reconnaisse un doublon si la
-   *  requête d'origine avait en réalité déjà été traitée. */
-  idempotencyKey?: string;
-}
-
-function readSyncQueue(): QueuedOperation[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(SYNC_QUEUE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeSyncQueue(queue: QueuedOperation[]) {
+function dispatchQueueChanged(pending: number, failed: number) {
   if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
-  } catch {
-    // Quota localStorage dépassé ou navigateur privé restrictif : la file
-    // en mémoire reste valide pour cette session, seule la persistance
-    // entre rechargements est perdue.
-  }
-  window.dispatchEvent(new CustomEvent('boutikflow:queue-changed', {
-    detail: {
-      pending: queue.filter(q => q.status === 'pending').length,
-      failed: queue.filter(q => q.status === 'failed').length,
-    },
-  }));
+  window.dispatchEvent(new CustomEvent('boutikflow:queue-changed', { detail: { pending, failed } }));
 }
 
-function enqueueOperation(method: string, path: string, body: string | undefined, localId?: string, idempotencyKey?: string) {
+async function notifyQueueChanged() {
+  const all = await OfflineQueue.getAll();
+  dispatchQueueChanged(
+    all.filter(q => q.status === 'pending').length,
+    all.filter(q => q.status === 'failed').length,
+  );
+}
+
+async function enqueueOperation(method: string, path: string, body: string | undefined, localId?: string, idempotencyKey?: string) {
   if (method === 'GET' || typeof window === 'undefined') return;
-  const queue = readSyncQueue();
-  queue.push({
+  const op: QueuedOp = {
     id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     method,
     path,
@@ -351,54 +206,50 @@ function enqueueOperation(method: string, path: string, body: string | undefined
     attempts: 0,
     localId,
     idempotencyKey,
-  });
-  writeSyncQueue(queue);
+  };
+  await OfflineQueue.put(op);
+  await notifyQueueChanged();
 }
 
-/** Remplace toute occurrence de `localId` par `realId` dans le chemin et le
- *  corps des opérations encore en attente — pour qu'une opération qui
- *  référence une entité créée hors-ligne (ex: dette → commande) cible bien
- *  la ressource réelle une fois que celle-ci existe côté serveur. */
-function reconcileQueueIds(localId: string, realId: string) {
-  const queue = readSyncQueue();
-  let changed = false;
-  for (const op of queue) {
-    if (op.path.includes(localId)) {
-      op.path = op.path.split(localId).join(realId);
-      changed = true;
-    }
-    if (op.body && op.body.includes(localId)) {
-      op.body = op.body.split(localId).join(realId);
-      changed = true;
-    }
-  }
-  if (changed) writeSyncQueue(queue);
-}
-
-export function getSyncQueueStatus() {
-  const queue = readSyncQueue();
+export async function getSyncQueueStatus() {
+  const all = await OfflineQueue.getAll();
   return {
-    pendingCount: queue.filter(q => q.status === 'pending').length,
-    failed: queue.filter(q => q.status === 'failed'),
+    pendingCount: all.filter(q => q.status === 'pending').length,
+    failed: all.filter(q => q.status === 'failed'),
+    lastSyncAt: await OfflineDB.getLastSyncAt(),
   };
 }
 
 /** Remet une opération en échec dans la file, pour qu'elle soit rejouée au
  *  prochain sync (déclenché manuellement par l'utilisateur depuis l'UI). */
-export function retryFailedOperation(id: string) {
-  const queue = readSyncQueue();
-  const op = queue.find(q => q.id === id);
-  if (op) { op.status = 'pending'; op.errorMessage = undefined; }
-  writeSyncQueue(queue);
+export async function retryFailedOperation(id: string) {
+  const all = await OfflineQueue.getAll();
+  const op = all.find(q => q.id === id);
+  if (op) {
+    op.status = 'pending';
+    op.errorMessage = undefined;
+    op.nextAttemptAt = undefined;
+    await OfflineQueue.put(op);
+  }
+  await notifyQueueChanged();
 }
 
 /** Abandonne définitivement une opération en échec (ex: vente devenue
  *  invalide car le stock a été épuisé entre-temps sur un autre appareil). */
-export function discardFailedOperation(id: string) {
-  writeSyncQueue(readSyncQueue().filter(q => q.id !== id));
+export async function discardFailedOperation(id: string) {
+  await OfflineQueue.remove(id);
+  await notifyQueueChanged();
 }
 
 let isSyncingQueue = false;
+
+// Backoff exponentiel par opération : 5s, 15s, 45s, 2min, 5min (plafond) —
+// laisse une connexion instable respirer entre deux tentatives au lieu de
+// marteler le serveur, tout en restant réactif dès qu'elle se stabilise.
+const BACKOFF_STEPS_MS = [5_000, 15_000, 45_000, 120_000, 300_000];
+function backoffDelay(attempts: number): number {
+  return BACKOFF_STEPS_MS[Math.min(attempts, BACKOFF_STEPS_MS.length - 1)];
+}
 
 /**
  * Rejoue la file d'attente contre le vrai serveur, dans l'ordre de création,
@@ -410,7 +261,7 @@ export async function syncOfflineQueue(): Promise<{ succeeded: number; failed: n
   if (typeof window === 'undefined' || !window.navigator.onLine) return { succeeded: 0, failed: 0 };
   if (isSyncingQueue) return { succeeded: 0, failed: 0 };
 
-  const pending = readSyncQueue().filter(q => q.status === 'pending').sort((a, b) => a.createdAt - b.createdAt);
+  const pending = await OfflineQueue.getPending();
   if (pending.length === 0) return { succeeded: 0, failed: 0 };
 
   isSyncingQueue = true;
@@ -444,11 +295,11 @@ export async function syncOfflineQueue(): Promise<{ succeeded: number; failed: n
 
       if (res.ok) {
         succeeded++;
-        writeSyncQueue(readSyncQueue().filter(q => q.id !== op.id));
+        await OfflineQueue.remove(op.id);
 
         if (op.localId) {
           const created = await res.clone().json().catch(() => null);
-          if (created?.id) reconcileQueueIds(op.localId, String(created.id));
+          if (created?.id) await OfflineQueue.replaceMatching(op.localId, String(created.id));
         }
       } else if (res.status >= 400 && res.status < 500) {
         // Erreur définitive (validation, stock insuffisant, conflit...) :
@@ -461,19 +312,28 @@ export async function syncOfflineQueue(): Promise<{ succeeded: number; failed: n
           ? (Array.isArray(body.detail) ? body.detail.map((d: { msg?: string }) => d.msg).filter(Boolean).join(', ') : body.detail)
           : `Erreur ${res.status}`;
         failed++;
-        const queue = readSyncQueue();
-        const item = queue.find(q => q.id === op.id);
-        if (item) { item.status = 'failed'; item.errorMessage = message; item.attempts += 1; }
-        writeSyncQueue(queue);
+        op.status = 'failed';
+        op.errorMessage = message;
+        op.attempts += 1;
+        await OfflineQueue.put(op);
       } else {
-        // Erreur serveur (5xx) : transitoire, on retentera au prochain
-        // retour de connexion plutôt que d'abandonner l'opération.
+        // Erreur serveur (5xx), transitoire : backoff sur CETTE opération
+        // et on continue avec la suite de la file plutôt que de tout
+        // bloquer derrière elle (les autres peuvent très bien réussir).
+        op.attempts += 1;
+        op.nextAttemptAt = Date.now() + backoffDelay(op.attempts);
+        await OfflineQueue.put(op);
         stoppedEarly = true;
-        break;
       }
     } catch {
-      // Le réseau a coupé pendant la synchronisation elle-même : on
-      // s'arrête net, la file reprendra au prochain événement "online".
+      // Le réseau a coupé pendant la synchronisation elle-même : backoff
+      // sur cette opération, et on s'arrête net (les suivantes échoueraient
+      // très probablement pour la même raison) — le battement périodique
+      // plus bas reprendra la file de lui-même, sans attendre un nouvel
+      // événement "online" qui ne se redéclenche pas forcément.
+      op.attempts += 1;
+      op.nextAttemptAt = Date.now() + backoffDelay(op.attempts);
+      await OfflineQueue.put(op);
       stoppedEarly = true;
       break;
     }
@@ -486,6 +346,7 @@ export async function syncOfflineQueue(): Promise<{ succeeded: number; failed: n
   // les données après synchronisation EST le recalcul, il n'y a rien à
   // reconstruire côté client.
   if (succeeded > 0) {
+    await OfflineDB.setLastSyncAt(Date.now());
     await Promise.allSettled([
       request('/products?page=1&per_page=200').catch(() => null),
       request('/clients?page=1&per_page=200').catch(() => null),
@@ -494,6 +355,7 @@ export async function syncOfflineQueue(): Promise<{ succeeded: number; failed: n
     ]);
   }
 
+  await notifyQueueChanged();
   window.dispatchEvent(new CustomEvent('boutikflow:sync-complete', {
     detail: { succeeded, failed, stoppedEarly },
   }));
@@ -508,22 +370,30 @@ if (typeof window !== 'undefined') {
   if (window.navigator.onLine) {
     setTimeout(() => { syncOfflineQueue(); }, 1500);
   }
+  // navigator.onLine ne reflète que l'état de la carte réseau, pas la
+  // capacité réelle à joindre le serveur — une connexion physiquement
+  // active mais qui ne joint jamais le backend ne redéclenche JAMAIS
+  // l'événement "online". Ce battement reprend la file dès que le backoff
+  // d'une opération arrive à échéance, sans dépendre de cet événement.
+  setInterval(() => {
+    if (window.navigator.onLine) syncOfflineQueue();
+  }, 20_000);
 }
 
-function handleOfflineRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function handleOfflineRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const method = (options.method || 'GET').toUpperCase();
-  const uuid = () => Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  const uuid = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
   if (path.startsWith('/products')) {
-    const products = OfflineDB.getProducts();
+    const products = await OfflineDB.getProducts();
     if (method === 'GET') {
-      return Promise.resolve({
+      return {
         items: products,
         total: products.length,
         page: 1,
         per_page: 200,
         pages: 1
-      } as any as T);
+      } as any as T;
     }
     if (method === 'POST') {
       const data = JSON.parse(options.body as string);
@@ -535,22 +405,36 @@ function handleOfflineRequest<T>(path: string, options: RequestInit = {}): Promi
         price: Number(data.price) || 0,
         ...data
       };
-      products.push(newProduct);
-      OfflineDB.saveProducts(products);
-      return Promise.resolve(newProduct as any as T);
+      await OfflineDB.upsertProduct(newProduct);
+      return newProduct as any as T;
+    }
+    if (method === 'PUT') {
+      const prodId = path.split('/')[2];
+      const data = JSON.parse(options.body as string);
+      const existing = products.find(p => p.id === prodId);
+      if (existing) {
+        const updated = { ...existing, ...data, updated_at: new Date().toISOString() };
+        await OfflineDB.upsertProduct(updated);
+        return updated as any as T;
+      }
+    }
+    if (method === 'DELETE') {
+      const prodId = path.split('/')[2];
+      await OfflineDB.removeProduct(prodId);
+      return undefined as any as T;
     }
   }
 
   if (path.startsWith('/clients')) {
-    const clients = OfflineDB.getClients();
+    const clients = await OfflineDB.getClients();
     if (method === 'GET') {
-      return Promise.resolve({
+      return {
         items: clients,
         total: clients.length,
         page: 1,
         per_page: 200,
         pages: 1
-      } as any as T);
+      } as any as T;
     }
     if (method === 'POST') {
       const data = JSON.parse(options.body as string);
@@ -559,37 +443,51 @@ function handleOfflineRequest<T>(path: string, options: RequestInit = {}): Promi
         created_at: new Date().toISOString(),
         ...data
       };
-      clients.push(newClient);
-      OfflineDB.saveClients(clients);
-      return Promise.resolve(newClient as any as T);
+      await OfflineDB.upsertClient(newClient);
+      return newClient as any as T;
+    }
+    if (method === 'PUT') {
+      const clientId = path.split('/')[2];
+      const data = JSON.parse(options.body as string);
+      const existing = clients.find(c => c.id === clientId);
+      if (existing) {
+        const updated = { ...existing, ...data };
+        await OfflineDB.upsertClient(updated);
+        return updated as any as T;
+      }
+    }
+    if (method === 'DELETE') {
+      const clientId = path.split('/')[2];
+      await OfflineDB.removeClient(clientId);
+      return undefined as any as T;
     }
   }
 
   if (path.startsWith('/orders')) {
-    const orders = OfflineDB.getOrders();
+    const orders = await OfflineDB.getOrders();
     if (method === 'GET') {
-      return Promise.resolve({
+      return {
         items: orders,
         total: orders.length,
         page: 1,
         per_page: 200,
         pages: 1
-      } as any as T);
+      } as any as T;
     }
     if (method === 'POST') {
       const data = JSON.parse(options.body as string);
       const items = data.items || [];
-      
-      const products = OfflineDB.getProducts();
+
+      const products = await OfflineDB.getProducts();
       let orderTotal = 0;
-      items.forEach((item: any) => {
+      for (const item of items) {
         const prod = products.find(p => p.id === item.product_id);
         if (prod) {
           orderTotal += prod.price * item.quantity;
           prod.stock = Math.max(0, prod.stock - item.quantity);
+          await OfflineDB.upsertProduct(prod);
         }
-      });
-      OfflineDB.saveProducts(products);
+      }
 
       const newOrder = {
         id: uuid(),
@@ -600,17 +498,56 @@ function handleOfflineRequest<T>(path: string, options: RequestInit = {}): Promi
         client_id: data.client_id || null,
         created_at: new Date().toISOString(),
       };
-      orders.unshift(newOrder);
-      OfflineDB.saveOrders(orders);
+      await OfflineDB.upsertOrder(newOrder);
 
-      return Promise.resolve(newOrder as any as T);
+      return newOrder as any as T;
+    }
+  }
+
+  // Le paiement d'une dette (POST /crm/debts/{id}/pay) doit être vérifié
+  // AVANT la création générique (POST /crm/debts) : les deux commencent
+  // par le même préfixe, et l'ordre inverse traitait auparavant tout
+  // paiement hors-ligne comme la création d'une dette supplémentaire.
+  if (path.startsWith('/crm/debts') && path.includes('/pay') && method === 'POST') {
+    const debts = await OfflineDB.getDebts();
+    const parts = path.split('/');
+    const debtId = parts[3];
+    const data = JSON.parse(options.body as string);
+    const amountPaid = Number(data.amount);
+
+    const debt = debts.find(d => d.id === debtId);
+    if (debt) {
+      debt.remaining_amount = Math.max(0, debt.remaining_amount - amountPaid);
+      debt.status = debt.remaining_amount <= 0 ? 'paid' : 'partial';
+      await OfflineDB.upsertDebt(debt);
+
+      const clients = await OfflineDB.getClients();
+      const clientName = clients.find(c => c.id === debt.client_id)?.name || 'Client';
+
+      const newTx = {
+        id: uuid(),
+        type: 'income',
+        category: 'sale',
+        amount: amountPaid,
+        description: `Paiement dette client — ${clientName} (${debt.description})`,
+        payment_method: data.payment_method || 'cash',
+        reference: debt.id,
+        created_at: new Date().toISOString(),
+      };
+      await OfflineDB.upsertTransaction(newTx);
+
+      return {
+        message: 'Paiement de dette enregistré',
+        remaining_amount: debt.remaining_amount,
+        status: debt.status
+      } as any as T;
     }
   }
 
   if (path.startsWith('/crm/debts')) {
-    const debts = OfflineDB.getDebts();
+    const debts = await OfflineDB.getDebts();
     if (method === 'GET') {
-      return Promise.resolve(debts as any as T);
+      return debts as any as T;
     }
     if (method === 'POST') {
       const data = JSON.parse(options.body as string);
@@ -625,48 +562,8 @@ function handleOfflineRequest<T>(path: string, options: RequestInit = {}): Promi
         status: 'unpaid',
         created_at: new Date().toISOString(),
       };
-      debts.unshift(newDebt);
-      OfflineDB.saveDebts(debts);
-      return Promise.resolve(newDebt as any as T);
-    }
-    if (method === 'POST' && path.includes('/pay')) {
-      const parts = path.split('/');
-      const debtId = parts[3];
-      const data = JSON.parse(options.body as string);
-      const amountPaid = Number(data.amount);
-      
-      const debt = debts.find(d => d.id === debtId);
-      if (debt) {
-        debt.remaining_amount = Math.max(0, debt.remaining_amount - amountPaid);
-        if (debt.remaining_amount <= 0) {
-          debt.status = 'paid';
-        }
-        OfflineDB.saveDebts(debts);
-
-        // Record a paid debt as an INCOME transaction in finance
-        const transactions = OfflineDB.getTransactions();
-        const clients = OfflineDB.getClients();
-        const clientName = clients.find(c => c.id === debt.client_id)?.name || 'Client';
-        
-        const newTx = {
-          id: uuid(),
-          type: 'income',
-          category: 'sale',
-          amount: amountPaid,
-          description: `Paiement dette client — ${clientName} (${debt.description})`,
-          payment_method: data.payment_method || 'cash',
-          reference: debt.id,
-          created_at: new Date().toISOString(),
-        };
-        transactions.unshift(newTx);
-        OfflineDB.saveTransactions(transactions);
-
-        return Promise.resolve({
-          message: 'Paiement de dette enregistré',
-          remaining_amount: debt.remaining_amount,
-          status: debt.status
-        } as any as T);
-      }
+      await OfflineDB.upsertDebt(newDebt);
+      return newDebt as any as T;
     }
   }
 
@@ -676,7 +573,7 @@ function handleOfflineRequest<T>(path: string, options: RequestInit = {}): Promi
     const endDate = urlObj.searchParams.get('end_date');
     const type = urlObj.searchParams.get('type');
 
-    let transactions = OfflineDB.getTransactions();
+    let transactions = await OfflineDB.getTransactions();
     if (startDate || endDate) {
       const startMs = startDate ? new Date(startDate + 'T00:00:00').getTime() : 0;
       const endMs = endDate ? new Date(endDate + 'T23:59:59.999').getTime() : Infinity;
@@ -697,14 +594,14 @@ function handleOfflineRequest<T>(path: string, options: RequestInit = {}): Promi
         net_balance: total_income - total_expense,
         transactions_count: transactions.length
       };
-      return Promise.resolve({
+      return {
         items: transactions,
         total: transactions.length,
         page: 1,
         per_page: 50,
         pages: 1,
         summary
-      } as any as T);
+      } as any as T;
     }
     if (method === 'POST') {
       const data = JSON.parse(options.body as string);
@@ -718,9 +615,8 @@ function handleOfflineRequest<T>(path: string, options: RequestInit = {}): Promi
         reference: data.reference || null,
         created_at: new Date().toISOString(),
       };
-      transactions.unshift(newTx);
-      OfflineDB.saveTransactions(transactions);
-      return Promise.resolve(newTx as any as T);
+      await OfflineDB.upsertTransaction(newTx);
+      return newTx as any as T;
     }
   }
 
@@ -729,9 +625,9 @@ function handleOfflineRequest<T>(path: string, options: RequestInit = {}): Promi
     const startDate = urlObj.searchParams.get('start_date');
     const endDate = urlObj.searchParams.get('end_date');
 
-    let transactions = OfflineDB.getTransactions();
-    let orders = OfflineDB.getOrders();
-    const clients = OfflineDB.getClients();
+    let transactions = await OfflineDB.getTransactions();
+    let orders = await OfflineDB.getOrders();
+    const clients = await OfflineDB.getClients();
 
     if (startDate || endDate) {
       const startMs = startDate ? new Date(startDate + 'T00:00:00').getTime() : 0;
@@ -751,14 +647,14 @@ function handleOfflineRequest<T>(path: string, options: RequestInit = {}): Promi
     const net_balance = total_revenue - total_expenses;
     const pending_orders = orders.filter(o => o.status === 'pending').length;
 
-    return Promise.resolve({
+    return {
       total_revenue,
       total_expenses,
       net_balance,
       total_orders: orders.length,
       total_clients: clients.length,
       pending_orders
-    } as any as T);
+    } as any as T;
   }
 
   if (path.startsWith('/dashboard/analytics')) {
@@ -766,7 +662,7 @@ function handleOfflineRequest<T>(path: string, options: RequestInit = {}): Promi
     const startDate = urlObj.searchParams.get('start_date');
     const endDate = urlObj.searchParams.get('end_date');
 
-    let transactions = OfflineDB.getTransactions();
+    let transactions = await OfflineDB.getTransactions();
     if (startDate || endDate) {
       const startMs = startDate ? new Date(startDate + 'T00:00:00').getTime() : 0;
       const endMs = endDate ? new Date(endDate + 'T23:59:59.999').getTime() : Infinity;
@@ -794,19 +690,19 @@ function handleOfflineRequest<T>(path: string, options: RequestInit = {}): Promi
 
       revenue_data.push({ name: dateStr, value: dayTotal });
     }
-    return Promise.resolve({ revenue_data } as any as T);
+    return { revenue_data } as any as T;
   }
 
   if (path.startsWith('/categories')) {
-    const categories = OfflineDB.getCategories();
+    const categories = await ensureSeedCategories();
     if (method === 'GET') {
-      return Promise.resolve({
+      return {
         items: categories,
         total: categories.length,
         page: 1,
         per_page: 200,
         pages: 1
-      } as any as T);
+      } as any as T;
     }
     if (method === 'POST') {
       const data = JSON.parse(options.body as string);
@@ -816,70 +712,91 @@ function handleOfflineRequest<T>(path: string, options: RequestInit = {}): Promi
         slug: (data.name || '').toLowerCase().replace(/\s+/g, '-'),
         ...data
       };
-      categories.push(newCat);
-      OfflineDB.saveCategories(categories);
-      return Promise.resolve(newCat as any as T);
+      await OfflineDB.upsertCategory(newCat);
+      return newCat as any as T;
     }
     if (method === 'PUT') {
       const catId = path.split('/')[2];
       const data = JSON.parse(options.body as string);
       const cat = categories.find(c => c.id === catId);
       if (cat) {
-        Object.assign(cat, data);
-        OfflineDB.saveCategories(categories);
-        return Promise.resolve(cat as any as T);
+        const updated = { ...cat, ...data };
+        await OfflineDB.upsertCategory(updated);
+        return updated as any as T;
       }
     }
     if (method === 'DELETE') {
       const catId = path.split('/')[2];
-      const idx = categories.findIndex(c => c.id === catId);
-      if (idx >= 0) {
-        categories.splice(idx, 1);
-        OfflineDB.saveCategories(categories);
-        return Promise.resolve(undefined as any as T);
-      }
+      await OfflineDB.removeCategory(catId);
+      return undefined as any as T;
     }
   }
 
   if (path.startsWith('/suppliers')) {
+    const suppliers = await OfflineDB.getSuppliers();
     if (method === 'GET') {
-      return Promise.resolve({
-        items: [],
-        total: 0,
+      return {
+        items: suppliers,
+        total: suppliers.length,
         page: 1,
         per_page: 200,
-        pages: 0
-      } as any as T);
+        pages: suppliers.length > 0 ? 1 : 0
+      } as any as T;
+    }
+    if (method === 'POST') {
+      const data = JSON.parse(options.body as string);
+      const newSupplier = {
+        id: uuid(),
+        created_at: new Date().toISOString(),
+        ...data
+      };
+      await OfflineDB.upsertSupplier(newSupplier);
+      return newSupplier as any as T;
+    }
+    if (method === 'PUT') {
+      const supplierId = path.split('/')[2];
+      const data = JSON.parse(options.body as string);
+      const existing = suppliers.find(s => s.id === supplierId);
+      if (existing) {
+        const updated = { ...existing, ...data };
+        await OfflineDB.upsertSupplier(updated);
+        return updated as any as T;
+      }
+    }
+    if (method === 'DELETE') {
+      const supplierId = path.split('/')[2];
+      await OfflineDB.removeSupplier(supplierId);
+      return undefined as any as T;
     }
   }
 
   if (path.startsWith('/auth/team')) {
     if (method === 'GET') {
-      return Promise.resolve([] as any as T);
+      return [] as any as T;
     }
   }
 
   if (path.startsWith('/audit')) {
     if (method === 'GET') {
-      return Promise.resolve({
+      return {
         items: [],
         total: 0,
         page: 1,
         per_page: 50,
         pages: 0
-      } as any as T);
+      } as any as T;
     }
   }
 
   if (path.startsWith('/segments') || path.startsWith('/crm/segments')) {
     if (method === 'GET') {
-      return Promise.resolve({
+      return {
         items: [],
         total: 0,
         page: 1,
         per_page: 50,
         pages: 0
-      } as any as T);
+      } as any as T;
     }
   }
 
@@ -887,15 +804,15 @@ function handleOfflineRequest<T>(path: string, options: RequestInit = {}): Promi
   // Un commerçant ne doit JAMAIS voir "Erreur de chargement" hors-ligne.
   console.warn('[Offline] Route non mappée:', path, '→ retour données vides');
   if (method === 'GET') {
-    return Promise.resolve({
+    return {
       items: [],
       total: 0,
       page: 1,
       per_page: 50,
       pages: 0
-    } as any as T);
+    } as any as T;
   }
-  return Promise.resolve({} as any as T);
+  return {} as any as T;
 }
 
 function extractHeader(headers: HeadersInit | undefined, name: string): string | undefined {
@@ -917,7 +834,7 @@ async function handleOfflineRequestAndQueue<T>(path: string, options: RequestIni
   if (method !== 'GET') {
     const localId = (result as { id?: string } | null)?.id;
     const idempotencyKey = extractHeader(options.headers, 'Idempotency-Key');
-    enqueueOperation(method, path, options.body as string | undefined, localId, idempotencyKey);
+    await enqueueOperation(method, path, options.body as string | undefined, localId, idempotencyKey);
   }
   return result;
 }
@@ -996,22 +913,21 @@ async function request<T>(
       if (contentType.includes('application/json')) {
         const bodyClone = await res.clone().json().catch(() => null);
         if (bodyClone) {
-          if (path.startsWith('/products') && method === 'GET') {
-            const items = Array.isArray(bodyClone) ? bodyClone : bodyClone.items;
-            if (items) OfflineDB.saveProducts(items);
-          } else if (path.startsWith('/clients') && method === 'GET') {
-            const items = Array.isArray(bodyClone) ? bodyClone : bodyClone.items;
-            if (items) OfflineDB.saveClients(items);
-          } else if (path.startsWith('/finance') && method === 'GET') {
-            const items = Array.isArray(bodyClone) ? bodyClone : bodyClone.items;
-            if (items) OfflineDB.saveTransactions(items);
-          } else if (path.startsWith('/orders') && method === 'GET') {
-            // Important après une synchronisation réussie : remplace les
-            // commandes à identifiant local fabriqué par les vraies
-            // commandes serveur, pour qu'une future coupure de connexion
-            // reparte d'un cache exact plutôt que de doublons obsolètes.
-            const items = Array.isArray(bodyClone) ? bodyClone : bodyClone.items;
-            if (items) OfflineDB.saveOrders(items);
+          const items = Array.isArray(bodyClone) ? bodyClone : bodyClone.items;
+          if (method === 'GET' && items) {
+            if (path.startsWith('/products')) await OfflineDB.saveProducts(items);
+            else if (path.startsWith('/clients')) await OfflineDB.saveClients(items);
+            else if (path.startsWith('/finance')) await OfflineDB.saveTransactions(items);
+            else if (path.startsWith('/categories')) await OfflineDB.saveCategories(items);
+            else if (path.startsWith('/suppliers')) await OfflineDB.saveSuppliers(items);
+            else if (path.startsWith('/crm/debts')) await OfflineDB.saveDebts(items);
+            else if (path.startsWith('/orders')) {
+              // Important après une synchronisation réussie : remplace les
+              // commandes à identifiant local fabriqué par les vraies
+              // commandes serveur, pour qu'une future coupure de connexion
+              // reparte d'un cache exact plutôt que de doublons obsolètes.
+              await OfflineDB.saveOrders(items);
+            }
           }
         }
       }
