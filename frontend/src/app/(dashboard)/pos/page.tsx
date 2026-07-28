@@ -95,7 +95,7 @@ export default function POSPage() {
   const loadClients = async (signal?: AbortSignal) => {
     const cached = (() => { try { const c = localStorage.getItem('offline_clients'); if (c) { const parsed = JSON.parse(c); if (Array.isArray(parsed) && parsed.length > 0) return parsed; } } catch {} return []; })();
     if (cached.length > 0) setClients(cached);
-    try { const r = await api.getClients(1, 200, undefined, undefined, signal); const items = r.items || []; if (items.length > 0) { setClients(items); try { localStorage.setItem('offline_clients', JSON.stringify(items)); } catch {} } } catch {}
+    try { const r = await api.getClients(1, 100, undefined, undefined, signal); const items = r.items || []; if (items.length > 0) { setClients(items); try { localStorage.setItem('offline_clients', JSON.stringify(items)); } catch {} } } catch {}
   };
 
   const loadProducts = async (signal?: AbortSignal) => {
@@ -388,7 +388,7 @@ export default function POSPage() {
 
                     <div className="p-card-info">
                       <span className="p-card-name">{product.name}</span>
-                      <span className="p-card-price">{product.price.toLocaleString('fr-FR')}<small> GNF</small></span>
+                      <span className="p-card-price">{(product.price || 0).toLocaleString('fr-FR')}<small> GNF</small></span>
                     </div>
                   </button>
                 );

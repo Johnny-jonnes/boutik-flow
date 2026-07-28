@@ -47,7 +47,7 @@ export default function WhatsAppPage() {
   const [sentCount, setSentCount] = useState(0);
 
   useEffect(() => {
-    api.getClients(1, 200).then(res => setClients(res.items)).catch(() => {});
+    api.getClients(1, 100).then(res => setClients(res.items)).catch(() => {});
     api.getSegments(1, 100).then(res => setSegments(res.items)).catch(() => {});
     // Récupérer le nom de la boutique depuis le token
     try {

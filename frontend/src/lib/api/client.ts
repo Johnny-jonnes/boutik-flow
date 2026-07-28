@@ -186,7 +186,18 @@ const OfflineDB = {
   },
   saveProducts(products: any[]) {
     if (typeof window === 'undefined') return;
-    localStorage.setItem('offline_products', JSON.stringify(products));
+    // Les images produit (base64, plusieurs dizaines de Ko chacune) faisaient
+    // dépasser le quota localStorage (~5-10 Mo) dès qu'un catalogue en
+    // comptait beaucoup — l'écriture entière échouait alors silencieusement
+    // (QuotaExceededError), laissant le cache hors-ligne périmé ou vide.
+    // Une image manquante affiche déjà un pictogramme de remplacement dans
+    // l'UI ; ce n'est pas nécessaire pour le repli hors-ligne du catalogue.
+    const lightweight = products.map(({ images, ...rest }) => rest);
+    try {
+      localStorage.setItem('offline_products', JSON.stringify(lightweight));
+    } catch (e) {
+      console.warn('Offline caching error (produits, même allégés)', e);
+    }
   },
   getClients(): any[] {
     if (typeof window === 'undefined') return [];

@@ -38,7 +38,7 @@
 //   PATCH/DELETE) : jamais interceptés ici — déjà gérés par la file de
 //   synchronisation hors-ligne dans lib/api/client.ts.
 
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 const RUNTIME_CACHE = `boutikflow-runtime-${CACHE_VERSION}`;
 
 self.addEventListener('install', (event) => {
@@ -99,6 +99,24 @@ self.addEventListener('fetch', (event) => {
         if (response.ok) putInCache(event, cacheKey, response.clone());
         return response;
       })
-      .catch(() => caches.match(cacheKey))
+      .catch(async () => {
+        const cached = await caches.match(cacheKey);
+        if (cached) return cached;
+        // CAUSE CONFIRMÉE (logs console) du "This page couldn't load" :
+        // caches.match() qui ne trouve rien résout sur `undefined`, et
+        // event.respondWith(undefined) lève "Failed to convert value to
+        // 'Response'" — l'événement fetch entier échoue alors en erreur
+        // réseau brutale plutôt qu'un simple échec de navigation classique.
+        // Retourner explicitement une vraie Response élimine ce crash.
+        return new Response(
+          '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>' +
+          '<body style="font-family:system-ui,sans-serif;text-align:center;padding:3rem 1.5rem;background:#f4f8f7;color:#091312;">' +
+          '<h1 style="font-size:1.1rem;">Connexion indisponible</h1>' +
+          '<p style="opacity:.7;font-size:.9rem;">Cette page n’a pas encore été chargée sur cet appareil. Réessayez dès que la connexion revient.</p>' +
+          '<button onclick="location.reload()" style="margin-top:1rem;padding:.6rem 1.2rem;border:none;border-radius:8px;background:#31a292;color:#fff;font-weight:700;">Réessayer</button>' +
+          '</body></html>',
+          { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+        );
+      })
   );
 });
