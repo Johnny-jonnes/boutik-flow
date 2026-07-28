@@ -949,6 +949,18 @@ async function request<T>(
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), currentTimeoutMs());
+    // Un composant qui se démonte (navigation vers une autre page pendant
+    // qu'une requête est encore en vol) peut annuler immédiatement plutôt
+    // que de laisser la requête occuper une connexion jusqu'au timeout —
+    // sur une connexion lente, plusieurs requêtes abandonnées qui
+    // s'accumulent ainsi lors de navigations rapprochées peuvent épuiser
+    // le nombre de connexions simultanées autorisées vers le serveur et
+    // faire échouer la requête de navigation suivante.
+    const externalSignal = options.signal;
+    if (externalSignal) {
+      if (externalSignal.aborted) controller.abort();
+      else externalSignal.addEventListener('abort', () => controller.abort(), { once: true });
+    }
     res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers, signal: controller.signal });
     clearTimeout(timeoutId);
     // La requête a abouti (quel que soit le status) : le réseau fonctionne,
@@ -1184,9 +1196,10 @@ export const api = {
   },
 
   // ── CRM — Clients ─────────────────────────────────────────────────────
-  async getClients(page = 1, perPage = 20, search?: string, status?: ClientStatus) {
+  async getClients(page = 1, perPage = 20, search?: string, status?: ClientStatus, signal?: AbortSignal) {
     const raw = await request<{ items: CrmClient[]; total: number; page: number; per_page: number }>(
-      `/clients${buildQuery({ page, per_page: perPage, search, status })}`
+      `/clients${buildQuery({ page, per_page: perPage, search, status })}`,
+      { signal }
     );
     return withPages(raw);
   },
@@ -1242,9 +1255,10 @@ export const api = {
   },
 
   // ── Catalogue — Catégories ────────────────────────────────────────────
-  async getCategories(page = 1, perPage = 20) {
+  async getCategories(page = 1, perPage = 20, signal?: AbortSignal) {
     const raw = await request<{ items: Category[]; total: number; page: number; per_page: number }>(
-      `/products/categories${buildQuery({ page, per_page: perPage })}`
+      `/products/categories${buildQuery({ page, per_page: perPage })}`,
+      { signal }
     );
     return withPages(raw);
   },
@@ -1262,7 +1276,7 @@ export const api = {
   },
 
   // ── Catalogue — Produits ──────────────────────────────────────────────
-  async getProducts(page = 1, perPage = 20, search?: string, categoryId?: string, inStock?: boolean) {
+  async getProducts(page = 1, perPage = 20, search?: string, categoryId?: string, inStock?: boolean, signal?: AbortSignal) {
     const raw = await request<{ items: Product[]; total: number; page: number; per_page: number }>(
       `/products${buildQuery({
         page,
@@ -1270,7 +1284,8 @@ export const api = {
         search,
         category_id: categoryId,
         in_stock: inStock,
-      })}`
+      })}`,
+      { signal }
     );
     return withPages(raw);
   },

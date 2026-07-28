@@ -56,9 +56,16 @@ export default function POSPage() {
   const [isSubmittingExpense, setIsSubmittingExpense]     = useState(false);
 
   // ─── Init ──────────────────────────────────────────────────────────
+  // Annule les requêtes encore en vol si l'utilisateur quitte la page avant
+  // qu'elles n'aboutissent (ex: navigation rapide Vendre → Produits →
+  // Vendre) : sans ça, sur une connexion lente, ces requêtes abandonnées
+  // continuent d'occuper une connexion jusqu'à leur timeout et peuvent
+  // faire échouer la requête de navigation suivante par épuisement du
+  // nombre de connexions simultanées autorisées vers le serveur.
   useEffect(() => {
-    loadProducts();
-    loadClients();
+    const controller = new AbortController();
+    loadProducts(controller.signal);
+    loadClients(controller.signal);
     try {
       const token = localStorage.getItem('boutikflow_access_token');
       if (token) {
@@ -68,6 +75,7 @@ export default function POSPage() {
         if (raw) { const n = raw.split('@')[0]; setSellerName(n.charAt(0).toUpperCase() + n.slice(1)); }
       }
     } catch {}
+    return () => controller.abort();
   }, []);
 
   // Après une synchronisation réussie, le stock local (décrémenté de façon
@@ -84,13 +92,13 @@ export default function POSPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadClients = async () => {
+  const loadClients = async (signal?: AbortSignal) => {
     const cached = (() => { try { const c = localStorage.getItem('offline_clients'); if (c) { const parsed = JSON.parse(c); if (Array.isArray(parsed) && parsed.length > 0) return parsed; } } catch {} return []; })();
     if (cached.length > 0) setClients(cached);
-    try { const r = await api.getClients(1, 200); const items = r.items || []; if (items.length > 0) { setClients(items); try { localStorage.setItem('offline_clients', JSON.stringify(items)); } catch {} } } catch {}
+    try { const r = await api.getClients(1, 200, undefined, undefined, signal); const items = r.items || []; if (items.length > 0) { setClients(items); try { localStorage.setItem('offline_clients', JSON.stringify(items)); } catch {} } } catch {}
   };
 
-  const loadProducts = async () => {
+  const loadProducts = async (signal?: AbortSignal) => {
     // 1. Instant load from cache (zero latency - never shows error)
     const cached = (() => {
       try {
@@ -102,7 +110,7 @@ export default function POSPage() {
     if (cached.length > 0) { setProducts(cached); setLoading(false); } else { setLoading(true); }
     // 2. Silent background refresh from server
     try {
-      const data = await api.getProducts(1, 100);
+      const data = await api.getProducts(1, 100, undefined, undefined, undefined, signal);
       const items = Array.isArray(data) ? data : (data?.items ?? []);
       if (items.length > 0) {
         setProducts(items);
@@ -345,7 +353,7 @@ export default function POSPage() {
                 <Package size={36} opacity={0.2}/>
                 <span>{searchQuery ? (language === 'fr' ? 'Aucun résultat' : 'No results') : (language === 'fr' ? 'Aucun produit' : 'No products')}</span>
                 {!searchQuery && (
-                  <button className="btn btn-ghost btn--sm" onClick={loadProducts} style={{ marginTop: '0.5rem' }}>
+                  <button className="btn btn-ghost btn--sm" onClick={() => loadProducts()} style={{ marginTop: '0.5rem' }}>
                     ↻ {language === 'fr' ? 'Recharger' : 'Reload'}
                   </button>
                 )}

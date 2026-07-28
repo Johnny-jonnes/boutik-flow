@@ -61,22 +61,32 @@ function ProductsContent() {
   const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
   const [isAILoading, setIsAILoading] = useState(false);
 
-  const fetchProductsAndCategories = async () => {
+  const fetchProductsAndCategories = async (signal?: AbortSignal) => {
     try {
       const [prodRes, catRes] = await Promise.all([
-        api.getProducts(1, 100),
-        api.getCategories(1, 100)
+        api.getProducts(1, 100, undefined, undefined, undefined, signal),
+        api.getCategories(1, 100, signal)
       ]);
       setProducts(prodRes.items);
       setCategories(catRes.items);
     } catch (error) {
+      if ((error as { name?: string })?.name === 'AbortError') return;
       toast.error('Erreur lors de la récupération des données');
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => { fetchProductsAndCategories(); }, []);
+  // Annule la requête si l'utilisateur quitte la page avant qu'elle
+  // n'aboutisse (ex: navigation rapide vers une autre page pendant le
+  // chargement) — sinon elle continue d'occuper une connexion jusqu'à son
+  // timeout, ce qui peut faire échouer la requête de la page suivante par
+  // épuisement du nombre de connexions simultanées autorisées.
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchProductsAndCategories(controller.signal);
+    return () => controller.abort();
+  }, []);
 
   const generateClientSku = (name: string): string => {
     const cleanName = name.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6);
