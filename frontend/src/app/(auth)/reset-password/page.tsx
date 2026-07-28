@@ -172,13 +172,16 @@ function ResetPasswordForm() {
       <style jsx>{`
         .auth-page {
           min-height: 100vh;
+          min-height: 100dvh;
           display: flex;
           align-items: center;
           justify-content: center;
           background: var(--surface-0);
           position: relative;
-          overflow: hidden;
-          padding: 2rem;
+          overflow-x: hidden;
+          overflow-y: auto;
+          padding: max(2rem, env(safe-area-inset-top, 0px)) max(2rem, env(safe-area-inset-right, 0px))
+                   max(2rem, env(safe-area-inset-bottom, 0px)) max(2rem, env(safe-area-inset-left, 0px));
         }
 
         .auth-bg-grid {

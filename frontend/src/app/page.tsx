@@ -560,7 +560,8 @@ export default function HomePage() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 1rem 2.5rem;
+          padding: max(1rem, env(safe-area-inset-top, 0px)) max(2.5rem, env(safe-area-inset-right, 0px))
+                   1rem max(2.5rem, env(safe-area-inset-left, 0px));
           border-bottom: 1px solid var(--border-subtle);
         }
         .nav-logo {
@@ -974,7 +975,8 @@ export default function HomePage() {
             gap: 2rem;
           }
           .landing-nav {
-            padding: 0.75rem 1rem !important;
+            padding: max(0.75rem, env(safe-area-inset-top, 0px)) max(1rem, env(safe-area-inset-right, 0px))
+                     0.75rem max(1rem, env(safe-area-inset-left, 0px)) !important;
           }
           .nav-logo-text {
             font-size: 1rem !important;
