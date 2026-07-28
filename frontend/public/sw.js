@@ -8,29 +8,37 @@
 // prefetch` — la MÊME URL renvoie un contenu différent selon la page de
 // provenance, et la Cache API respecte ce Vary : une entrée mise en cache
 // en venant de la page A ne correspondait plus à la requête faite en
-// revenant depuis la page B. Résultat : "This page couldn't load"
-// reproductible dès le 2ᵉ passage sur une page.
-// 2ᵉ tentative : retrait total du cache de navigation (repli natif du
-// navigateur). Stable mais aucune résilience face à une vraie coupure
-// pendant une navigation.
-// 3ᵉ tentative (celle-ci) : cache de navigation avec une clé de cache
-// NORMALISÉE — juste `pathname + search`, sans aucun des en-têtes
-// Next.js ci-dessus. Une requête "propre" (sans ces en-têtes) et une
-// réponse avec Vary sur des en-têtes tous deux absents/égaux se
-// correspondent toujours, quelle que soit la page de provenance.
+// revenant depuis la page B.
+// 2ᵉ tentative : retrait total du cache de navigation. Stable mais aucune
+// résilience face à une vraie coupure pendant une navigation.
+// 3ᵉ tentative : clé de cache normalisée (pathname + search, sans les
+// en-têtes ci-dessus) — corrige bien le problème de correspondance, MAIS
+// le problème a persisté quand même. Cause trouvée après coup : les
+// `cache.put(...)` n'étaient enveloppés dans AUCUN `event.waitUntil()`.
+// Le navigateur peut arrêter un Service Worker dès que la réponse a été
+// renvoyée à la page — sans waitUntil, l'écriture en cache (asynchrone,
+// lancée en arrière-plan) pouvait donc être interrompue avant d'avoir
+// fini, en particulier sur une connexion lente (le pire moment pour que
+// ça arrive, puisque c'est justement quand le cache est censé servir).
+// Le cache pouvait ainsi rester silencieusement vide malgré des pages
+// chargées avec succès — aucune des tentatives précédentes n'avait donc
+// jamais vraiment eu de filet de secours en place, quelle que soit la clé
+// de cache utilisée.
+// 4ᵉ tentative (celle-ci) : identique à la 3ᵉ, plus `event.waitUntil()`
+// autour de CHAQUE écriture en cache pour garantir qu'elle se termine
+// réellement avant que le Service Worker puisse être arrêté.
 //
 // Stratégie :
 // - Fichiers statiques Next.js hashés (/_next/static/...) : cache-first,
 //   clé = Request brute (contenu immuable par URL, aucun souci de Vary).
 // - Pages / navigation (même origine) : réseau en priorité (reste à jour
 //   quand ça fonctionne), repli sur le cache normalisé si le réseau
-//   échoue — une page déjà visitée au moins une fois reste ouvrable en
-//   y revenant depuis n'importe quelle autre page.
+//   échoue.
 // - Appels API (autre origine, onrender.com) et toute écriture (POST/PUT/
 //   PATCH/DELETE) : jamais interceptés ici — déjà gérés par la file de
 //   synchronisation hors-ligne dans lib/api/client.ts.
 
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const RUNTIME_CACHE = `boutikflow-runtime-${CACHE_VERSION}`;
 
 self.addEventListener('install', (event) => {
@@ -49,6 +57,12 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+function putInCache(event, key, response) {
+  event.waitUntil(
+    caches.open(RUNTIME_CACHE).then((cache) => cache.put(key, response))
+  );
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
@@ -63,10 +77,7 @@ self.addEventListener('fetch', (event) => {
       caches.match(request).then((cached) => {
         if (cached) return cached;
         return fetch(request).then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, clone));
-          }
+          if (response.ok) putInCache(event, request, response.clone());
           return response;
         });
       })
@@ -85,10 +96,7 @@ self.addEventListener('fetch', (event) => {
       .then((response) => {
         // Seules les réponses réussies sont mises en cache — une erreur
         // 4xx/5xx ne doit jamais écraser une bonne version précédente.
-        if (response.ok) {
-          const clone = response.clone();
-          caches.open(RUNTIME_CACHE).then((cache) => cache.put(cacheKey, clone));
-        }
+        if (response.ok) putInCache(event, cacheKey, response.clone());
         return response;
       })
       .catch(() => caches.match(cacheKey))
