@@ -65,9 +65,8 @@ export default function RootLayout({
         <meta name="msapplication-TileImage" content="/icons/icon-144x144.png?v=7" />
         {/* Enregistrement du Service Worker avant même l'hydratation React
             (PWARegister ne s'exécute qu'après le montage du composant) —
-            le cache des fichiers statiques Next.js (voir sw.js) devient
-            actif un peu plus tôt. Le Service Worker n'intercepte PAS les
-            pages/navigations elles-mêmes (voir sw.js pour pourquoi). */}
+            son cache (fichiers statiques + pages, voir sw.js) devient
+            actif un peu plus tôt. */}
         <script
           dangerouslySetInnerHTML={{
             __html: `if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(function(){});}`,
