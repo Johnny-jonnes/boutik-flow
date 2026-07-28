@@ -109,6 +109,7 @@ async def force_migrate():
     from app.modules.suppliers.models import Supplier  # noqa
     from app.modules.audit.models import AuditLog  # noqa
     from app.modules.finance.models import FinancialTransaction  # noqa
+    from app.core.idempotency import IdempotencyKey  # noqa
     Base.metadata.create_all(bind=engine)
     tables = list(Base.metadata.tables.keys())
     return {"status": "ok", "tables_registered": tables}
@@ -129,6 +130,7 @@ def on_startup():
     from app.modules.suppliers.models import Supplier  # noqa: F401
     from app.modules.audit.models import AuditLog  # noqa: F401
     from app.modules.finance.models import FinancialTransaction  # noqa: F401
+    from app.core.idempotency import IdempotencyKey  # noqa: F401
     Base.metadata.create_all(bind=engine)
 
 

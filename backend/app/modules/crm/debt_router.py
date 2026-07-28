@@ -9,6 +9,7 @@ from sqlalchemy import and_
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, CurrentUser
+from app.core.idempotency import IdempotencyHeader, get_cached_response, store_response
 from app.modules.crm.debt_models import ClientDebt, DebtPayment, DebtStatusEnum
 from app.modules.crm.models import Client
 from pydantic import BaseModel, Field
@@ -55,8 +56,13 @@ def create_debt(
     payload: DebtCreateRequest,
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
+    idempotency_key: IdempotencyHeader = None,
 ) -> dict:
     """Créer une nouvelle dette pour un client."""
+    cached = get_cached_response(db, current_user.tenant_id, "debts.create", idempotency_key)
+    if cached:
+        return cached[1]
+
     client = db.query(Client).filter(
         Client.id == payload.client_id,
         Client.tenant_id == current_user.tenant_id,
@@ -77,11 +83,13 @@ def create_debt(
     db.add(debt)
     db.commit()
     db.refresh(debt)
-    return {
+    result = {
         "id": str(debt.id),
         "message": "Dette enregistrée",
         "remaining_amount": float(debt.remaining_amount),
     }
+    store_response(db, current_user.tenant_id, "debts.create", idempotency_key, 201, result)
+    return result
 
 
 @router.get("")
@@ -122,8 +130,13 @@ def record_payment(
     payload: DebtPaymentRequest,
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
+    idempotency_key: IdempotencyHeader = None,
 ) -> dict:
     """Enregistrer un versement sur une dette."""
+    cached = get_cached_response(db, current_user.tenant_id, "debts.pay", idempotency_key)
+    if cached:
+        return cached[1]
+
     debt = db.query(ClientDebt).filter(
         ClientDebt.id == debt_id,
         ClientDebt.tenant_id == current_user.tenant_id,
@@ -153,8 +166,10 @@ def record_payment(
         debt.status = DebtStatusEnum.partial
 
     db.commit()
-    return {
+    result = {
         "message": "Versement enregistré",
         "remaining_amount": float(debt.remaining_amount),
         "status": debt.status,
     }
+    store_response(db, current_user.tenant_id, "debts.pay", idempotency_key, 200, result)
+    return result

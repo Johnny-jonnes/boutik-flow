@@ -5,10 +5,12 @@ Gestion des entrées, dépenses et calcul du Solde Net.
 from typing import Annotated
 import uuid
 from fastapi import APIRouter, Depends, Query, status
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_owner_or_manager, CurrentUser
+from app.core.idempotency import IdempotencyHeader, get_cached_response, store_response
 from app.core.period import resolve_period
 from app.core.metrics import financial_totals, product_margin
 from app.modules.finance.models import FinancialTransaction
@@ -122,7 +124,12 @@ def create_transaction(
     payload: TransactionCreate,
     current_user: Annotated[CurrentUser, Depends(require_owner_or_manager)],
     db: Annotated[Session, Depends(get_db)],
+    idempotency_key: IdempotencyHeader = None,
 ) -> TransactionResponse:
+    cached = get_cached_response(db, current_user.tenant_id, "finance.create", idempotency_key)
+    if cached:
+        return cached[1]
+
     trans = FinancialTransaction(
         id=uuid.uuid4(),
         tenant_id=current_user.tenant_id,
@@ -149,7 +156,7 @@ def create_transaction(
         details=f"{payload.type.upper()}: {payload.amount} GNF - {payload.description}",
     )
 
-    return TransactionResponse(
+    response = TransactionResponse(
         id=trans.id,
         tenant_id=trans.tenant_id,
         type=trans.type.value if hasattr(trans.type, "value") else str(trans.type),
@@ -161,3 +168,8 @@ def create_transaction(
         user_id=trans.user_id,
         created_at=trans.created_at,
     )
+    store_response(
+        db, current_user.tenant_id, "finance.create", idempotency_key,
+        status.HTTP_201_CREATED, jsonable_encoder(response),
+    )
+    return response

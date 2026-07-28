@@ -16,8 +16,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import and_
 
+from fastapi.encoders import jsonable_encoder
+
 from app.core.database import get_db
 from app.core.deps import get_current_user, CurrentUser
+from app.core.idempotency import IdempotencyHeader, get_cached_response, store_response
 from app.modules.products.models import Order, OrderItem, OrderLog, OrderStatusEnum, Product, InventoryLog
 from app.modules.crm.models import Client
 from app.modules.orders.schemas import (
@@ -248,6 +251,7 @@ def create_order(
     payload: OrderCreate,
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    idempotency_key: IdempotencyHeader = None,
 ) -> OrderResponse:
     """
     Crée une commande.
@@ -256,6 +260,12 @@ def create_order(
     3. Calcule le total (côté serveur).
     4. Décrémente les stocks et logue les changements.
     """
+    # Une requête déjà traitée avec succès (réponse perdue à cause d'une
+    # connexion instable, puis retentée) ne doit jamais recréer la vente.
+    cached = get_cached_response(db, current_user.tenant_id, "orders.create", idempotency_key)
+    if cached:
+        return cached[1]
+
     # Vérifier ou créer automatiquement un client comptoir si non fourni
     target_client_id = payload.client_id
 
@@ -419,9 +429,14 @@ def create_order(
 
     db.commit()
     db.refresh(order)
-    
+
     logger.info("Commande créée : %s (Total=%s)", order.id, order.total)
-    return OrderResponse.model_validate(order)
+    response = OrderResponse.model_validate(order)
+    store_response(
+        db, current_user.tenant_id, "orders.create", idempotency_key,
+        status.HTTP_201_CREATED, jsonable_encoder(response),
+    )
+    return response
 
 
 # ──────────────────────────── PATCH /orders/{id}/status ────────────────────────────
