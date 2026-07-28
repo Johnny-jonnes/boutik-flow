@@ -6,11 +6,13 @@ import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, CurrentUser
+from app.core.idempotency import IdempotencyHeader, get_cached_response, store_response
 from app.modules.suppliers.models import Supplier
 from app.modules.suppliers.schemas import (
     SupplierCreate,
@@ -92,7 +94,12 @@ def create_supplier(
     payload: SupplierCreate,
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    idempotency_key: IdempotencyHeader = None,
 ) -> SupplierResponse:
+    cached = get_cached_response(db, current_user.tenant_id, "suppliers.create", idempotency_key)
+    if cached:
+        return cached[1]
+
     supplier = Supplier(
         id=uuid.uuid4(),
         tenant_id=current_user.tenant_id,
@@ -101,7 +108,9 @@ def create_supplier(
     db.add(supplier)
     db.commit()
     db.refresh(supplier)
-    return SupplierResponse.model_validate(supplier)
+    response = SupplierResponse.model_validate(supplier)
+    store_response(db, current_user.tenant_id, "suppliers.create", idempotency_key, status.HTTP_201_CREATED, jsonable_encoder(response))
+    return response
 
 
 @router.put(

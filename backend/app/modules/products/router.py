@@ -11,11 +11,13 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, CurrentUser
+from app.core.idempotency import IdempotencyHeader, get_cached_response, store_response
 from app.modules.products.models import Product, InventoryLog, Category
 from app.modules.products.schemas import (
     ProductCreate,
@@ -262,7 +264,12 @@ def create_product(
     payload: ProductCreate,
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    idempotency_key: IdempotencyHeader = None,
 ) -> ProductResponse:
+    cached = get_cached_response(db, current_user.tenant_id, "products.create", idempotency_key)
+    if cached:
+        return cached[1]
+
     # Validation d'unicité du code-barres
     if payload.barcode:
         existing_barcode = db.query(Product).filter(
@@ -337,7 +344,9 @@ def create_product(
     db.refresh(product)
     
     logger.info("Produit créé : %s (tenant=%s)", product.name, current_user.tenant_id)
-    return ProductResponse.model_validate(product)
+    response = ProductResponse.model_validate(product)
+    store_response(db, current_user.tenant_id, "products.create", idempotency_key, status.HTTP_201_CREATED, jsonable_encoder(response))
+    return response
 
 
 # ──────────────────────────── POST /products/bulk ────────────────────────────

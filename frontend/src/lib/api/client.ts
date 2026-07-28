@@ -1136,7 +1136,7 @@ export const api = {
   },
 
   createClient(data: ClientCreate): Promise<CrmClient> {
-    return request('/clients', { method: 'POST', body: JSON.stringify(data) });
+    return request('/clients', { method: 'POST', body: JSON.stringify(data), headers: withIdempotencyKey(generateIdempotencyKey()) });
   },
 
   updateClient(id: string, data: ClientUpdate): Promise<CrmClient> {
@@ -1222,7 +1222,7 @@ export const api = {
   },
 
   createProduct(data: ProductCreate): Promise<Product> {
-    return request('/products', { method: 'POST', body: JSON.stringify(data) });
+    return request('/products', { method: 'POST', body: JSON.stringify(data), headers: withIdempotencyKey(generateIdempotencyKey()) });
   },
 
   createProductsBulk(products: ProductCreate[]): Promise<{ created: Product[]; errors: { index: number; name: string; error: string }[] }> {
@@ -1378,7 +1378,7 @@ export const api = {
       `/suppliers?page=${page}&per_page=${perPage}${search ? `&search=${encodeURIComponent(search)}` : ''}`
     ),
   getSupplier: (id: string) => request<Supplier>(`/suppliers/${id}`),
-  createSupplier: (data: SupplierCreate) => request<Supplier>('/suppliers', { method: 'POST', body: JSON.stringify(data) }),
+  createSupplier: (data: SupplierCreate) => request<Supplier>('/suppliers', { method: 'POST', body: JSON.stringify(data), headers: withIdempotencyKey(generateIdempotencyKey()) }),
   updateSupplier: (id: string, data: SupplierUpdate) => request<Supplier>(`/suppliers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteSupplier: (id: string) => request<void>(`/suppliers/${id}`, { method: 'DELETE' }),
 

@@ -12,11 +12,13 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, CurrentUser
+from app.core.idempotency import IdempotencyHeader, get_cached_response, store_response
 from app.modules.crm.models import Client, ClientStatusEnum, Segment
 from app.modules.crm.schemas import (
     ClientCreate,
@@ -254,11 +256,16 @@ def create_client(
     payload: ClientCreate,
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    idempotency_key: IdempotencyHeader = None,
 ) -> ClientResponse:
     """
     Crée un client rattaché au tenant courant.
     Vérifie l'unicité du numéro de téléphone par boutique.
     """
+    cached = get_cached_response(db, current_user.tenant_id, "clients.create", idempotency_key)
+    if cached:
+        return cached[1]
+
     # Vérifier unicité du téléphone dans ce tenant
     existing = db.query(Client).filter(
         and_(
@@ -294,7 +301,9 @@ def create_client(
         "Client créé : %s (tenant=%s)", client.name, current_user.tenant_id,
     )
 
-    return ClientResponse.model_validate(client)
+    response = ClientResponse.model_validate(client)
+    store_response(db, current_user.tenant_id, "clients.create", idempotency_key, status.HTTP_201_CREATED, jsonable_encoder(response))
+    return response
 
 
 # ──────────────────────────── PUT /clients/{id} ────────────────────────────
