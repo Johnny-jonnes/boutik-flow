@@ -244,12 +244,15 @@ export default function LoginPage() {
                 Nom de la boutique
               </label>
               <div className="input-wrapper">
-                <span className="input-prefix">boutikflow.app/</span>
+                <span className="input-prefix">
+                  <span className="input-prefix-full">boutikflow.app/</span>
+                  <span className="input-prefix-short">/</span>
+                </span>
                 <input
                   id="boutique_slug"
                   type="text"
                   className="input input-with-prefix"
-                  placeholder="nom-de-la-boutique"
+                  placeholder="nom-boutique"
                   value={form.boutique_slug}
                   onChange={e => setForm(f => ({ ...f, boutique_slug: e.target.value.toLowerCase() }))}
                   required
@@ -492,9 +495,20 @@ export default function LoginPage() {
           pointer-events: none;
           white-space: nowrap;
         }
+        .input-prefix-short { display: none; }
 
         .input-with-prefix {
           padding-left: 8.5rem !important;
+        }
+
+        /* Sur écran étroit, "boutikflow.app/" (8.5rem réservés) ne
+           laissait presque plus de place au placeholder ("nom-de-la-
+           boutique" s'affichait tronqué, à moitié invisible). Le préfixe
+           bascule sur un simple "/" pour rendre cet espace au champ. */
+        @media (max-width: 420px) {
+          .input-prefix-full { display: none; }
+          .input-prefix-short { display: inline; }
+          .input-with-prefix { padding-left: 1.75rem !important; }
         }
 
         .auth-submit {

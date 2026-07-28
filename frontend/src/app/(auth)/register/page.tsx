@@ -295,7 +295,10 @@ export default function RegisterPage() {
                   <div className="form-group">
                     <label className="form-label">Lien unique</label>
                     <div className="input-wrapper">
-                      <span className="input-prefix">boutikflow.app/</span>
+                      <span className="input-prefix">
+                        <span className="input-prefix-full">boutikflow.app/</span>
+                        <span className="input-prefix-short">/</span>
+                      </span>
                       <input
                         type="text"
                         className="input input-with-prefix"
@@ -565,7 +568,13 @@ export default function RegisterPage() {
           pointer-events: none;
           white-space: nowrap;
         }
+        .input-prefix-short { display: none; }
         .input-with-prefix { padding-left: 8.5rem !important; }
+        @media (max-width: 420px) {
+          .input-prefix-full { display: none; }
+          .input-prefix-short { display: inline; }
+          .input-with-prefix { padding-left: 1.75rem !important; }
+        }
         .auth-submit {
           width: 100%;
           justify-content: center;
