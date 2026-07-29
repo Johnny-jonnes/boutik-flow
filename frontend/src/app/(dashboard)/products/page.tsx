@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Search, ImageIcon, Pencil, Trash2, Eye, Plus, Sparkles, Download, Printer, Camera, Layers, Wallet, Package, PackagePlus } from 'lucide-react';
+import { Search, ImageIcon, Pencil, Trash2, Eye, Plus, Download, Printer, Camera, Layers, Wallet, Package, PackagePlus } from 'lucide-react';
 import type { Product } from '@/types';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
@@ -70,10 +70,8 @@ function ProductsContent() {
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // AI Assistant states
   const [addImagePreview, setAddImagePreview] = useState<string | null>(null);
   const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
-  const [isAILoading, setIsAILoading] = useState(false);
 
   // Ré-appelle les deux requêtes (produits + catégories) en arrière-plan —
   // utilisé après une opération groupée (import en masse, entrée de stock
@@ -216,32 +214,6 @@ function ProductsContent() {
     reader.readAsDataURL(file);
   };
 
-  // Auto-remplissage IA
-  const handleAIPrefill = async (isEdit: boolean) => {
-    const imgPreview = isEdit ? editImagePreview : addImagePreview;
-    if (!imgPreview) {
-      toast.error("Veuillez d'abord sélectionner une photo.");
-      return;
-    }
-    setIsAILoading(true);
-    try {
-      const suggestions = await api.analyzeProductImage(imgPreview);
-      const targetForm = isEdit ? editForm : addForm;
-      const targetSetForm = isEdit ? setEditForm : setAddForm;
-      
-      targetSetForm({
-        ...targetForm,
-        name: suggestions.name || targetForm.name,
-        description: suggestions.description || targetForm.description,
-      });
-      toast.success("Champs préremplis avec succès par l'IA !");
-    } catch (err: any) {
-      toast.error(err.message || "Erreur lors de l'analyse");
-    } finally {
-      setIsAILoading(false);
-    }
-  };
-
   // QR Code download/print helpers — générés localement (le service Google
   // Charts précédemment utilisé a été fermé par Google et répond 404 :
   // aucun QR code ne pouvait plus être ni téléchargé ni imprimé).
@@ -353,18 +325,6 @@ function ProductsContent() {
                 onChange={(e) => handleImageUpload(e, isEdit)}
               />
             </label>
-
-            {isEdit && imgPreview && (
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm ai-prefill-btn"
-                disabled={isAILoading}
-                onClick={() => handleAIPrefill(isEdit)}
-              >
-                <Sparkles size={13} className="sparkle-icon" />
-                {isAILoading ? 'Analyse...' : 'Auto-remplir avec l\'IA'}
-              </button>
-            )}
           </div>
         </div>
 
@@ -898,16 +858,6 @@ function ProductsContent() {
         .upload-btn {
           cursor: pointer;
         }
-        .ai-prefill-btn {
-          background: var(--brand-alpha-10);
-          color: var(--color-brand-400);
-          border: 1px solid var(--brand-alpha-20);
-          gap: 0.35rem;
-        }
-        .ai-prefill-btn:hover {
-          background: var(--brand-alpha-20);
-        }
-        
         .qr-container-row {
           display: flex;
           gap: 1rem;
@@ -959,14 +909,6 @@ function ProductsContent() {
 
         .detail-image-wrap { width: 100%; display: flex; justify-content: center; margin-bottom: 1rem; }
         .detail-product-img { max-width: 150px; max-height: 150px; border-radius: 12px; object-fit: cover; border: 1px solid var(--border-strong); }
-
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.08); opacity: 0.85; }
-        }
-        .sparkle-icon {
-          animation: pulse 1.5s infinite;
-        }
 
         @media print {
           body {
