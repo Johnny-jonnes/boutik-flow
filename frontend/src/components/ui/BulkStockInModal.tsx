@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { Search, PackagePlus, CheckCircle, AlertTriangle } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Search, PackagePlus, CheckCircle, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
@@ -32,6 +32,20 @@ export function BulkStockInModal({ isOpen, onClose, products, onUpdated }: BulkS
     );
   }, [products, searchQuery]);
 
+  // Pagination — un commerce avec un gros catalogue (des centaines/milliers
+  // de produits) rendait chaque ligne (input + handlers) d'un coup dans une
+  // simple div scrollable, ce qui ralentissait l'ouverture du modal. Les
+  // quantités déjà saisies restent en mémoire même en changeant de page,
+  // puisque `quantities` est indexé par id de produit, pas par page.
+  const PER_PAGE = 20;
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  const paginatedProducts = useMemo(
+    () => filtered.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE),
+    [filtered, currentPage]
+  );
+  useEffect(() => { setCurrentPage(1); }, [searchQuery]);
+
   const selectedEntries = Object.entries(quantities).filter(([, v]) => v.trim() && Number(v) > 0);
   const selectedCount = selectedEntries.length;
 
@@ -44,6 +58,7 @@ export function BulkStockInModal({ isOpen, onClose, products, onUpdated }: BulkS
     setSearchQuery('');
     setReason('');
     setResult(null);
+    setCurrentPage(1);
   };
 
   const handleClose = () => {
@@ -111,7 +126,7 @@ export function BulkStockInModal({ isOpen, onClose, products, onUpdated }: BulkS
           {filtered.length === 0 && (
             <div className="bsi-empty">{fr ? 'Aucun produit trouvé.' : 'No product found.'}</div>
           )}
-          {filtered.map((p, i) => {
+          {paginatedProducts.map(p => {
             const err = result?.errors.find(e => e.product_id === p.id);
             const active = !!quantities[p.id]?.trim() && Number(quantities[p.id]) > 0;
             return (
@@ -140,6 +155,33 @@ export function BulkStockInModal({ isOpen, onClose, products, onUpdated }: BulkS
             );
           })}
         </div>
+
+        {filtered.length > PER_PAGE && (
+          <div className="bsi-pagination">
+            <button
+              type="button"
+              className="bsi-page-btn"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              aria-label={fr ? 'Page précédente' : 'Previous page'}
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span className="bsi-page-indicator">
+              {fr ? `Page ${currentPage} / ${totalPages}` : `Page ${currentPage} of ${totalPages}`}
+              <span className="bsi-page-total"> — {filtered.length} {fr ? 'produits' : 'products'}</span>
+            </span>
+            <button
+              type="button"
+              className="bsi-page-btn"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              aria-label={fr ? 'Page suivante' : 'Next page'}
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        )}
 
         <div className="form-group">
           <label className="form-label">{fr ? 'Motif (facultatif)' : 'Reason (optional)'}</label>
@@ -210,6 +252,21 @@ export function BulkStockInModal({ isOpen, onClose, products, onUpdated }: BulkS
           display: flex; align-items: center; gap: 0.35rem;
           font-size: 0.72rem; color: var(--color-error);
         }
+        .bsi-pagination {
+          display: flex; align-items: center; justify-content: center; gap: 0.75rem;
+          padding: 0.25rem 0;
+        }
+        .bsi-page-btn {
+          width: 30px; height: 30px;
+          display: flex; align-items: center; justify-content: center;
+          border: 1px solid var(--border-default); border-radius: 8px;
+          background: var(--surface-2); color: var(--text-primary);
+          cursor: pointer; transition: all 0.15s ease;
+        }
+        .bsi-page-btn:hover:not(:disabled) { background: var(--surface-3); }
+        .bsi-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .bsi-page-indicator { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; white-space: nowrap; }
+        .bsi-page-total { font-weight: 400; }
         .bsi-summary {
           display: flex; align-items: center; gap: 0.5rem;
           font-size: 0.85rem; color: var(--color-success);

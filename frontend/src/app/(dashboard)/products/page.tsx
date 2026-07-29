@@ -354,7 +354,7 @@ function ProductsContent() {
               />
             </label>
 
-            {imgPreview && (
+            {isEdit && imgPreview && (
               <button
                 type="button"
                 className="btn btn-secondary btn-sm ai-prefill-btn"

@@ -364,6 +364,7 @@ def create_products_bulk(
     payload: ProductBulkCreate,
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    idempotency_key: IdempotencyHeader = None,
 ) -> ProductBulkCreateResponse:
     """
     Ajoute jusqu'à 200 produits en un seul envoi, au lieu de répéter le
@@ -371,6 +372,10 @@ def create_products_bulk(
     savepoint : une erreur sur un article (code-barres en doublon dans le
     lot, par exemple) n'empêche pas les autres d'être créés.
     """
+    cached = get_cached_response(db, current_user.tenant_id, "products.bulk_create", idempotency_key)
+    if cached:
+        return cached[1]
+
     created: list[ProductResponse] = []
     errors: list[ProductBulkCreateError] = []
     # Codes-barres déjà vus DANS ce lot (le doublon en base est vérifié par
@@ -460,7 +465,9 @@ def create_products_bulk(
         "Création groupée : %d créés, %d erreurs (tenant=%s)",
         len(created), len(errors), current_user.tenant_id,
     )
-    return ProductBulkCreateResponse(created=created, errors=errors)
+    response = ProductBulkCreateResponse(created=created, errors=errors)
+    store_response(db, current_user.tenant_id, "products.bulk_create", idempotency_key, status.HTTP_201_CREATED, jsonable_encoder(response))
+    return response
 
 
 # ──────────────────────────── POST /products/stock/bulk-in ─────────────────

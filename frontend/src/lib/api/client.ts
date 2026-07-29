@@ -384,6 +384,63 @@ async function handleOfflineRequest<T>(path: string, options: RequestInit = {}):
   const method = (options.method || 'GET').toUpperCase();
   const uuid = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
+  // Création groupée : même remarque que l'entrée de stock groupée ci-dessous
+  // — doit être vérifié AVANT le bloc générique `/products`, sinon son POST
+  // ({products: [...]}) serait traité comme un seul produit à créer.
+  if (path.startsWith('/products/bulk') && method === 'POST') {
+    const data = JSON.parse(options.body as string) as { products: Record<string, any>[] };
+    const created: any[] = [];
+    const errors: { index: number; name: string; error: string }[] = [];
+    for (let i = 0; i < data.products.length; i++) {
+      const item = data.products[i];
+      if (!item?.name || item.price === undefined || item.price === null) {
+        errors.push({ index: i, name: item?.name || '', error: 'Nom et prix requis' });
+        continue;
+      }
+      const newProduct = {
+        id: uuid(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        ...item,
+        stock: Number(item.stock) || 0,
+        price: Number(item.price) || 0,
+      };
+      await OfflineDB.upsertProduct(newProduct);
+      created.push(newProduct);
+    }
+    return { created, errors } as any as T;
+  }
+
+  // Entrée de stock groupée : doit être vérifié AVANT le bloc générique
+  // `/products` ci-dessous, sinon son POST est intercepté par le handler de
+  // création de produit — le corps ({items, reason}) n'a pas la forme d'un
+  // produit et donnerait un produit fantôme avec stock NaN.
+  if (path.startsWith('/products/stock/bulk-in') && method === 'POST') {
+    const products = await OfflineDB.getProducts();
+    const data = JSON.parse(options.body as string) as {
+      items: { product_id: string; quantity: number }[];
+      reason?: string;
+    };
+    const updated: typeof products = [];
+    const errors: { index: number; product_id: string; error: string }[] = [];
+    for (let i = 0; i < data.items.length; i++) {
+      const item = data.items[i];
+      const existing = products.find(p => p.id === item.product_id);
+      if (!existing) {
+        errors.push({ index: i, product_id: item.product_id, error: 'Produit introuvable hors-ligne' });
+        continue;
+      }
+      const updatedProduct = {
+        ...existing,
+        stock: existing.stock + item.quantity,
+        updated_at: new Date().toISOString(),
+      };
+      await OfflineDB.upsertProduct(updatedProduct);
+      updated.push(updatedProduct);
+    }
+    return { updated, errors } as any as T;
+  }
+
   if (path.startsWith('/products')) {
     const products = await OfflineDB.getProducts();
     if (method === 'GET') {
@@ -1226,7 +1283,11 @@ export const api = {
   },
 
   createProductsBulk(products: ProductCreate[]): Promise<{ created: Product[]; errors: { index: number; name: string; error: string }[] }> {
-    return request('/products/bulk', { method: 'POST', body: JSON.stringify({ products }) });
+    return request('/products/bulk', {
+      method: 'POST',
+      body: JSON.stringify({ products }),
+      headers: withIdempotencyKey(generateIdempotencyKey()),
+    });
   },
 
   bulkStockIn(items: { product_id: string; quantity: number }[], reason?: string): Promise<{ updated: Product[]; errors: { index: number; product_id: string; error: string }[] }> {
