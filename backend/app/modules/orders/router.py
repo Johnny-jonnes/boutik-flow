@@ -23,10 +23,12 @@ from app.core.deps import get_current_user, CurrentUser
 from app.core.idempotency import IdempotencyHeader, get_cached_response, store_response
 from app.modules.products.models import Order, OrderItem, OrderLog, OrderStatusEnum, Product, InventoryLog
 from app.modules.crm.models import Client
+from app.modules.auth.models import User
 from app.modules.orders.schemas import (
     OrderCreate,
     OrderUpdateStatus,
     OrderResponse,
+    OrderItemResponse,
     OrderListResponse,
     OrderReturnRequest,
 )
@@ -58,6 +60,48 @@ def _create_order_log(
         note=note,
     )
     db.add(log)
+
+
+def _user_names_for_orders(db: Session, orders: list[Order]) -> dict:
+    """Résout en une seule requête le nom affichable (nom complet ou email)
+    de chaque vendeur présent dans un lot de commandes — évite une requête
+    utilisateur par commande lors du listing de l'historique des ventes."""
+    ids = {o.created_by for o in orders if o.created_by}
+    if not ids:
+        return {}
+    users = db.query(User).filter(User.id.in_(ids)).all()
+    return {u.id: (u.full_name or u.email) for u in users}
+
+
+def _build_order_response(order: Order, user_names: dict) -> OrderResponse:
+    """Construit la réponse en résolvant explicitement les noms (client,
+    vendeur, produit) depuis les relations chargées — plutôt qu'un
+    model_validate() aveugle qui ne verrait que les colonnes brutes."""
+    items = [
+        OrderItemResponse(
+            id=item.id,
+            product_id=item.product_id,
+            product_name=item.product.name if item.product else None,
+            quantity=item.quantity,
+            unit_price=item.unit_price,
+        )
+        for item in order.items
+    ]
+    status_value = order.status.value if hasattr(order.status, "value") else order.status
+    return OrderResponse(
+        id=order.id,
+        tenant_id=order.tenant_id,
+        client_id=order.client_id,
+        client_name=order.client.name if order.client else None,
+        created_by=order.created_by,
+        created_by_name=user_names.get(order.created_by) if order.created_by else None,
+        status=status_value,
+        total=order.total,
+        notes=order.notes,
+        created_at=order.created_at,
+        updated_at=order.updated_at,
+        items=items,
+    )
 
 
 def _restock_order_items(db: Session, order: Order, current_user: CurrentUser, reason: str):
@@ -180,7 +224,10 @@ def list_orders(
     Liste paginée des commandes, filtrée par tenant_id.
     Supporte le filtrage par statut et par client.
     """
-    query = db.query(Order).options(selectinload(Order.items)).filter(
+    query = db.query(Order).options(
+        selectinload(Order.items).selectinload(OrderItem.product),
+        selectinload(Order.client),
+    ).filter(
         and_(
             Order.tenant_id == current_user.tenant_id,
             Order.deleted_at.is_(None),
@@ -202,8 +249,9 @@ def list_orders(
         .all()
     )
 
+    user_names = _user_names_for_orders(db, items)
     return OrderListResponse(
-        items=[OrderResponse.model_validate(o) for o in items],
+        items=[_build_order_response(o, user_names) for o in items],
         total=total,
         page=page,
         per_page=per_page,
@@ -222,7 +270,10 @@ def get_order(
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ) -> OrderResponse:
-    order = db.query(Order).filter(
+    order = db.query(Order).options(
+        selectinload(Order.items).selectinload(OrderItem.product),
+        selectinload(Order.client),
+    ).filter(
         and_(
             Order.id == order_id,
             Order.tenant_id == current_user.tenant_id,
@@ -236,7 +287,7 @@ def get_order(
             detail="Commande introuvable",
         )
 
-    return OrderResponse.model_validate(order)
+    return _build_order_response(order, _user_names_for_orders(db, [order]))
 
 
 # ──────────────────────────── POST /orders ────────────────────────────
@@ -315,6 +366,7 @@ def create_order(
         id=uuid.uuid4(),
         tenant_id=current_user.tenant_id,
         client_id=target_client_id,
+        created_by=current_user.user_id,
         status=initial_status,
         total=0,
         notes=payload.notes,
@@ -323,6 +375,7 @@ def create_order(
 
     # Gérer les lignes et le stock
     total_amount = 0
+    stock_shortages: list[str] = []
     for item in payload.items:
         product = db.query(Product).filter(
             and_(
@@ -339,11 +392,17 @@ def create_order(
                 detail=f"Produit {item.product_id} introuvable ou indisponible.",
             )
 
-        if product.stock < item.quantity:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Stock insuffisant pour {product.name} (Reste: {product.stock}).",
-            )
+        is_shortage = product.stock < item.quantity
+        if is_shortage:
+            if not payload.allow_stock_shortage:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Stock insuffisant pour {product.name} (Reste: {product.stock}).",
+                )
+            # Rejeu d'une vente déjà annoncée au client pendant une coupure :
+            # on ne la rejette plus, le stock est autorisé à passer négatif
+            # et l'écart est tracé pour une régularisation manuelle ultérieure.
+            stock_shortages.append(f"{product.name} (manquant: {item.quantity - product.stock})")
 
         # Créer OrderItem — cost_price est figé au prix d'achat actuel du
         # produit (souvent NULL, le prix d'achat étant facultatif) : la
@@ -367,7 +426,7 @@ def create_order(
             id=uuid.uuid4(),
             tenant_id=current_user.tenant_id,
             product_id=product.id,
-            change_type="stock_change_order",
+            change_type="stock_change_order_shortage" if is_shortage else "stock_change_order",
             old_value=str(old_stock),
             new_value=str(product.stock),
             changed_by=current_user.user_id,
@@ -378,6 +437,13 @@ def create_order(
 
     # Mise à jour du total
     order.total = total_amount
+
+    # Trace visible dans l'historique des ventes (fiche détail) — le
+    # commerçant doit pouvoir repérer et régulariser un stock devenu négatif
+    # suite au rejeu d'une vente hors-ligne, sans avoir à fouiller les logs.
+    if stock_shortages:
+        shortage_note = "⚠️ Stock négatif (vente hors-ligne) : " + ", ".join(stock_shortages)
+        order.notes = f"{order.notes}\n{shortage_note}" if order.notes else shortage_note
 
     # Premier OrderLog
     db.flush()
@@ -431,7 +497,7 @@ def create_order(
     db.refresh(order)
 
     logger.info("Commande créée : %s (Total=%s)", order.id, order.total)
-    response = OrderResponse.model_validate(order)
+    response = _build_order_response(order, _user_names_for_orders(db, [order]))
     store_response(
         db, current_user.tenant_id, "orders.create", idempotency_key,
         status.HTTP_201_CREATED, jsonable_encoder(response),
@@ -471,7 +537,7 @@ def update_order_status(
     new_status_enum = OrderStatusEnum(payload.status)
 
     if old_status == new_status_enum:
-        return OrderResponse.model_validate(order)
+        return _build_order_response(order, _user_names_for_orders(db, [order]))
 
     was_cancelled = old_status == OrderStatusEnum.cancelled
     is_cancelled = new_status_enum == OrderStatusEnum.cancelled
@@ -505,7 +571,7 @@ def update_order_status(
     db.refresh(order)
     
     logger.info("Statut commande mis à jour : %s (%s -> %s)", order.id, old_status, new_status_enum)
-    return OrderResponse.model_validate(order)
+    return _build_order_response(order, _user_names_for_orders(db, [order]))
 
 
 # ──────────────────────────── POST /orders/{id}/return ────────────────────────────

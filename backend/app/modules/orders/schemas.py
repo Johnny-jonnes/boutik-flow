@@ -21,6 +21,12 @@ class OrderCreate(BaseModel):
     status: str | None = Field(None, description="Statut initial: pending | confirmed | delivered")
     notes: str | None = Field(None, max_length=2000)
     items: list[OrderItemCreate] = Field(..., min_length=1, description="Au moins un produit requis")
+    # Posé à True uniquement par le rejeu de la file de synchronisation
+    # hors-ligne : une vente déjà annoncée au client (reçu imprimé,
+    # paiement encaissé) pendant une coupure ne doit jamais être rejetée
+    # après coup pour un désaccord de stock — le stock est alors autorisé
+    # à devenir négatif plutôt que de perdre la vente.
+    allow_stock_shortage: bool = Field(False, description="Autorise un stock négatif (rejeu hors-ligne)")
 
     @field_validator("client_id", mode="before")
     @classmethod
@@ -58,6 +64,7 @@ class OrderItemResponse(BaseModel):
     """Ligne de commande retournée."""
     id: uuid.UUID
     product_id: uuid.UUID
+    product_name: str | None = None
     quantity: int
     unit_price: Decimal
 
@@ -69,6 +76,9 @@ class OrderResponse(BaseModel):
     id: uuid.UUID
     tenant_id: uuid.UUID
     client_id: uuid.UUID
+    client_name: str | None = None
+    created_by: uuid.UUID | None = None
+    created_by_name: str | None = None
     status: str
     total: Decimal
     notes: str | None

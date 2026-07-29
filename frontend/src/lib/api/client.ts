@@ -76,6 +76,23 @@ function getRefreshToken(): string | null {
   return localStorage.getItem(REFRESH_TOKEN_KEY);
 }
 
+/** Identité de l'utilisateur courant décodée depuis le JWT — utilisée pour
+ *  que l'aperçu local d'une vente créée hors-ligne (avant toute synchronisation)
+ *  affiche déjà le bon vendeur, au lieu d'attendre le retour du serveur. */
+function getCurrentUserFromToken(): { id: string; email: string; displayName: string } | null {
+  const token = getAccessToken();
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const email = payload.email || payload.sub || '';
+    const namePart = email.includes('@') ? email.split('@')[0] : email;
+    const displayName = namePart ? namePart.charAt(0).toUpperCase() + namePart.slice(1) : '';
+    return { id: payload.sub || '', email, displayName };
+  } catch {
+    return null;
+  }
+}
+
 function setTokens(accessToken: string, refreshToken: string): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
@@ -533,18 +550,24 @@ async function handleOfflineRequest<T>(path: string, options: RequestInit = {}):
     }
     if (method === 'POST') {
       const data = JSON.parse(options.body as string);
-      const items = data.items || [];
+      const rawItems = data.items || [];
 
       const products = await OfflineDB.getProducts();
       let orderTotal = 0;
-      for (const item of items) {
+      const items = [];
+      for (const item of rawItems) {
         const prod = products.find(p => p.id === item.product_id);
         if (prod) {
           orderTotal += prod.price * item.quantity;
           prod.stock = Math.max(0, prod.stock - item.quantity);
           await OfflineDB.upsertProduct(prod);
         }
+        items.push({ ...item, unit_price: prod?.price ?? 0, product_name: prod?.name ?? null });
       }
+
+      const clients = await OfflineDB.getClients();
+      const client = data.client_id ? clients.find(c => c.id === data.client_id) : null;
+      const currentUser = getCurrentUserFromToken();
 
       const newOrder = {
         id: uuid(),
@@ -553,6 +576,9 @@ async function handleOfflineRequest<T>(path: string, options: RequestInit = {}):
         total: orderTotal,
         notes: data.notes || '',
         client_id: data.client_id || null,
+        client_name: client?.name || 'Passant',
+        created_by: currentUser?.id || null,
+        created_by_name: currentUser?.displayName || null,
         created_at: new Date().toISOString(),
       };
       await OfflineDB.upsertOrder(newOrder);
@@ -891,7 +917,19 @@ async function handleOfflineRequestAndQueue<T>(path: string, options: RequestIni
   if (method !== 'GET') {
     const localId = (result as { id?: string } | null)?.id;
     const idempotencyKey = extractHeader(options.headers, 'Idempotency-Key');
-    await enqueueOperation(method, path, options.body as string | undefined, localId, idempotencyKey);
+    let bodyToQueue = options.body as string | undefined;
+    // La vente a déjà été annoncée au client (reçu imprimé) au moment de la
+    // créer localement : son rejeu contre le vrai serveur ne doit jamais
+    // pouvoir échouer pour un désaccord de stock — voir allow_stock_shortage
+    // côté backend (app/modules/orders/schemas.py).
+    if (path.startsWith('/orders') && method === 'POST' && bodyToQueue) {
+      try {
+        const parsed = JSON.parse(bodyToQueue);
+        parsed.allow_stock_shortage = true;
+        bodyToQueue = JSON.stringify(parsed);
+      } catch {}
+    }
+    await enqueueOperation(method, path, bodyToQueue, localId, idempotencyKey);
   }
   return result;
 }
@@ -972,7 +1010,13 @@ async function request<T>(
         if (bodyClone) {
           const items = Array.isArray(bodyClone) ? bodyClone : bodyClone.items;
           if (method === 'GET' && items) {
-            if (path.startsWith('/products')) await OfflineDB.saveProducts(items);
+            // /products/categories commence par /products : doit être
+            // vérifié EN PREMIER, sinon la réponse (des catégories) est
+            // absorbée par le cache produits et écrase tout le catalogue
+            // local avec des catégories — un stock-in ou une vente hors
+            // ligne suivante ne retrouve alors plus aucun vrai produit.
+            if (path.startsWith('/products/categories')) await OfflineDB.saveCategories(items);
+            else if (path.startsWith('/products')) await OfflineDB.saveProducts(items);
             else if (path.startsWith('/clients')) await OfflineDB.saveClients(items);
             else if (path.startsWith('/finance')) await OfflineDB.saveTransactions(items);
             else if (path.startsWith('/categories')) await OfflineDB.saveCategories(items);
@@ -986,10 +1030,33 @@ async function request<T>(
               await OfflineDB.saveOrders(items);
             }
           }
+
+          // Écriture produit réussie EN LIGNE : répercutée immédiatement
+          // dans le cache offline, sans attendre le prochain GET — sinon un
+          // produit tout juste créé/modifié en ligne (ou par un import/
+          // entrée de stock groupée) reste invisible d'IndexedDB, et la
+          // première action hors-ligne qui le référence échoue à tort avec
+          // "produit introuvable hors-ligne" alors qu'il existe bien côté
+          // serveur.
+          if (method !== 'GET' && path.startsWith('/products') && !path.startsWith('/products/categories')) {
+            if (path === '/products/bulk' && Array.isArray(bodyClone.created)) {
+              for (const p of bodyClone.created) await OfflineDB.upsertProduct(p);
+            } else if (path === '/products/stock/bulk-in' && Array.isArray(bodyClone.updated)) {
+              for (const p of bodyClone.updated) await OfflineDB.upsertProduct(p);
+            } else if (bodyClone.id) {
+              await OfflineDB.upsertProduct(bodyClone);
+            }
+          }
         }
       }
     } catch (e) {
       console.warn('Offline caching error', e);
+    }
+
+    // DELETE ne renvoie aucun corps JSON (204) : le retrait du cache local
+    // doit être géré ici, hors du bloc content-type ci-dessus.
+    if (method === 'DELETE' && path.startsWith('/products/') && !path.startsWith('/products/categories/')) {
+      await OfflineDB.removeProduct(path.split('/')[2]).catch(() => {});
     }
   }
 

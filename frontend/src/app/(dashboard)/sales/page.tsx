@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Download, Eye, Printer, RotateCcw, Search, Calendar, CreditCard as CardIcon } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Download, Eye, Printer, RotateCcw, Search, Calendar, CreditCard as CardIcon, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import type { Order, Client, Product } from '@/types';
@@ -110,13 +110,49 @@ export default function SalesHistoryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const getClientName = (clientId: string) => {
-    const client = clients.find(c => c.id === clientId);
+  // Le backend résout désormais client_name/created_by_name/product_name
+  // directement (voir OrderResponse) — le repli sur les listes clients/
+  // produits chargées à part ne sert plus qu'aux ventes plus anciennes
+  // encore en cache sans ces champs (offline non synchronisé, etc.).
+  const getClientName = (order: Order) => {
+    if (order.client_name) return order.client_name;
+    const client = clients.find(c => c.id === order.client_id);
     if (client) return client.name;
     return language === 'fr' ? 'Passant' : 'Walk-in';
   };
 
-  const getProductName = (productId: string) => products.find(p => p.id === productId)?.name || `Produit...`;
+  const getSellerName = (order: Order) => order.created_by_name || '—';
+
+  const getProductName = (item: { product_id: string; product_name?: string | null }) =>
+    item.product_name || products.find(p => p.id === item.product_id)?.name || 'Produit...';
+
+  const getItemsSummary = (order: Order) => {
+    const items = order.items || [];
+    if (items.length === 0) return '—';
+    const firstName = getProductName(items[0]);
+    if (items.length === 1) return firstName;
+    const extra = items.length - 1;
+    return `${firstName} +${extra} ${language === 'fr' ? (extra > 1 ? 'autres' : 'autre') : (extra > 1 ? 'others' : 'other')}`;
+  };
+
+  type SortField = 'created_at' | 'total' | 'client' | 'seller';
+  const [sortField, setSortField] = useState<SortField>('created_at');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  const toggleSort = (field: SortField) => {
+    setCurrentPage(1);
+    if (sortField === field) {
+      setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDir(field === 'created_at' ? 'desc' : 'asc');
+    }
+  };
+
+  const sortIcon = (field: SortField) => {
+    if (sortField !== field) return <ArrowUpDown size={12} className="sort-icon sort-icon--inactive" />;
+    return sortDir === 'asc' ? <ArrowUp size={12} className="sort-icon" /> : <ArrowDown size={12} className="sort-icon" />;
+  };
 
   const getPaymentLabel = (method: string) => {
     const labels: Record<string, string> = {
@@ -137,15 +173,19 @@ export default function SalesHistoryPage() {
     const headers = [
       language === 'fr' ? 'ID Vente' : 'Sale ID',
       language === 'fr' ? 'Client' : 'Customer',
+      language === 'fr' ? 'Vendeur' : 'Seller',
+      language === 'fr' ? 'Produits' : 'Products',
       language === 'fr' ? 'Montant' : 'Amount',
       language === 'fr' ? 'Articles' : 'Items',
       language === 'fr' ? 'Paiement' : 'Payment',
       language === 'fr' ? 'Notes' : 'Notes',
       'Date'
     ];
-    const rows = filteredSales.map(o => [
+    const rows = sortedSales.map(o => [
       `BF-${o.id.slice(0, 8).toUpperCase()}`,
-      getClientName(o.client_id),
+      getClientName(o),
+      getSellerName(o),
+      (o.items || []).map(i => `${i.quantity}x ${getProductName(i)}`).join(' + '),
       String(o.total || 0),
       String(o.items?.length || 0),
       getPaymentLabel(extractPaymentMethod(o.notes)),
@@ -212,16 +252,39 @@ export default function SalesHistoryPage() {
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      const clientName = getClientName(o.client_id).toLowerCase();
+      const clientName = getClientName(o).toLowerCase();
       const receiptNo = `bf-${o.id.slice(0, 8).toLowerCase()}`;
       return receiptNo.includes(q) || clientName.includes(q) || o.id.toLowerCase().includes(q);
     }
     return true;
   });
 
-  const totalFiltered = filteredSales.length;
+  const sortedSales = useMemo(() => {
+    const arr = [...filteredSales];
+    arr.sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case 'total':
+          cmp = (Number(a.total) || 0) - (Number(b.total) || 0);
+          break;
+        case 'client':
+          cmp = getClientName(a).localeCompare(getClientName(b));
+          break;
+        case 'seller':
+          cmp = getSellerName(a).localeCompare(getSellerName(b));
+          break;
+        default:
+          cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+    return arr;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredSales, sortField, sortDir, clients]);
+
+  const totalFiltered = sortedSales.length;
   const totalPages = Math.ceil(totalFiltered / perPage);
-  const paginatedSales = filteredSales.slice((currentPage - 1) * perPage, currentPage * perPage);
+  const paginatedSales = sortedSales.slice((currentPage - 1) * perPage, currentPage * perPage);
 
   return (
     <div className="page fade-in">
@@ -299,10 +362,11 @@ export default function SalesHistoryPage() {
               <thead>
                 <tr>
                   <th>{t('sales.receipt_no') || 'N° Reçu'}</th>
-                  <th>Client</th>
-                  <th>Date / Heure</th>
-                  <th className="text-right">Montant</th>
-                  <th className="text-center">{t('sales.items_count') || 'Articles'}</th>
+                  <th className="sortable-th" onClick={() => toggleSort('client')}>Client {sortIcon('client')}</th>
+                  <th className="sortable-th" onClick={() => toggleSort('seller')}>{language === 'fr' ? 'Vendeur' : 'Seller'} {sortIcon('seller')}</th>
+                  <th>{language === 'fr' ? 'Produits' : 'Products'}</th>
+                  <th className="sortable-th" onClick={() => toggleSort('created_at')}>Date / Heure {sortIcon('created_at')}</th>
+                  <th className="text-right sortable-th" onClick={() => toggleSort('total')}>Montant {sortIcon('total')}</th>
                   <th>{t('sales.payment_method') || 'Paiement'}</th>
                   <th className="text-center">Actions</th>
                 </tr>
@@ -318,14 +382,15 @@ export default function SalesHistoryPage() {
                         </span>
                       </td>
                       <td>
-                        <span className="client-name">{getClientName(order.client_id)}</span>
+                        <span className="client-name">{getClientName(order)}</span>
+                      </td>
+                      <td className="text-muted">{getSellerName(order)}</td>
+                      <td className="text-muted items-summary" title={order.items?.map(i => `${i.quantity} × ${getProductName(i)}`).join(', ')}>
+                        {getItemsSummary(order)}
                       </td>
                       <td className="text-muted">{formatDate(order.created_at, language)}</td>
                       <td className="text-right font-bold text-emerald">
                         {formatGNF(Number(order.total) || 0)}
-                      </td>
-                      <td className="text-center font-semibold">
-                        {order.items?.reduce((acc, item) => acc + item.quantity, 0) || 0}
                       </td>
                       <td>
                         <span className={`payment-pill ${paymentMethod}`}>
@@ -334,23 +399,23 @@ export default function SalesHistoryPage() {
                       </td>
                       <td className="text-center">
                         <div className="actions-flex">
-                          <button 
-                            className="btn btn-ghost btn-icon" 
-                            title={language === 'fr' ? 'Voir détails' : 'View details'} 
+                          <button
+                            className="btn btn-ghost btn-icon"
+                            title={language === 'fr' ? 'Voir détails' : 'View details'}
                             onClick={() => setSelectedSale(order)}
                           >
                             <Eye size={16} />
                           </button>
-                          <button 
-                            className="btn btn-ghost btn-icon" 
-                            title={t('sales.view_receipt') || 'Imprimer reçu'} 
+                          <button
+                            className="btn btn-ghost btn-icon"
+                            title={t('sales.view_receipt') || 'Imprimer reçu'}
                             onClick={() => setReceiptOrder(order)}
                           >
                             <Printer size={16} />
                           </button>
-                          <button 
-                            className="btn btn-ghost btn-icon btn-danger-icon" 
-                            title={t('sales.refund') || 'Retourner'} 
+                          <button
+                            className="btn btn-ghost btn-icon btn-danger-icon"
+                            title={t('sales.refund') || 'Retourner'}
                             onClick={() => openReturnModal(order)}
                           >
                             <RotateCcw size={16} />
@@ -399,7 +464,8 @@ export default function SalesHistoryPage() {
         {selectedSale && (
           <div className="detail-grid">
             <div className="detail-row"><span className="detail-label">{language === 'fr' ? 'N° Vente' : 'Sale ID'}</span><span className="detail-value">BF-{selectedSale.id.slice(0, 8).toUpperCase()}</span></div>
-            <div className="detail-row"><span className="detail-label">Client</span><span className="detail-value">{getClientName(selectedSale.client_id)}</span></div>
+            <div className="detail-row"><span className="detail-label">Client</span><span className="detail-value">{getClientName(selectedSale)}</span></div>
+            <div className="detail-row"><span className="detail-label">{language === 'fr' ? 'Vendu par' : 'Sold by'}</span><span className="detail-value">{getSellerName(selectedSale)}</span></div>
             <div className="detail-row"><span className="detail-label">{language === 'fr' ? 'Mode de Paiement' : 'Payment Method'}</span><span className="detail-value">{getPaymentLabel(extractPaymentMethod(selectedSale.notes))}</span></div>
             <div className="detail-row"><span className="detail-label">Total</span><span className="detail-value order-amount text-emerald">{formatGNF(Number(selectedSale.total) || 0)}</span></div>
             <div className="detail-row"><span className="detail-label">Date</span><span className="detail-value">{formatDate(selectedSale.created_at, language)}</span></div>
@@ -408,7 +474,7 @@ export default function SalesHistoryPage() {
               <div style={{ fontWeight: 700, marginBottom: '0.5rem' }}>{language === 'fr' ? 'Articles achetés' : 'Purchased items'}</div>
               {selectedSale.items?.map((item, i) => (
                 <div key={i} className="detail-row" style={{ paddingLeft: '0.5rem', marginBottom: '0.25rem' }}>
-                  <span className="detail-label">{item.quantity} × {getProductName(item.product_id)}</span>
+                  <span className="detail-label">{item.quantity} × {getProductName(item)}</span>
                   <span className="detail-value">{formatGNF(Number(item.unit_price) * item.quantity)}</span>
                 </div>
               ))}
@@ -450,7 +516,7 @@ export default function SalesHistoryPage() {
               {language === 'fr' ? 'Sélectionnez les articles à retourner et indiquez les quantités.' : 'Select the items to return and specify the quantities.'}
             </p>
             {returnOrder.items?.map((item, idx) => {
-              const prodName = getProductName(item.product_id);
+              const prodName = getProductName(item);
               return (
                 <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0', borderBottom: '1px solid var(--border-subtle)' }}>
                   <div style={{ flex: 1 }}>
@@ -489,7 +555,7 @@ export default function SalesHistoryPage() {
                 {returnItems.filter(i => i.quantity > 0).map((ri, idx) => {
                   const origItem = returnOrder.items?.find(oi => oi.product_id === ri.product_id);
                   if (!origItem) return null;
-                  return <div key={idx} style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{ri.quantity} × {getProductName(ri.product_id)} = {formatGNF(ri.quantity * origItem.unit_price)}</div>;
+                  return <div key={idx} style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{ri.quantity} × {getProductName(origItem)} = {formatGNF(ri.quantity * origItem.unit_price)}</div>;
                 })}
                 <div style={{ fontWeight: 700, marginTop: '0.5rem', color: 'var(--color-brand-500)' }}>
                   {language === 'fr' ? 'Total remboursement : ' : 'Total refund: '} {formatGNF(returnItems.reduce((acc, ri) => {
@@ -529,7 +595,13 @@ export default function SalesHistoryPage() {
 
         .receipt-badge { background: rgba(59, 130, 246, 0.1); color: #3b82f6; font-family: monospace; font-weight: 700; padding: 0.25rem 0.5rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
         .receipt-badge:hover { background: rgba(59, 130, 246, 0.2); }
-        
+
+        .sortable-th { cursor: pointer; user-select: none; white-space: nowrap; }
+        .sortable-th:hover { color: var(--text-primary); }
+        .sort-icon { vertical-align: middle; margin-left: 2px; opacity: 0.85; }
+        .sort-icon--inactive { opacity: 0.35; }
+        .items-summary { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
         .client-name { font-weight: 500; color: var(--text-primary); }
         .text-emerald { color: #10b981 !important; }
         .font-bold { font-weight: 700; }

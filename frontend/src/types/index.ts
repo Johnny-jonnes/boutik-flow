@@ -160,6 +160,7 @@ export type OrderStatus = 'pending' | 'confirmed' | 'delivered' | 'cancelled';
 export interface OrderItem {
   id: string;
   product_id: string;
+  product_name?: string | null;
   quantity: number;
   unit_price: number;
   product?: Product;
@@ -169,6 +170,9 @@ export interface Order {
   id: string;
   tenant_id: string;
   client_id: string;
+  client_name?: string | null;
+  created_by?: string | null;
+  created_by_name?: string | null;
   status: OrderStatus;
   total: number;
   notes: string | null;
@@ -183,6 +187,7 @@ export interface OrderCreate {
   status?: OrderStatus | string;
   items: { product_id: string; quantity: number }[];
   notes?: string;
+  allow_stock_shortage?: boolean;
 }
 
 // ─── Dashboard KPIs ───────────────────────────────────────────────────────

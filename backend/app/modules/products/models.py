@@ -94,6 +94,11 @@ class Order(Base):
     status = Column(Enum(OrderStatusEnum), default=OrderStatusEnum.pending, nullable=False)
     total = Column(Numeric(15, 2), nullable=False, default=0)
     notes = Column(Text, nullable=True)
+    # Vendeur ayant réalisé la vente (utilisateur du tenant) — pas de FK dure
+    # vers users, même convention que changed_by/user_id ailleurs (log
+    # d'inventaire, transactions) : un utilisateur supprimé ne doit jamais
+    # faire échouer une contrainte sur l'historique des ventes.
+    created_by = Column(UUID(as_uuid=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
