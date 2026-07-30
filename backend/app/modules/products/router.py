@@ -12,7 +12,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.encoders import jsonable_encoder
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import and_, or_, func
 
 from app.core.database import get_db
@@ -189,7 +189,7 @@ def list_products(
     """
     Liste paginée des produits, filtrée par tenant_id.
     """
-    query = db.query(Product).filter(
+    query = db.query(Product).options(selectinload(Product.category_rel)).filter(
         and_(
             Product.tenant_id == current_user.tenant_id,
             Product.deleted_at.is_(None),
