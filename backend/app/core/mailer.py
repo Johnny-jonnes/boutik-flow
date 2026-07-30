@@ -45,28 +45,6 @@ def _build_message(to_email: str, subject: str, body: str) -> MIMEMultipart:
     return message
 
 
-def send_password_reset_email(to_email: str, reset_link: str, boutique_name: str) -> None:
-    """Envoie (ou journalise) l'email de réinitialisation de mot de passe."""
-    subject = f"Réinitialisation de votre mot de passe — {boutique_name}"
-    body = (
-        "Bonjour,\n\n"
-        f"Vous avez demandé la réinitialisation du mot de passe de votre compte "
-        f"BoutikFlow pour la boutique « {boutique_name} ».\n\n"
-        "Cliquez sur le lien suivant pour choisir un nouveau mot de passe "
-        f"(valide {settings.RESET_TOKEN_EXPIRE_MINUTES} minutes) :\n"
-        f"{reset_link}\n\n"
-        "Si vous n'êtes pas à l'origine de cette demande, ignorez simplement cet email.\n\n"
-        "— L'équipe BoutikFlow"
-    )
-    if not settings.SMTP_HOST or not settings.SMTP_USER:
-        logger.warning(
-            "SMTP non configuré (dev) — lien de réinitialisation pour %s : %s",
-            to_email, reset_link,
-        )
-        return
-    _send(_build_message(to_email, subject, body), to_email)
-
-
 def send_admin_new_registration_notification(
     tenant_name: str, tenant_slug: str, owner_email: str, owner_full_name: str | None,
 ) -> None:

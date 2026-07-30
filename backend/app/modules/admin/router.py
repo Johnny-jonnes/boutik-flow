@@ -14,11 +14,10 @@ import uuid
 import math
 import logging
 from typing import Annotated, Optional
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, func, or_, text
 
 from app.core.database import get_db
 from app.core.security import hash_password
@@ -338,17 +337,51 @@ def delete_tenant(
     db: DB,
 ) -> None:
     """
-    Soft delete d'une boutique (deleted_at = now).
-    La boutique et ses utilisateurs ne peuvent plus se connecter.
-    Les données sont conservées pour audit.
+    Suppression DÉFINITIVE et complète d'une boutique et de toutes ses
+    données (produits, clients, commandes, finances, équipe...).
+
+    Un précédent soft delete (deleted_at + is_active=False) désactivait
+    l'accès mais laissait toutes les lignes en base — visibles dans
+    Supabase, jamais réellement supprimées. Ceci est irréversible : un
+    seul DELETE par table, dans l'ordre imposé par les clés étrangères
+    (des tables les plus dépendantes vers la boutique elle-même), le tout
+    dans une seule transaction pour ne jamais laisser une suppression
+    partielle si une étape échoue.
     """
     tenant = _get_tenant_or_404(tenant_id, db)
+    slug = tenant.slug
+    tid = str(tenant.id)
 
-    tenant.deleted_at = datetime.now(timezone.utc)
-    tenant.is_active = False
-    db.commit()
+    try:
+        db.execute(text("DELETE FROM debt_payments WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid})
+        db.execute(text("DELETE FROM client_debts WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid})
+        db.execute(text("DELETE FROM order_logs WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid})
+        db.execute(text(
+            "DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE tenant_id = CAST(:t AS uuid))"
+        ), {"t": tid})
+        db.execute(text("DELETE FROM inventory_logs WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid})
+        db.execute(text("DELETE FROM whatsapp_messages WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid})
+        db.execute(text("DELETE FROM orders WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid})
+        db.execute(text("DELETE FROM clients WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid})
+        db.execute(text("DELETE FROM campaigns WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid})
+        db.execute(text("DELETE FROM segments WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid})
+        db.execute(text("DELETE FROM products WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid})
+        db.execute(text("DELETE FROM categories WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid})
+        db.execute(text("DELETE FROM suppliers WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid})
+        db.execute(text("DELETE FROM financial_transactions WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid})
+        db.execute(text("DELETE FROM admin_notifications WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid})
+        db.execute(text("DELETE FROM audit_logs WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid})
+        db.execute(text("DELETE FROM ai_logs WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid})
+        db.execute(text("DELETE FROM idempotency_keys WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid})
+        db.execute(text("DELETE FROM subscriptions WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid})
+        db.execute(text("DELETE FROM users WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid})
+        db.execute(text("DELETE FROM tenants WHERE id = CAST(:t AS uuid)"), {"t": tid})
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
-    logger.info("Admin %s a supprimé la boutique %s (soft delete)", admin.email, tenant.slug)
+    logger.info("Admin %s a supprimé DÉFINITIVEMENT la boutique %s", admin.email, slug)
 
 
 # ─── GET /admin/notifications ─────────────────────────────────────────────────

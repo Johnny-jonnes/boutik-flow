@@ -1314,14 +1314,6 @@ export const api = {
     return request('/auth/tenant', { method: 'PUT', body: JSON.stringify(data) });
   },
 
-  forgotPassword(data: { boutique_slug: string; email: string }): Promise<{ message: string }> {
-    return request('/auth/forgot-password', { method: 'POST', body: JSON.stringify(data) });
-  },
-
-  resetPassword(data: { token: string; new_password: string }): Promise<{ message: string }> {
-    return request('/auth/reset-password', { method: 'POST', body: JSON.stringify(data) });
-  },
-
   getTenant(): Promise<TenantInfo> {
     return request('/auth/tenant');
   },

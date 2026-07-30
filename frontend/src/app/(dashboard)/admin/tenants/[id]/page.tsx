@@ -436,9 +436,9 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
       {showDeleteModal && (
         <div className="modal-backdrop" onClick={() => setShowDeleteModal(false)}>
           <div className="modal-box" onClick={e => e.stopPropagation()}>
-            <h3 className="modal-title text-error">Supprimer la boutique ?</h3>
+            <h3 className="modal-title text-error">Supprimer définitivement la boutique ?</h3>
             <p className="modal-message">
-              Êtes-vous sûr de vouloir supprimer la boutique <strong>{tenant.name}</strong> ? Cette action effectuera un soft delete : l&apos;accès sera désactivé mais les données resteront stockées en base de données pour archivage.
+              Êtes-vous sûr de vouloir supprimer <strong>{tenant.name}</strong> ? Cette action est <strong>définitive et irréversible</strong> : la boutique, son équipe, ses produits, clients, commandes et toutes ses données financières seront effacés de la base de données. Rien n&apos;est archivé.
             </p>
 
             <div className="modal-actions">

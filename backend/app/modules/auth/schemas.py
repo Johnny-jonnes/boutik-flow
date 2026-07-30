@@ -70,38 +70,6 @@ class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
 
-# ──────────────────────────── Mot de passe oublié ────────────────────────────
-
-class ForgotPasswordRequest(BaseModel):
-    """Demande de réinitialisation de mot de passe."""
-    boutique_slug: str = Field(..., min_length=2, max_length=100)
-    email: EmailStr
-
-
-class ForgotPasswordResponse(BaseModel):
-    """Réponse volontairement générique (ne révèle pas si le compte existe)."""
-    message: str
-
-
-class ResetPasswordRequest(BaseModel):
-    """Réinitialisation effective du mot de passe via un token."""
-    token: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=8, max_length=128)
-
-    @field_validator("new_password")
-    @classmethod
-    def validate_new_password(cls, v: str) -> str:
-        if not re.search(r"[A-Z]", v):
-            raise ValueError("Le mot de passe doit contenir au moins une majuscule")
-        if not re.search(r"[0-9]", v):
-            raise ValueError("Le mot de passe doit contenir au moins un chiffre")
-        return v
-
-
-class ResetPasswordResponse(BaseModel):
-    message: str
-
-
 # ──────────────────────────── User Response ────────────────────────────
 
 class UserResponse(BaseModel):

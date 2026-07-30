@@ -17,13 +17,12 @@ from sqlalchemy import and_
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.mailer import send_password_reset_email, send_admin_new_registration_notification
+from app.core.mailer import send_admin_new_registration_notification
 from app.core.security import (
     hash_password,
     verify_password,
     create_access_token,
     create_refresh_token,
-    create_password_reset_token,
     decode_token,
 )
 from app.core.deps import get_current_user, CurrentUser, require_owner_or_manager
@@ -36,10 +35,6 @@ from app.modules.auth.schemas import (
     RefreshTokenRequest,
     UserResponse,
     TenantResponse,
-    ForgotPasswordRequest,
-    ForgotPasswordResponse,
-    ResetPasswordRequest,
-    ResetPasswordResponse,
     InviteUserRequest,
     UpdateUserRoleRequest,
     UpdateUserStatusRequest,
@@ -286,148 +281,6 @@ def refresh_token(
         )
 
     return _build_token_response(user)
-
-
-# ──────────────────────────── POST /forgot-password ────────────────────────────
-
-@router.post(
-    "/forgot-password",
-    response_model=ForgotPasswordResponse,
-    summary="Demander la réinitialisation du mot de passe",
-)
-def forgot_password(
-    payload: ForgotPasswordRequest,
-    db: Annotated[Session, Depends(get_db)],
-) -> ForgotPasswordResponse:
-    """
-    Génère un lien de réinitialisation et l'envoie par email.
-    La réponse est volontairement générique : elle ne révèle jamais si le
-    couple boutique/email correspond à un compte existant (anti-énumération).
-    """
-    generic_message = (
-        "Si un compte correspondant existe, un email de réinitialisation "
-        "vient de lui être envoyé."
-    )
-
-    tenant = db.query(Tenant).filter(
-        and_(Tenant.slug == payload.boutique_slug, Tenant.deleted_at.is_(None))
-    ).first()
-
-    if tenant and tenant.is_active:
-        user = db.query(User).filter(
-            and_(
-                User.tenant_id == tenant.id,
-                User.email == payload.email,
-                User.deleted_at.is_(None),
-                User.is_active.is_(True),
-            )
-        ).first()
-
-        if user:
-            # Si Supabase est configuré, on utilise Supabase Auth pour envoyer un vrai e-mail gratuitement
-            if settings.SUPABASE_URL and settings.SUPABASE_SERVICE_KEY:
-                try:
-                    from supabase import create_client
-                    import secrets
-                    supabase_admin = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
-                    
-                    # Garantir que l'utilisateur existe dans Supabase Auth
-                    try:
-                        supabase_admin.auth.admin.create_user({
-                            "email": user.email,
-                            "password": secrets.token_urlsafe(16),
-                            "email_confirm": True
-                        })
-                    except Exception:
-                        pass # Ignore s'il existe déjà
-                    
-                    # Demander la réinitialisation d'e-mail via Supabase Auth
-                    supabase_admin.auth.reset_password_for_email(
-                        user.email,
-                        options={"redirect_to": f"{settings.FRONTEND_URL}/reset-password"}
-                    )
-                    logger.info("Lien de réinitialisation envoyé par Supabase pour %s", user.email)
-                except Exception as e:
-                    logger.error("Échec de l'envoi via Supabase, repli sur le SMTP local: %s", str(e))
-                    token = create_password_reset_token(str(user.id))
-                    reset_link = f"{settings.FRONTEND_URL}/reset-password?token={token}"
-                    send_password_reset_email(user.email, reset_link, tenant.name)
-            else:
-                # Utiliser le SMTP classique configuré
-                token = create_password_reset_token(str(user.id))
-                reset_link = f"{settings.FRONTEND_URL}/reset-password?token={token}"
-                send_password_reset_email(user.email, reset_link, tenant.name)
-            
-            logger.info(
-                "Demande de réinitialisation de mot de passe pour %s (tenant=%s)",
-                user.email, tenant.slug,
-            )
-
-    return ForgotPasswordResponse(message=generic_message)
-
-
-# ──────────────────────────── POST /reset-password ────────────────────────────
-
-@router.post(
-    "/reset-password",
-    response_model=ResetPasswordResponse,
-    summary="Réinitialiser le mot de passe à partir d'un token",
-)
-def reset_password(
-    payload: ResetPasswordRequest,
-    db: Annotated[Session, Depends(get_db)],
-) -> ResetPasswordResponse:
-    """Valide le token de réinitialisation (interne ou Supabase) et met à jour le mot de passe."""
-    user_email = None
-
-    # 1. Tenter de décoder comme un token JWT interne de réinitialisation
-    try:
-        token_payload = decode_token(payload.token)
-        if token_payload.get("type") == "password_reset":
-            user_id = token_payload.get("sub")
-            user = db.query(User).filter(
-                and_(User.id == uuid.UUID(user_id), User.deleted_at.is_(None))
-            ).first()
-            if user:
-                user_email = user.email
-    except Exception:
-        pass
-
-    # 2. Si non valide, tenter de vérifier comme un token d'accès Supabase
-    if not user_email and settings.SUPABASE_URL and settings.SUPABASE_ANON_KEY:
-        try:
-            from supabase import create_client
-            # Utiliser la clé anonyme pour valider l'access_token de l'utilisateur
-            supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
-            auth_resp = supabase.auth.get_user(payload.token)
-            if auth_resp and auth_resp.user:
-                user_email = auth_resp.user.email
-        except Exception as e:
-            logger.error("Échec de la validation du token Supabase : %s", str(e))
-
-    if not user_email:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Lien de réinitialisation invalide ou expiré",
-        )
-
-    # Récupérer l'utilisateur correspondant dans notre base locale
-    user = db.query(User).filter(
-        and_(User.email == user_email, User.deleted_at.is_(None))
-    ).first()
-
-    if not user or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Lien de réinitialisation invalide ou expiré",
-        )
-
-    user.hashed_password = hash_password(payload.new_password)
-    db.commit()
-
-    logger.info("Mot de passe réinitialisé pour %s", user.email)
-
-    return ResetPasswordResponse(message="Votre mot de passe a été réinitialisé avec succès.")
 
 
 # ──────────────────────────── GET /me ────────────────────────────
