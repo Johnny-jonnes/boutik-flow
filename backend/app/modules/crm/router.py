@@ -164,21 +164,26 @@ def list_clients(
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
     page: int = Query(1, ge=1, description="Numéro de page"),
-    per_page: int = Query(20, ge=1, le=100, description="Résultats par page"),
+    per_page: int = Query(20, ge=1, le=500, description="Résultats par page"),
     search: str | None = Query(None, description="Recherche par nom ou téléphone"),
     status_filter: str | None = Query(None, alias="status", description="Filtrer par statut"),
+    updated_since: datetime | None = Query(
+        None, description="Synchronisation incrémentale : ne renvoie que les clients créés/modifiés/supprimés après cette date."
+    ),
 ) -> ClientListResponse:
     """
     Liste paginée des clients, filtrée par tenant_id.
     Supporte la recherche par nom/téléphone et le filtrage par statut.
+
+    Avec `updated_since`, inclut aussi les clients supprimés depuis cette
+    date (deleted_at renseigné) pour que le client synchronise les
+    suppressions, pas seulement les créations/modifications.
     """
-    # Base query : isolation multi-tenant stricte + soft delete
-    query = db.query(Client).filter(
-        and_(
-            Client.tenant_id == current_user.tenant_id,
-            Client.deleted_at.is_(None),
-        )
-    )
+    query = db.query(Client).filter(Client.tenant_id == current_user.tenant_id)
+    if updated_since is not None:
+        query = query.filter(Client.updated_at > updated_since)
+    else:
+        query = query.filter(Client.deleted_at.is_(None))
 
     # Recherche
     if search:
@@ -197,10 +202,12 @@ def list_clients(
     # Comptage total (avant pagination)
     total = query.count()
 
-    # Pagination + tri
+    # Pagination + tri — ordre chronologique croissant en incrémental (voir
+    # la même remarque dans products/router.py::list_products).
+    order = Client.updated_at.asc() if updated_since is not None else Client.created_at.desc()
     items = (
         query
-        .order_by(Client.created_at.desc())
+        .order_by(order)
         .offset((page - 1) * per_page)
         .limit(per_page)
         .all()
@@ -318,8 +325,13 @@ def update_client(
     payload: ClientUpdate,
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    idempotency_key: IdempotencyHeader = None,
 ) -> ClientResponse:
     """Mise à jour partielle d'un client (isolation tenant stricte)."""
+    cached = get_cached_response(db, current_user.tenant_id, "clients.update", idempotency_key)
+    if cached:
+        return cached[1]
+
     client = db.query(Client).filter(
         and_(
             Client.id == client_id,
@@ -347,7 +359,9 @@ def update_client(
 
     logger.info("Client mis à jour : %s (id=%s)", client.name, client_id)
 
-    return ClientResponse.model_validate(client)
+    response = ClientResponse.model_validate(client)
+    store_response(db, current_user.tenant_id, "clients.update", idempotency_key, status.HTTP_200_OK, jsonable_encoder(response))
+    return response
 
 
 # ──────────────────────────── DELETE /clients/{id} ────────────────────────────
@@ -361,11 +375,16 @@ def delete_client(
     client_id: uuid.UUID,
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    idempotency_key: IdempotencyHeader = None,
 ) -> None:
     """
     Soft delete : marque le client avec deleted_at.
     JAMAIS de suppression physique (règle CRM).
     """
+    cached = get_cached_response(db, current_user.tenant_id, "clients.delete", idempotency_key)
+    if cached:
+        return
+
     client = db.query(Client).filter(
         and_(
             Client.id == client_id,
@@ -382,5 +401,6 @@ def delete_client(
 
     client.deleted_at = datetime.now(timezone.utc)
     db.commit()
+    store_response(db, current_user.tenant_id, "clients.delete", idempotency_key, status.HTTP_204_NO_CONTENT, None)
 
     logger.info("Client supprimé (soft) : %s (id=%s)", client.name, client_id)

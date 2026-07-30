@@ -123,7 +123,12 @@ def update_supplier(
     payload: SupplierUpdate,
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    idempotency_key: IdempotencyHeader = None,
 ) -> SupplierResponse:
+    cached = get_cached_response(db, current_user.tenant_id, "suppliers.update", idempotency_key)
+    if cached:
+        return cached[1]
+
     supplier = db.query(Supplier).filter(
         and_(
             Supplier.id == supplier_id,
@@ -140,7 +145,9 @@ def update_supplier(
         
     db.commit()
     db.refresh(supplier)
-    return SupplierResponse.model_validate(supplier)
+    response = SupplierResponse.model_validate(supplier)
+    store_response(db, current_user.tenant_id, "suppliers.update", idempotency_key, status.HTTP_200_OK, jsonable_encoder(response))
+    return response
 
 
 @router.delete(
@@ -152,16 +159,26 @@ def delete_supplier(
     supplier_id: uuid.UUID,
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    idempotency_key: IdempotencyHeader = None,
 ) -> None:
+    # Suppression physique (pas de soft delete ici) : sans idempotency, un
+    # rejeu après réponse perdue tombe sur un 404 pour une ressource déjà
+    # bel et bien supprimée — la file de sync le traiterait à tort comme
+    # un échec définitif.
+    cached = get_cached_response(db, current_user.tenant_id, "suppliers.delete", idempotency_key)
+    if cached:
+        return
+
     supplier = db.query(Supplier).filter(
         and_(
             Supplier.id == supplier_id,
             Supplier.tenant_id == current_user.tenant_id,
         )
     ).first()
-    
+
     if not supplier:
         raise HTTPException(status_code=404, detail="Fournisseur introuvable")
-        
+
     db.delete(supplier)
     db.commit()
+    store_response(db, current_user.tenant_id, "suppliers.delete", idempotency_key, status.HTTP_204_NO_CONTENT, None)

@@ -43,6 +43,10 @@ class ClientResponse(BaseModel):
     last_activity_at: datetime | None
     created_at: datetime
     updated_at: datetime
+    # Présent uniquement pour une synchronisation incrémentale (voir
+    # updated_since sur GET /clients) : signale au client qu'il doit
+    # retirer ce client de son cache local plutôt que le mettre à jour.
+    deleted_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 

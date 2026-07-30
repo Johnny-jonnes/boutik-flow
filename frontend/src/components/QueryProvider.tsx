@@ -2,6 +2,41 @@
 
 import { useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queries';
+
+/**
+ * Applique un delta de synchronisation incrémentale (voir
+ * incrementalSyncCollection dans lib/api/client.ts) directement sur une
+ * entrée de cache liste — jamais un rechargement complet. Un élément
+ * portant deleted_at est retiré ; sinon il remplace l'existant ou
+ * s'ajoute. Si le cache n'est pas encore chargé (page jamais visitée sur
+ * cet appareil), rien à faire : son premier chargement normal ramènera
+ * déjà tout.
+ */
+function mergeDeltaIntoListCache(
+  queryClient: QueryClient,
+  key: readonly unknown[],
+  delta: any[] | undefined,
+) {
+  if (!delta || delta.length === 0) return;
+  queryClient.setQueryData(key, (old: { items: any[]; total: number } | undefined) => {
+    if (!old) return old;
+    let items = [...old.items];
+    let total = old.total;
+    for (const updated of delta) {
+      const idx = items.findIndex((it) => it.id === updated.id);
+      if (updated.deleted_at) {
+        if (idx !== -1) { items.splice(idx, 1); total = Math.max(0, total - 1); }
+      } else if (idx !== -1) {
+        items[idx] = updated;
+      } else {
+        items = [updated, ...items];
+        total += 1;
+      }
+    }
+    return { ...old, items, total };
+  });
+}
 
 /**
  * Couche mémoire globale (TanStack Query) : une fois une liste chargée
@@ -34,19 +69,23 @@ function createQueryClient() {
 export function QueryProvider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(createQueryClient);
 
-  // Invalidation ciblée après une synchronisation offline→online : seules
-  // les listes concernées sont revalidées (jamais un vidage complet du
-  // cache), le reste de l'app affiché reste intact.
+  // Après une synchronisation offline→online : le delta (produits/clients
+  // créés, modifiés ou supprimés depuis le dernier curseur) est appliqué
+  // directement au cache mémoire — jamais un rechargement complet des
+  // listes. Catégories et statistiques agrégées ne font pas partie de la
+  // synchronisation incrémentale (petites listes / agrégat serveur
+  // recalculé de toute façon) : elles restent en invalidation ciblée.
   useEffect(() => {
-    const invalidateAll = () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
+    const onSyncComplete = (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        succeeded: number;
+        deltas?: { products: any[]; clients: any[] };
+      } | undefined;
+      if (!detail?.succeeded) return;
+      mergeDeltaIntoListCache(queryClient, queryKeys.products(), detail.deltas?.products);
+      mergeDeltaIntoListCache(queryClient, queryKeys.clients(), detail.deltas?.clients);
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       queryClient.invalidateQueries({ queryKey: ['product-stats'] });
-    };
-    const onSyncComplete = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { succeeded: number } | undefined;
-      if (detail?.succeeded) invalidateAll();
     };
     window.addEventListener('boutikflow:sync-complete', onSyncComplete);
     return () => window.removeEventListener('boutikflow:sync-complete', onSyncComplete);

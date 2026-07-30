@@ -126,6 +126,30 @@ async function remove(store: StoreName, id: string): Promise<void> {
   await tx(store, 'readwrite', (os) => os.delete(id));
 }
 
+/**
+ * Fusionne un lot d'éléments dans un store SANS toucher aux lignes
+ * absentes du lot — contrairement à replaceAll(), qui vide tout le store
+ * avant de réinsérer : correct pour un chargement complet (page 1 = toute
+ * la vérité), mais destructeur pour un delta de synchronisation
+ * incrémentale (le lot ne contient QUE ce qui a changé). Un élément portant
+ * deleted_at est retiré du cache local au lieu d'être mis à jour — c'est
+ * ainsi que les suppressions distantes se propagent hors-ligne.
+ */
+async function mergeBatch(store: StoreName, items: any[]): Promise<void> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const t = db.transaction(store, 'readwrite');
+    const os = t.objectStore(store);
+    for (const item of items) {
+      if (!item || item.id == null) continue;
+      if (item.deleted_at) os.delete(item.id);
+      else os.put(item);
+    }
+    t.oncomplete = () => resolve();
+    t.onerror = () => reject(t.error);
+  });
+}
+
 async function getOne<T>(store: StoreName, id: string): Promise<T | undefined> {
   try {
     return await tx<T | undefined>(store, 'readonly', (os) => os.get(id));
@@ -152,11 +176,13 @@ export const OfflineStore = { getAll, replaceAll, upsert, remove, getOne, getMet
 export const OfflineDB = {
   getProducts: () => getAll<any>('products'),
   saveProducts: (items: any[]) => replaceAll('products', items),
+  mergeProducts: (items: any[]) => mergeBatch('products', items),
   upsertProduct: (item: any) => upsert('products', item),
   removeProduct: (id: string) => remove('products', id),
 
   getClients: () => getAll<any>('clients'),
   saveClients: (items: any[]) => replaceAll('clients', items),
+  mergeClients: (items: any[]) => mergeBatch('clients', items),
   upsertClient: (item: any) => upsert('clients', item),
   removeClient: (id: string) => remove('clients', id),
 
@@ -167,6 +193,7 @@ export const OfflineDB = {
 
   getOrders: () => getAll<any>('orders'),
   saveOrders: (items: any[]) => replaceAll('orders', items),
+  mergeOrders: (items: any[]) => mergeBatch('orders', items),
   upsertOrder: (item: any) => upsert('orders', item),
 
   getDebts: () => getAll<any>('debts'),
@@ -175,6 +202,7 @@ export const OfflineDB = {
 
   getTransactions: () => getAll<any>('transactions'),
   saveTransactions: (items: any[]) => replaceAll('transactions', items),
+  mergeTransactions: (items: any[]) => mergeBatch('transactions', items),
   upsertTransaction: (item: any) => upsert('transactions', item),
 
   getSuppliers: () => getAll<any>('suppliers'),
@@ -184,6 +212,14 @@ export const OfflineDB = {
 
   getLastSyncAt: () => getMeta<number>('lastSyncAt'),
   setLastSyncAt: (ts: number) => setMeta('lastSyncAt', ts),
+
+  // Curseur de synchronisation incrémentale — un par collection, distinct
+  // de lastSyncAt (horodatage global juste informatif) : celui-ci doit
+  // être précisément la date de la dernière ligne effectivement vue dans
+  // les réponses, jamais l'heure locale au moment de la requête (qui peut
+  // diverger de l'horloge serveur et faire manquer des lignes).
+  getSyncCursor: (collection: string) => getMeta<string>(`syncCursor:${collection}`),
+  setSyncCursor: (collection: string, iso: string) => setMeta(`syncCursor:${collection}`, iso),
 };
 
 // ─── File de synchronisation ────────────────────────────────────────────

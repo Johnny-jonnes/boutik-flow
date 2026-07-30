@@ -100,6 +100,7 @@ def _build_order_response(order: Order, user_names: dict) -> OrderResponse:
         notes=order.notes,
         created_at=order.created_at,
         updated_at=order.updated_at,
+        deleted_at=order.deleted_at,
         items=items,
     )
 
@@ -220,23 +221,29 @@ def list_orders(
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
     page: int = Query(1, ge=1, description="Numéro de page"),
-    per_page: int = Query(20, ge=1, le=100, description="Résultats par page"),
+    per_page: int = Query(20, ge=1, le=500, description="Résultats par page"),
     status_filter: str | None = Query(None, alias="status", description="Filtrer par statut"),
     client_id: uuid.UUID | None = Query(None, description="Filtrer par client"),
+    updated_since: datetime | None = Query(
+        None, description="Synchronisation incrémentale : ne renvoie que les commandes créées/modifiées/supprimées après cette date."
+    ),
 ) -> OrderListResponse:
     """
     Liste paginée des commandes, filtrée par tenant_id.
     Supporte le filtrage par statut et par client.
+
+    Avec `updated_since`, inclut aussi les commandes annulées/supprimées
+    depuis cette date pour que le client synchronise ces changements de
+    statut, pas seulement les nouvelles commandes.
     """
     query = db.query(Order).options(
         selectinload(Order.items).selectinload(OrderItem.product),
         selectinload(Order.client),
-    ).filter(
-        and_(
-            Order.tenant_id == current_user.tenant_id,
-            Order.deleted_at.is_(None),
-        )
-    )
+    ).filter(Order.tenant_id == current_user.tenant_id)
+    if updated_since is not None:
+        query = query.filter(Order.updated_at > updated_since)
+    else:
+        query = query.filter(Order.deleted_at.is_(None))
 
     if status_filter:
         query = query.filter(Order.status == status_filter)
@@ -245,9 +252,12 @@ def list_orders(
         query = query.filter(Order.client_id == client_id)
 
     total = query.count()
+    # Ordre chronologique croissant en incrémental (voir la même remarque
+    # dans products/router.py::list_products).
+    order = Order.updated_at.asc() if updated_since is not None else Order.created_at.desc()
     items = (
         query
-        .order_by(Order.created_at.desc())
+        .order_by(order)
         .offset((page - 1) * per_page)
         .limit(per_page)
         .all()
@@ -590,7 +600,16 @@ def return_order_items(
     payload: OrderReturnRequest,
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    idempotency_key: IdempotencyHeader = None,
 ):
+    # Sans cette protection, une réponse perdue sur une connexion instable
+    # (le retour a bien été traité côté serveur, mais le client ne l'a
+    # jamais su et le rejoue) créait un second remboursement et un second
+    # restockage pour le même retour physique.
+    cached = get_cached_response(db, current_user.tenant_id, "orders.return", idempotency_key)
+    if cached:
+        return cached[1]
+
     order = db.query(Order).filter(
         and_(
             Order.id == order_id,
@@ -670,10 +689,12 @@ def return_order_items(
 
     db.commit()
 
-    return {
+    response = {
         "message": "Retour enregistré avec succès",
         "order_id": str(order.id),
         "refund_amount": float(refund_amount),
         "restocked": payload.restock_inventory,
         "details": ", ".join(returned_details),
     }
+    store_response(db, current_user.tenant_id, "orders.return", idempotency_key, status.HTTP_200_OK, response)
+    return response

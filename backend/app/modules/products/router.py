@@ -109,7 +109,12 @@ def create_category(
     payload: CategoryCreate,
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    idempotency_key: IdempotencyHeader = None,
 ) -> CategoryResponse:
+    cached = get_cached_response(db, current_user.tenant_id, "categories.create", idempotency_key)
+    if cached:
+        return cached[1]
+
     category = Category(
         id=uuid.uuid4(),
         tenant_id=current_user.tenant_id,
@@ -120,7 +125,9 @@ def create_category(
     db.add(category)
     db.commit()
     db.refresh(category)
-    return CategoryResponse.model_validate(category)
+    response = CategoryResponse.model_validate(category)
+    store_response(db, current_user.tenant_id, "categories.create", idempotency_key, status.HTTP_201_CREATED, jsonable_encoder(response))
+    return response
 
 @router.put(
     "/categories/{category_id}",
@@ -132,7 +139,12 @@ def update_category(
     payload: CategoryUpdate,
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    idempotency_key: IdempotencyHeader = None,
 ) -> CategoryResponse:
+    cached = get_cached_response(db, current_user.tenant_id, "categories.update", idempotency_key)
+    if cached:
+        return cached[1]
+
     category = db.query(Category).filter(
         and_(Category.id == category_id, Category.tenant_id == current_user.tenant_id)
     ).first()
@@ -144,7 +156,9 @@ def update_category(
         setattr(category, field, value)
     db.commit()
     db.refresh(category)
-    return CategoryResponse.model_validate(category)
+    response = CategoryResponse.model_validate(category)
+    store_response(db, current_user.tenant_id, "categories.update", idempotency_key, status.HTTP_200_OK, jsonable_encoder(response))
+    return response
 
 @router.delete(
     "/categories/{category_id}",
@@ -155,19 +169,25 @@ def delete_category(
     category_id: uuid.UUID,
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    idempotency_key: IdempotencyHeader = None,
 ) -> None:
+    cached = get_cached_response(db, current_user.tenant_id, "categories.delete", idempotency_key)
+    if cached:
+        return
+
     category = db.query(Category).filter(
         and_(Category.id == category_id, Category.tenant_id == current_user.tenant_id)
     ).first()
     if not category:
         raise HTTPException(status_code=404, detail="Catégorie introuvable")
-    
+
     # Remove category from products
     db.query(Product).filter(
         and_(Product.category_id == category_id, Product.tenant_id == current_user.tenant_id)
     ).update({"category_id": None})
     db.delete(category)
     db.commit()
+    store_response(db, current_user.tenant_id, "categories.delete", idempotency_key, status.HTTP_204_NO_CONTENT, None)
 
 
 # ──────────────────────────── GET /products ────────────────────────────
@@ -181,20 +201,29 @@ def list_products(
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
     page: int = Query(1, ge=1, description="Numéro de page"),
-    per_page: int = Query(20, ge=1, le=100, description="Résultats par page"),
+    per_page: int = Query(20, ge=1, le=500, description="Résultats par page"),
     search: str | None = Query(None, description="Recherche par nom"),
     category_id: uuid.UUID | None = Query(None, description="Filtrer par catégorie"),
     in_stock: bool | None = Query(None, description="Uniquement en stock"),
+    updated_since: datetime | None = Query(
+        None, description="Synchronisation incrémentale : ne renvoie que les produits créés/modifiés/supprimés après cette date (inclut les supprimés, via deleted_at, pour que le client sache les retirer de son cache)."
+    ),
 ) -> ProductListResponse:
     """
     Liste paginée des produits, filtrée par tenant_id.
+
+    Avec `updated_since`, le filtre deleted_at IS NULL habituel est
+    désactivé : les produits supprimés depuis cette date sont inclus
+    (deleted_at renseigné) pour que le client synchronise aussi les
+    suppressions, jamais seulement les créations/modifications.
     """
     query = db.query(Product).options(selectinload(Product.category_rel)).filter(
-        and_(
-            Product.tenant_id == current_user.tenant_id,
-            Product.deleted_at.is_(None),
-        )
+        Product.tenant_id == current_user.tenant_id,
     )
+    if updated_since is not None:
+        query = query.filter(Product.updated_at > updated_since)
+    else:
+        query = query.filter(Product.deleted_at.is_(None))
 
     if search:
         search_term = f"%{search}%"
@@ -213,9 +242,14 @@ def list_products(
         query = query.filter(Product.stock > 0)
 
     total = query.count()
+    # Ordre chronologique croissant en incrémental : le curseur client
+    # avance sur le max(updated_at) du lot reçu — un tri décroissant sur
+    # un gros retard accumulé (per_page=500) pourrait ne renvoyer que les
+    # plus récents et faire sauter des changements plus anciens.
+    order = Product.updated_at.asc() if updated_since is not None else Product.created_at.desc()
     items = (
         query
-        .order_by(Product.created_at.desc())
+        .order_by(order)
         .offset((page - 1) * per_page)
         .limit(per_page)
         .all()
@@ -585,7 +619,12 @@ def update_product(
     payload: ProductUpdate,
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    idempotency_key: IdempotencyHeader = None,
 ) -> ProductResponse:
+    cached = get_cached_response(db, current_user.tenant_id, "products.update", idempotency_key)
+    if cached:
+        return cached[1]
+
     product = db.query(Product).filter(
         and_(
             Product.id == product_id,
@@ -651,7 +690,9 @@ def update_product(
 
     db.commit()
     db.refresh(product)
-    return ProductResponse.model_validate(product)
+    response = ProductResponse.model_validate(product)
+    store_response(db, current_user.tenant_id, "products.update", idempotency_key, status.HTTP_200_OK, jsonable_encoder(response))
+    return response
 
 
 # ──────────────────────────── DELETE /products/{id} ────────────────────────────
@@ -665,7 +706,16 @@ def delete_product(
     product_id: uuid.UUID,
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    idempotency_key: IdempotencyHeader = None,
 ) -> None:
+    # Sans ceci, une suppression déjà traitée mais dont la réponse s'est
+    # perdue (connexion instable) recevait un 404 au rejeu — traité comme un
+    # échec définitif par la file de synchronisation, alors que la
+    # suppression avait bel et bien réussi la première fois.
+    cached = get_cached_response(db, current_user.tenant_id, "products.delete", idempotency_key)
+    if cached:
+        return
+
     product = db.query(Product).filter(
         and_(
             Product.id == product_id,
@@ -685,6 +735,7 @@ def delete_product(
         db, current_user.tenant_id, product.id, current_user.user_id,
         "deletion", "active", "deleted"
     )
-    
+
     db.commit()
+    store_response(db, current_user.tenant_id, "products.delete", idempotency_key, status.HTTP_204_NO_CONTENT, None)
     logger.info("Produit supprimé (soft) : %s", product_id)

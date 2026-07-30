@@ -89,6 +89,10 @@ class ProductResponse(BaseModel):
     barcode: str | None
     created_at: datetime
     updated_at: datetime
+    # Présent uniquement pour une synchronisation incrémentale (voir
+    # updated_since sur GET /products) : signale au client qu'il doit
+    # retirer ce produit de son cache local plutôt que le mettre à jour.
+    deleted_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 

@@ -4,6 +4,7 @@ Gestion des entrées, dépenses et calcul du Solde Net.
 """
 from typing import Annotated
 import uuid
+from datetime import datetime
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
@@ -41,6 +42,9 @@ def list_transactions(
     period: str | None = Query("30j"),  # 7j, 30j, 90j, all, custom
     start_date: str | None = Query(None),
     end_date: str | None = Query(None),
+    updated_since: datetime | None = Query(
+        None, description="Synchronisation incrémentale : ne renvoie que les transactions créées après cette date. Les transactions sont immuables (jamais modifiées ni supprimées), un simple filtre sur created_at suffit."
+    ),
 ) -> TransactionListResponse:
     # Fenêtre de dates résolue par la fonction partagée avec le Tableau de bord :
     # une même sélection y produit donc rigoureusement les mêmes bornes.
@@ -56,11 +60,16 @@ def list_transactions(
         query = query.filter(FinancialTransaction.created_at >= start)
     if end is not None:
         query = query.filter(FinancialTransaction.created_at < end)
+    if updated_since is not None:
+        query = query.filter(FinancialTransaction.created_at > updated_since)
 
     total = query.count()
+    # Ordre chronologique croissant en incrémental (voir la même remarque
+    # dans products/router.py::list_products).
+    order = FinancialTransaction.created_at.asc() if updated_since is not None else FinancialTransaction.created_at.desc()
     items = (
         query
-        .order_by(FinancialTransaction.created_at.desc())
+        .order_by(order)
         .offset((page - 1) * per_page)
         .limit(per_page)
         .all()

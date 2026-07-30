@@ -286,6 +286,47 @@ function backoffDelay(attempts: number): number {
 }
 
 /**
+ * Récupère uniquement ce qui a changé pour une collection depuis son
+ * dernier curseur de synchronisation (date de la dernière ligne vue — pas
+ * l'heure locale, qui peut diverger de l'horloge serveur), fusionne le
+ * résultat dans IndexedDB (jamais un remplacement complet), avance le
+ * curseur, et retourne le delta pour que la couche mémoire (TanStack
+ * Query) puisse se mettre à jour de la même façon sans re-télécharger la
+ * collection entière. Un curseur absent (première synchronisation sur cet
+ * appareil) déclenche un premier appel sans filtre — son résultat reste
+ * borné à per_page, la vraie mise à niveau complète du cache mémoire est
+ * déjà assurée par le chargement normal des pages (useProductsQuery, etc.).
+ */
+async function incrementalSyncCollection(
+  collection: string,
+  basePath: string,
+  dateField: 'updated_at' | 'created_at',
+  mergeFn: (items: any[]) => Promise<void>,
+): Promise<any[]> {
+  const cursor = await OfflineDB.getSyncCursor(collection);
+  const sep = basePath.includes('?') ? '&' : '?';
+  const query = cursor
+    ? `${basePath}${sep}per_page=500&updated_since=${encodeURIComponent(cursor)}`
+    : `${basePath}${sep}per_page=500`;
+  try {
+    const res = await request<{ items: any[] }>(query);
+    const items = res.items || [];
+    if (items.length > 0) {
+      await mergeFn(items);
+      let latest = cursor;
+      for (const item of items) {
+        const v = item[dateField];
+        if (v && (!latest || v > latest)) latest = v;
+      }
+      if (latest) await OfflineDB.setSyncCursor(collection, latest);
+    }
+    return items;
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Rejoue la file d'attente contre le vrai serveur, dans l'ordre de création,
  * SÉQUENTIELLEMENT (jamais en parallèle) : une opération peut dépendre
  * d'une opération précédente pas encore confirmée par le serveur (ex: un
@@ -385,19 +426,29 @@ export async function syncOfflineQueue(): Promise<{ succeeded: number; failed: n
   // TOUJOURS calculés côté serveur (voir app.core.metrics) : re-télécharger
   // les données après synchronisation EST le recalcul, il n'y a rien à
   // reconstruire côté client.
+  //
+  // Synchronisation VRAIMENT incrémentale : chaque collection garde son
+  // propre curseur, seule la différence depuis ce curseur est redemandée
+  // au serveur — jamais toute la base. Le delta est fusionné dans
+  // IndexedDB ET renvoyé dans l'événement sync-complete pour que la
+  // couche mémoire (TanStack Query) se mette à jour pareillement.
+  let deltas: { products: any[]; clients: any[]; orders: any[]; transactions: any[] } = {
+    products: [], clients: [], orders: [], transactions: [],
+  };
   if (succeeded > 0) {
     await OfflineDB.setLastSyncAt(Date.now());
-    await Promise.allSettled([
-      request('/products?page=1&per_page=200').catch(() => null),
-      request('/clients?page=1&per_page=200').catch(() => null),
-      request('/finance?page=1&per_page=200').catch(() => null),
-      request('/orders?page=1&per_page=200').catch(() => null),
+    const [products, clients, transactions, orders] = await Promise.all([
+      incrementalSyncCollection('products', '/products', 'updated_at', OfflineDB.mergeProducts),
+      incrementalSyncCollection('clients', '/clients', 'updated_at', OfflineDB.mergeClients),
+      incrementalSyncCollection('finance', '/finance?period=all', 'created_at', OfflineDB.mergeTransactions),
+      incrementalSyncCollection('orders', '/orders', 'updated_at', OfflineDB.mergeOrders),
     ]);
+    deltas = { products, clients, orders, transactions };
   }
 
   await notifyQueueChanged();
   window.dispatchEvent(new CustomEvent('boutikflow:sync-complete', {
-    detail: { succeeded, failed, stoppedEarly },
+    detail: { succeeded, failed, stoppedEarly, deltas },
   }));
   return { succeeded, failed };
 }
@@ -1302,11 +1353,11 @@ export const api = {
   },
 
   updateClient(id: string, data: ClientUpdate): Promise<CrmClient> {
-    return request(`/clients/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    return request(`/clients/${id}`, { method: 'PUT', body: JSON.stringify(data), headers: withIdempotencyKey(generateIdempotencyKey()) });
   },
 
   deleteClient(id: string): Promise<void> {
-    return request(`/clients/${id}`, { method: 'DELETE' });
+    return request(`/clients/${id}`, { method: 'DELETE', headers: withIdempotencyKey(generateIdempotencyKey()) });
   },
 
   // ── CRM — Debts ───────────────────────────────────────────────────────
@@ -1353,15 +1404,15 @@ export const api = {
   },
 
   createCategory(data: CategoryCreate): Promise<Category> {
-    return request('/products/categories', { method: 'POST', body: JSON.stringify(data) });
+    return request('/products/categories', { method: 'POST', body: JSON.stringify(data), headers: withIdempotencyKey(generateIdempotencyKey()) });
   },
 
   updateCategory(id: string, data: CategoryUpdate): Promise<Category> {
-    return request(`/products/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    return request(`/products/categories/${id}`, { method: 'PUT', body: JSON.stringify(data), headers: withIdempotencyKey(generateIdempotencyKey()) });
   },
 
   deleteCategory(id: string): Promise<void> {
-    return request(`/products/categories/${id}`, { method: 'DELETE' });
+    return request(`/products/categories/${id}`, { method: 'DELETE', headers: withIdempotencyKey(generateIdempotencyKey()) });
   },
 
   // ── Catalogue — Produits ──────────────────────────────────────────────
@@ -1411,11 +1462,11 @@ export const api = {
   },
 
   updateProduct(id: string, data: ProductUpdate): Promise<Product> {
-    return request(`/products/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    return request(`/products/${id}`, { method: 'PUT', body: JSON.stringify(data), headers: withIdempotencyKey(generateIdempotencyKey()) });
   },
 
   deleteProduct(id: string): Promise<void> {
-    return request(`/products/${id}`, { method: 'DELETE' });
+    return request(`/products/${id}`, { method: 'DELETE', headers: withIdempotencyKey(generateIdempotencyKey()) });
   },
 
   // ── Commandes ─────────────────────────────────────────────────────────
@@ -1443,6 +1494,7 @@ export const api = {
     return request(`/orders/${orderId}/return`, {
       method: 'POST',
       body: JSON.stringify({ items, reason, restock_inventory: restockInventory }),
+      headers: withIdempotencyKey(generateIdempotencyKey()),
     });
   },
 
@@ -1560,8 +1612,8 @@ export const api = {
     ),
   getSupplier: (id: string) => request<Supplier>(`/suppliers/${id}`),
   createSupplier: (data: SupplierCreate) => request<Supplier>('/suppliers', { method: 'POST', body: JSON.stringify(data), headers: withIdempotencyKey(generateIdempotencyKey()) }),
-  updateSupplier: (id: string, data: SupplierUpdate) => request<Supplier>(`/suppliers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteSupplier: (id: string) => request<void>(`/suppliers/${id}`, { method: 'DELETE' }),
+  updateSupplier: (id: string, data: SupplierUpdate) => request<Supplier>(`/suppliers/${id}`, { method: 'PUT', body: JSON.stringify(data), headers: withIdempotencyKey(generateIdempotencyKey()) }),
+  deleteSupplier: (id: string) => request<void>(`/suppliers/${id}`, { method: 'DELETE', headers: withIdempotencyKey(generateIdempotencyKey()) }),
 
   // ─── Team Management ─────────────────────────────────────────────────
   getTeamMembers: () => request<TeamMember[]>('/auth/team'),
