@@ -1,15 +1,22 @@
 import os
+from typing import Annotated
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime
 from .schemas import AISuggestReplyRequest, AISuggestReplyResponse
+from app.core.deps import get_current_user, CurrentUser
 # Dans un projet complet on utiliserait la BD pour logguer
 # from app.db.session import get_db
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
+# Ces deux endpoints n'exigeaient auparavant aucune authentification : n'importe
+# qui pouvait consommer le quota GROQ_API_KEY de la boutique sans être
+# connecté. Ils ne touchent aucune donnée par tenant (simples relais vers
+# Groq), donc l'ajout de l'authentification est ici uniquement une
+# protection contre l'abus, pas une correction d'isolation de données.
 @router.post("/suggest-reply", response_model=AISuggestReplyResponse)
-async def suggest_reply(req: AISuggestReplyRequest):
+async def suggest_reply(req: AISuggestReplyRequest, current_user: Annotated[CurrentUser, Depends(get_current_user)]):
     groq_api_key = os.getenv("GROQ_API_KEY")
     if not groq_api_key:
         return AISuggestReplyResponse(suggestion="Voici une suggestion générée localement. Configurez GROQ_API_KEY pour l'IA.")
@@ -53,7 +60,7 @@ import json
 from .schemas import AIAnalyzeProductImageRequest, AIAnalyzeProductImageResponse
 
 @router.post("/analyze-product-image", response_model=AIAnalyzeProductImageResponse)
-async def analyze_product_image(req: AIAnalyzeProductImageRequest):
+async def analyze_product_image(req: AIAnalyzeProductImageRequest, current_user: Annotated[CurrentUser, Depends(get_current_user)]):
     groq_api_key = os.getenv("GROQ_API_KEY")
     if not groq_api_key:
         return AIAnalyzeProductImageResponse(

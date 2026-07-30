@@ -15,7 +15,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { compressImage } from '@/lib/utils/imageCompressor';
 import { useSearchParams, useRouter } from 'next/navigation';
 import QRCode from 'qrcode';
-import { useProductsQuery, useCategoriesQuery, queryKeys } from '@/lib/queries';
+import { useProductsQuery, useCategoriesQuery, useProductStatsQuery, queryKeys } from '@/lib/queries';
 
 function formatGNF(amount: number) {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' GNF';
@@ -36,6 +36,7 @@ function ProductsContent() {
   // seule une revalidation silencieuse a lieu en arrière-plan).
   const { data: productsData, isLoading } = useProductsQuery();
   const { data: categoriesData } = useCategoriesQuery();
+  const { data: statsData } = useProductStatsQuery();
   const products = productsData?.items ?? [];
   const categories = categoriesData?.items ?? [];
   const [searchQuery, setSearchQuery] = useState('');
@@ -80,6 +81,7 @@ function ProductsContent() {
   const fetchProductsAndCategories = () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.products() });
     queryClient.invalidateQueries({ queryKey: queryKeys.categories() });
+    queryClient.invalidateQueries({ queryKey: ['product-stats'] });
   };
 
   // Après une synchronisation réussie, le stock local (décrémenté de façon
@@ -122,6 +124,7 @@ function ProductsContent() {
       queryClient.setQueryData(queryKeys.products(), (old: typeof productsData) =>
         old ? { ...old, items: [created, ...old.items], total: old.total + 1 } : old
       );
+      queryClient.invalidateQueries({ queryKey: ['product-stats'] });
     } catch (err: any) {
       toast.error(err.message || "Erreur lors de l'ajout");
     } finally {
@@ -171,6 +174,7 @@ function ProductsContent() {
       queryClient.setQueryData(queryKeys.products(), (old: typeof productsData) =>
         old ? { ...old, items: old.items.map(p => (p.id === updated.id ? updated : p)) } : old
       );
+      queryClient.invalidateQueries({ queryKey: ['product-stats'] });
     } catch (err: any) {
       toast.error(err.message || 'Erreur lors de la modification');
     } finally {
@@ -190,6 +194,7 @@ function ProductsContent() {
       queryClient.setQueryData(queryKeys.products(), (old: typeof productsData) =>
         old ? { ...old, items: old.items.filter(p => p.id !== deletedId), total: Math.max(0, old.total - 1) } : old
       );
+      queryClient.invalidateQueries({ queryKey: ['product-stats'] });
     } catch (err: any) {
       toast.error(err.message || 'Erreur lors de la suppression');
     } finally {
@@ -284,10 +289,15 @@ function ProductsContent() {
 
   useEffect(() => { setCurrentPage(1); }, [searchQuery, categoryIdFromUrl, perPage]);
 
-  // Indicateurs de catalogue — toujours calculés sur l'ensemble des
-  // produits chargés, pas seulement la page ou le filtre courant.
-  const totalStockValue = products.reduce((sum, p) => sum + p.price * p.stock, 0);
-  const totalStockUnits = products.reduce((sum, p) => sum + p.stock, 0);
+  // Indicateurs de catalogue — calculés côté serveur sur TOUT le catalogue
+  // (voir GET /products/stats), jamais en additionnant `products` : cette
+  // liste ne contient que la page chargée (100 au plus), ce qui plafonnait
+  // silencieusement ces chiffres et les faisait "redescendre" dès qu'une
+  // revalidation en arrière-plan remplaçait un ajout optimiste local
+  // au-delà de 100 par la vraie page serveur.
+  const totalProducts = productsData?.total ?? products.length;
+  const totalStockValue = statsData?.total_stock_value ?? 0;
+  const totalStockUnits = statsData?.total_stock_units ?? 0;
 
   const renderProductForm = (
     form: typeof addForm,
@@ -511,7 +521,7 @@ function ProductsContent() {
         <div className="kpi-card">
           <div className="kpi-icon-wrap kpi-icon-indigo"><Package size={20} /></div>
           <span className="kpi-label">{language === 'fr' ? 'Produits en catalogue' : 'Products in catalog'}</span>
-          <span className="kpi-value">{products.length}</span>
+          <span className="kpi-value">{totalProducts.toLocaleString('fr-FR')}</span>
         </div>
         <div className="kpi-card">
           <div className="kpi-icon-wrap kpi-icon-amber"><Layers size={20} /></div>

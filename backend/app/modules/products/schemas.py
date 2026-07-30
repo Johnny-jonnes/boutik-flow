@@ -101,6 +101,15 @@ class ProductListResponse(BaseModel):
     per_page: int
 
 
+class ProductStatsResponse(BaseModel):
+    """Statistiques agrégées du catalogue — calculées en base sur
+    l'ensemble des produits (pas seulement la page courante), pour rester
+    exactes quel que soit le nombre de produits de la boutique."""
+    total_products: int
+    total_stock_value: Decimal
+    total_stock_units: int
+
+
 class ProductBulkCreate(BaseModel):
     """Création groupée — jusqu'à 200 produits en un seul envoi."""
     products: list[ProductCreate] = Field(..., min_length=1, max_length=200)

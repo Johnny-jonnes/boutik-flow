@@ -218,6 +218,7 @@ export default function POSPage() {
             }
           : old
       );
+      queryClient.invalidateQueries({ queryKey: ['product-stats'] });
 
       // Animation succès
       SoundEffects.playSuccess();

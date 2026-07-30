@@ -107,7 +107,9 @@ def _build_order_response(order: Order, user_names: dict) -> OrderResponse:
 def _restock_order_items(db: Session, order: Order, current_user: CurrentUser, reason: str):
     """Remet en stock les articles d'une commande et trace chaque mouvement."""
     for item in order.items:
-        product = db.query(Product).filter(Product.id == item.product_id).first()
+        product = db.query(Product).filter(
+            and_(Product.id == item.product_id, Product.tenant_id == current_user.tenant_id)
+        ).first()
         if not product:
             continue
 
@@ -135,7 +137,9 @@ def _consume_order_items(db: Session, order: Order, current_user: CurrentUser):
     """
     products = {}
     for item in order.items:
-        product = db.query(Product).filter(Product.id == item.product_id).first()
+        product = db.query(Product).filter(
+            and_(Product.id == item.product_id, Product.tenant_id == current_user.tenant_id)
+        ).first()
         if not product:
             continue
         if product.stock < item.quantity:
@@ -615,7 +619,9 @@ def return_order_items(
         if item.quantity > order_item.quantity:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La quantité retournée dépasse la quantité achetée")
 
-        product = db.query(Product).filter(Product.id == item.product_id).first()
+        product = db.query(Product).filter(
+            and_(Product.id == item.product_id, Product.tenant_id == current_user.tenant_id)
+        ).first()
         if product:
             item_refund = Decimal(str(order_item.unit_price)) * Decimal(item.quantity)
             refund_amount += item_refund

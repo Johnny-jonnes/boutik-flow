@@ -42,6 +42,7 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: ['product-stats'] });
     };
     const onSyncComplete = (e: Event) => {
       const detail = (e as CustomEvent).detail as { succeeded: number } | undefined;

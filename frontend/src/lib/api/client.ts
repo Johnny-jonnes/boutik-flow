@@ -401,6 +401,17 @@ async function handleOfflineRequest<T>(path: string, options: RequestInit = {}):
   const method = (options.method || 'GET').toUpperCase();
   const uuid = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
+  // Agrégats catalogue : même remarque d'ordre que les deux blocs suivants —
+  // doit être vérifié avant le bloc générique `/products`. Hors-ligne, ces
+  // totaux ne peuvent refléter que ce qui est déjà en cache local (aussi
+  // complet que les GET/écritures déjà effectués sur cet appareil).
+  if (path.startsWith('/products/stats') && method === 'GET') {
+    const products = await OfflineDB.getProducts();
+    const total_stock_value = products.reduce((sum: number, p: any) => sum + (p.price || 0) * (p.stock || 0), 0);
+    const total_stock_units = products.reduce((sum: number, p: any) => sum + (p.stock || 0), 0);
+    return { total_products: products.length, total_stock_value, total_stock_units } as any as T;
+  }
+
   // Création groupée : même remarque que l'entrée de stock groupée ci-dessous
   // — doit être vérifié AVANT le bloc générique `/products`, sinon son POST
   // ({products: [...]}) serait traité comme un seul produit à créer.
@@ -1343,6 +1354,13 @@ export const api = {
 
   getProduct(id: string): Promise<Product> {
     return request(`/products/${id}`);
+  },
+
+  // Agrégats calculés en base sur TOUT le catalogue (pas seulement la page
+  // courante) — ne jamais recalculer ces valeurs en additionnant une liste
+  // paginée côté client, ce serait faux dès que le catalogue dépasse une page.
+  getProductStats(signal?: AbortSignal): Promise<{ total_products: number; total_stock_value: number; total_stock_units: number }> {
+    return request('/products/stats', { signal });
   },
 
   createProduct(data: ProductCreate): Promise<Product> {

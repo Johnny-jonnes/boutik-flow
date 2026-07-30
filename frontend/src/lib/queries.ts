@@ -36,3 +36,14 @@ export function useCategoriesQuery(page = 1, perPage = 100) {
     queryFn: ({ signal }) => api.getCategories(page, perPage, signal),
   });
 }
+
+// Agrégats catalogue (valeur totale du stock, unités totales, nombre de
+// produits) — calculés en base sur TOUT le catalogue, jamais en additionnant
+// une page de 100 produits côté client (faux dès que le catalogue dépasse
+// cette taille).
+export function useProductStatsQuery() {
+  return useQuery({
+    queryKey: ['product-stats'],
+    queryFn: ({ signal }) => api.getProductStats(signal),
+  });
+}

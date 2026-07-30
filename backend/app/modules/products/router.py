@@ -13,7 +13,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, func
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, CurrentUser
@@ -30,6 +30,7 @@ from app.modules.products.schemas import (
     StockBulkIn,
     StockBulkInResponse,
     StockBulkInError,
+    ProductStatsResponse,
     CategoryCreate,
     CategoryUpdate,
     CategoryResponse,
@@ -162,7 +163,9 @@ def delete_category(
         raise HTTPException(status_code=404, detail="Catégorie introuvable")
     
     # Remove category from products
-    db.query(Product).filter(Product.category_id == category_id).update({"category_id": None})
+    db.query(Product).filter(
+        and_(Product.category_id == category_id, Product.tenant_id == current_user.tenant_id)
+    ).update({"category_id": None})
     db.delete(category)
     db.commit()
 
@@ -223,6 +226,43 @@ def list_products(
         total=total,
         page=page,
         per_page=per_page,
+    )
+
+
+# ──────────────────────── GET /products/stats ────────────────────────
+# Doit être déclaré AVANT /{product_id} : sinon "stats" est capturé comme
+# un product_id (UUID invalide → 422) par la route paramétrée ci-dessous.
+
+@router.get(
+    "/stats",
+    response_model=ProductStatsResponse,
+    summary="Statistiques agrégées du catalogue (toute la boutique)",
+)
+def get_product_stats(
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> ProductStatsResponse:
+    """
+    Calculées en base via SUM/COUNT sur l'ensemble du catalogue — jamais en
+    ramenant les lignes côté client puis en les additionnant, ce qui serait
+    faux dès que la boutique dépasse la taille d'une page (la valeur totale
+    du stock ne refléterait alors qu'un sous-ensemble des produits).
+    """
+    row = db.query(
+        func.count(Product.id),
+        func.coalesce(func.sum(Product.price * Product.stock), 0),
+        func.coalesce(func.sum(Product.stock), 0),
+    ).filter(
+        and_(
+            Product.tenant_id == current_user.tenant_id,
+            Product.deleted_at.is_(None),
+        )
+    ).first()
+
+    return ProductStatsResponse(
+        total_products=row[0] or 0,
+        total_stock_value=row[1] or 0,
+        total_stock_units=int(row[2] or 0),
     )
 
 

@@ -1,15 +1,24 @@
+from typing import Annotated
 from fastapi import APIRouter, HTTPException, Depends, Request
 from typing import List
 from .schemas import WhatsAppChat, WhatsAppSendRequest
 from app.core.config import settings
+from app.core.deps import get_current_user, CurrentUser
 from twilio.rest import Client
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/whatsapp", tags=["WhatsApp"])
 
+# NOTE : cette liste est un jeu de données de démonstration statique — la
+# fonctionnalité WhatsApp n'est pas encore branchée à une table par tenant
+# (voir le TODO du webhook plus bas). Comme elle n'était même pas protégée
+# par une authentification, deux boutiques différentes voyaient exactement
+# les mêmes conversations factices : vu de l'extérieur, cela ressemble à un
+# mélange de données entre boutiques. Une vraie persistance par tenant_id
+# reste à construire ; en attendant, l'endpoint est au moins authentifié.
 @router.get("/chats", response_model=List[WhatsAppChat])
-async def get_chats():
+async def get_chats(current_user: Annotated[CurrentUser, Depends(get_current_user)]):
     return [
         {"id": "c1", "client": "Fatoumata Bah", "lastMessage": "Merci, la robe est parfaite !", "time": "10:05", "unread": 0, "aiSuggestion": None},
         {"id": "c2", "client": "Mamadou Diallo", "lastMessage": "Combien coûte la livraison pour Dixinn ?", "time": "09:30", "unread": 1, "aiSuggestion": "La livraison à Dixinn coûte 20 000 GNF et prend 24h."},
@@ -18,7 +27,7 @@ async def get_chats():
     ]
 
 @router.post("/send")
-async def send_message(req: WhatsAppSendRequest):
+async def send_message(req: WhatsAppSendRequest, current_user: Annotated[CurrentUser, Depends(get_current_user)]):
     if not settings.TWILIO_ACCOUNT_SID or not settings.TWILIO_AUTH_TOKEN:
         logger.warning("Twilio credentials not configured. Mocking send.")
         return {"status": "success", "message_id": "mock_123", "note": "Credentials missing"}
