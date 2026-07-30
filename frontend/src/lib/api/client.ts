@@ -50,7 +50,7 @@ import type {
   TransactionCreatePayload,
   ClientDebt,
 } from '@/types';
-import { OfflineDB, OfflineQueue, SyncJournal, describeOperation, type QueuedOp } from '@/lib/offlineDb';
+import { OfflineDB, OfflineQueue, SyncJournal, describeOperation, clearOfflineDatabase, type QueuedOp } from '@/lib/offlineDb';
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
@@ -1104,6 +1104,10 @@ async function request<T>(
     }
     clearTokens();
     if (typeof window !== 'undefined' && !window.location.pathname.includes('/login') && path !== '/auth/login') {
+      // Même précaution qu'à la déconnexion volontaire : un appareil partagé
+      // ne doit pas garder le cache hors-ligne de la session expirée pour
+      // la prochaine boutique/utilisateur qui se connecte dessus.
+      await clearOfflineDatabase();
       window.location.href = '/login?expired=true';
     }
   }

@@ -56,6 +56,38 @@ function openDb(): Promise<IDBDatabase> {
   return dbPromise;
 }
 
+/**
+ * Vide entièrement le cache hors-ligne (IndexedDB) — appelé à la
+ * déconnexion et sur toute expiration de session forcée. Sur un appareil
+ * partagé entre boutiques (poste de caisse commun, tablette prêtée...),
+ * sans cet appel les produits/clients/commandes de la boutique précédente
+ * resteraient en cache local et pourraient s'afficher pour la boutique
+ * suivante tant qu'aucune synchronisation n'a eu lieu — la couche mémoire
+ * (TanStack Query) n'a pas ce risque : `handleLogout` navigue vers /login
+ * par un rechargement complet de page, ce qui réinitialise déjà tout le
+ * tas JS et son cache en mémoire.
+ */
+export async function clearOfflineDatabase(): Promise<void> {
+  if (typeof indexedDB === 'undefined') return;
+  try {
+    if (dbPromise) {
+      const db = await dbPromise.catch(() => null);
+      db?.close();
+    }
+  } finally {
+    dbPromise = null;
+  }
+  await new Promise<void>((resolve) => {
+    const req = indexedDB.deleteDatabase(DB_NAME);
+    req.onsuccess = () => resolve();
+    req.onerror = () => resolve();
+    // Une autre invite/onglet a encore une connexion ouverte : ne bloque
+    // jamais la déconnexion en cours pour autant, la base sera de toute
+    // façon écrasée dès la prochaine connexion (voir OfflineDB.saveXxx).
+    req.onblocked = () => resolve();
+  });
+}
+
 function tx<T>(store: StoreName, mode: IDBTransactionMode, run: (os: IDBObjectStore) => IDBRequest<T>): Promise<T> {
   return openDb().then((db) => new Promise<T>((resolve, reject) => {
     const t = db.transaction(store, mode);

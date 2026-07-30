@@ -31,6 +31,7 @@ import { PinLock } from '@/components/ui/PinLock';
 import { usePinLock } from '@/hooks/usePinLock';
 import { getSoundVolumePreference, setSoundVolumePreference, VolumeLevel, SoundEffects, triggerHaptic } from '@/lib/audio';
 import { OfflineStatusBar } from '@/components/ui/OfflineStatusBar';
+import { clearOfflineDatabase } from '@/lib/offlineDb';
 import { SyncJournalModal } from '@/components/ui/SyncJournalModal';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
@@ -221,7 +222,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Sur un appareil partagé entre boutiques, le cache hors-ligne (IndexedDB)
+    // doit être vidé avant qu'un autre utilisateur/boutique ne se connecte —
+    // sinon ses produits/clients/commandes resteraient visibles localement
+    // tant qu'aucune synchronisation n'a eu lieu.
+    await clearOfflineDatabase();
     localStorage.clear();
     window.location.href = '/login';
   };
