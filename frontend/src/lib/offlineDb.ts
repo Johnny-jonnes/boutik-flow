@@ -15,11 +15,15 @@
  */
 
 const DB_NAME = 'boutikflow_offline';
-const DB_VERSION = 1;
+// v2 : ajout du store 'sync_journal' — historique persistant des opérations
+// de synchronisation (contrairement à 'sync_queue', une entrée n'est jamais
+// supprimée à la confirmation, elle passe juste au statut "confirmed" ;
+// c'est l'outil de diagnostic en cas de vente signalée comme perdue.
+const DB_VERSION = 2;
 
 const STORES = [
   'products', 'clients', 'categories', 'orders',
-  'debts', 'transactions', 'suppliers', 'sync_queue', 'meta',
+  'debts', 'transactions', 'suppliers', 'sync_queue', 'sync_journal', 'meta',
 ] as const;
 export type StoreName = typeof STORES[number];
 
@@ -40,6 +44,9 @@ function openDb(): Promise<IDBDatabase> {
         if (store === 'sync_queue') {
           os.createIndex('status', 'status', { unique: false });
           os.createIndex('createdAt', 'createdAt', { unique: false });
+        }
+        if (store === 'sync_journal') {
+          os.createIndex('updatedAt', 'updatedAt', { unique: false });
         }
       }
     };
@@ -191,5 +198,79 @@ export const OfflineQueue = {
       if (op.body && op.body.includes(localId)) { op.body = op.body.split(localId).join(realId); changed = true; }
       if (changed) await OfflineQueue.put(op);
     }
+  },
+};
+
+// ─── Journal de synchronisation ─────────────────────────────────────────
+//
+// Contrairement à 'sync_queue' (qui ne contient QUE les opérations encore
+// en attente ou en échec — une opération réussie en est retirée), ce
+// journal garde une trace de CHAQUE opération, y compris une fois
+// confirmée par le serveur : c'est l'outil de diagnostic quand un
+// commerçant signale "cette vente n'apparaît nulle part" — on peut
+// retrouver ici si elle a bien été mise en file, envoyée, confirmée, ou
+// si elle est restée bloquée en erreur, avec l'horodatage de chaque étape.
+
+export type SyncJournalStatus = 'pending' | 'sent' | 'confirmed' | 'error';
+
+export interface SyncJournalEntry {
+  id: string;
+  opId: string;
+  method: string;
+  path: string;
+  description: string;
+  status: SyncJournalStatus;
+  errorMessage?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// Borne la taille du journal — un appareil resté hors-ligne très longtemps
+// avec une activité intense ne doit pas faire grossir IndexedDB sans limite.
+const JOURNAL_MAX_ENTRIES = 500;
+
+/** "POST /orders" → "Vente" — partagée entre le journal (client.ts) et
+ *  l'indicateur hors-ligne (OfflineStatusBar.tsx) pour ne décrire chaque
+ *  route qu'à un seul endroit. */
+export function describeOperation(method: string, path: string): string {
+  const p = path.split('?')[0];
+  if (p.startsWith('/orders')) return 'Vente';
+  if (p.startsWith('/products/stock/bulk-in')) return 'Entrée de stock groupée';
+  if (p.startsWith('/products/bulk')) return 'Création de produits groupée';
+  if (p.startsWith('/products')) return method === 'DELETE' ? 'Suppression produit' : 'Produit';
+  if (p.startsWith('/clients')) return 'Client';
+  if (p.startsWith('/suppliers')) return 'Fournisseur';
+  if (p.includes('/pay')) return 'Paiement de dette';
+  if (p.startsWith('/crm/debts')) return 'Dette';
+  if (p.startsWith('/finance')) return 'Mouvement de caisse';
+  if (p.startsWith('/categories')) return 'Catégorie';
+  return p;
+}
+
+export const SyncJournal = {
+  async getAll(): Promise<SyncJournalEntry[]> {
+    const items = await getAll<SyncJournalEntry>('sync_journal');
+    return items.sort((a, b) => b.updatedAt - a.updatedAt);
+  },
+  async append(entry: Omit<SyncJournalEntry, 'id' | 'updatedAt'>): Promise<string> {
+    const id = `j-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    await upsert('sync_journal', { ...entry, id, updatedAt: Date.now() });
+    await SyncJournal.prune();
+    return id;
+  },
+  async updateStatus(opId: string, status: SyncJournalStatus, errorMessage?: string): Promise<void> {
+    const items = await getAll<SyncJournalEntry>('sync_journal');
+    const entry = items.find((e) => e.opId === opId);
+    if (!entry) return;
+    entry.status = status;
+    entry.errorMessage = errorMessage;
+    entry.updatedAt = Date.now();
+    await upsert('sync_journal', entry);
+  },
+  async prune(maxEntries: number = JOURNAL_MAX_ENTRIES): Promise<void> {
+    const items = await SyncJournal.getAll();
+    if (items.length <= maxEntries) return;
+    const toRemove = items.slice(maxEntries);
+    for (const entry of toRemove) await remove('sync_journal', entry.id);
   },
 };

@@ -50,7 +50,7 @@ import type {
   TransactionCreatePayload,
   ClientDebt,
 } from '@/types';
-import { OfflineDB, OfflineQueue, type QueuedOp } from '@/lib/offlineDb';
+import { OfflineDB, OfflineQueue, SyncJournal, describeOperation, type QueuedOp } from '@/lib/offlineDb';
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
@@ -225,6 +225,14 @@ async function enqueueOperation(method: string, path: string, body: string | und
     idempotencyKey,
   };
   await OfflineQueue.put(op);
+  await SyncJournal.append({
+    opId: op.id,
+    method,
+    path,
+    description: describeOperation(method, path),
+    status: 'pending',
+    createdAt: op.createdAt,
+  });
   await notifyQueueChanged();
 }
 
@@ -237,6 +245,13 @@ export async function getSyncQueueStatus() {
   };
 }
 
+/** Historique complet des opérations de synchronisation (jusqu'à 500 plus
+ *  récentes), y compris déjà confirmées — outil de diagnostic pour une
+ *  vente/action signalée comme manquante. */
+export async function getSyncJournal() {
+  return SyncJournal.getAll();
+}
+
 /** Remet une opération en échec dans la file, pour qu'elle soit rejouée au
  *  prochain sync (déclenché manuellement par l'utilisateur depuis l'UI). */
 export async function retryFailedOperation(id: string) {
@@ -247,6 +262,7 @@ export async function retryFailedOperation(id: string) {
     op.errorMessage = undefined;
     op.nextAttemptAt = undefined;
     await OfflineQueue.put(op);
+    await SyncJournal.updateStatus(op.id, 'pending');
   }
   await notifyQueueChanged();
 }
@@ -254,6 +270,7 @@ export async function retryFailedOperation(id: string) {
 /** Abandonne définitivement une opération en échec (ex: vente devenue
  *  invalide car le stock a été épuisé entre-temps sur un autre appareil). */
 export async function discardFailedOperation(id: string) {
+  await SyncJournal.updateStatus(id, 'error', 'Abandonnée manuellement par le commerçant');
   await OfflineQueue.remove(id);
   await notifyQueueChanged();
 }
@@ -300,6 +317,8 @@ export async function syncOfflineQueue(): Promise<{ succeeded: number; failed: n
       // recréer la ressource.
       if (op.idempotencyKey) headers.set('Idempotency-Key', op.idempotencyKey);
 
+      await SyncJournal.updateStatus(op.id, 'sent');
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
       const res = await fetch(`${API_BASE_URL}${op.path}`, {
@@ -313,6 +332,7 @@ export async function syncOfflineQueue(): Promise<{ succeeded: number; failed: n
       if (res.ok) {
         succeeded++;
         await OfflineQueue.remove(op.id);
+        await SyncJournal.updateStatus(op.id, 'confirmed');
 
         if (op.localId) {
           const created = await res.clone().json().catch(() => null);
@@ -333,6 +353,7 @@ export async function syncOfflineQueue(): Promise<{ succeeded: number; failed: n
         op.errorMessage = message;
         op.attempts += 1;
         await OfflineQueue.put(op);
+        await SyncJournal.updateStatus(op.id, 'error', message);
       } else {
         // Erreur serveur (5xx), transitoire : backoff sur CETTE opération
         // et on continue avec la suite de la file plutôt que de tout
@@ -340,6 +361,7 @@ export async function syncOfflineQueue(): Promise<{ succeeded: number; failed: n
         op.attempts += 1;
         op.nextAttemptAt = Date.now() + backoffDelay(op.attempts);
         await OfflineQueue.put(op);
+        await SyncJournal.updateStatus(op.id, 'pending', `Erreur serveur ${res.status} — nouvelle tentative programmée`);
         stoppedEarly = true;
       }
     } catch {
@@ -351,6 +373,7 @@ export async function syncOfflineQueue(): Promise<{ succeeded: number; failed: n
       op.attempts += 1;
       op.nextAttemptAt = Date.now() + backoffDelay(op.attempts);
       await OfflineQueue.put(op);
+      await SyncJournal.updateStatus(op.id, 'pending', 'Connexion interrompue — nouvelle tentative programmée');
       stoppedEarly = true;
       break;
     }

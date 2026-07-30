@@ -31,6 +31,7 @@ import { PinLock } from '@/components/ui/PinLock';
 import { usePinLock } from '@/hooks/usePinLock';
 import { getSoundVolumePreference, setSoundVolumePreference, VolumeLevel, SoundEffects, triggerHaptic } from '@/lib/audio';
 import { OfflineStatusBar } from '@/components/ui/OfflineStatusBar';
+import { SyncJournalModal } from '@/components/ui/SyncJournalModal';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 
@@ -132,6 +133,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     plan: 'freemium',
   });
   const [soundVolume, setSoundVolume] = useState<VolumeLevel>('normal');
+  const [isSyncJournalOpen, setIsSyncJournalOpen] = useState(false);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const { language, setLanguage } = useLanguage();
 
@@ -235,6 +237,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="shell">
       {isLocked && <PinLock onVerify={verifyPin} error={pinError} onClearError={() => setPinError('')} />}
+      <SyncJournalModal isOpen={isSyncJournalOpen} onClose={() => setIsSyncJournalOpen(false)} />
 
       {/* ── Mobile top bar — affiche le nom de la boutique ── */}
       <header className="mobile-bar">
@@ -315,6 +318,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="sidebar__footer">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
             <ThemeToggle />
+            <button
+              className="admin-bell-btn admin-bell-btn--sidebar"
+              onClick={() => setIsSyncJournalOpen(true)}
+              aria-label={language === 'fr' ? 'Journal de synchronisation' : 'Sync journal'}
+              title={language === 'fr' ? 'Journal de synchronisation' : 'Sync journal'}
+            >
+              <History size={15} />
+            </button>
             {userInfo.role?.toLowerCase() === 'admin' && (
               <Link href="/admin" className="admin-bell-btn admin-bell-btn--sidebar" aria-label="Notifications admin">
                 <Bell size={15} />

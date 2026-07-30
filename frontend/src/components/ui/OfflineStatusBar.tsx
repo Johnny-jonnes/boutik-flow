@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { WifiOff, RefreshCw, Check, AlertTriangle, ChevronDown, X, RotateCcw } from 'lucide-react';
 import { getSyncQueueStatus, retryFailedOperation, discardFailedOperation, syncOfflineQueue } from '@/lib/api/client';
+import { describeOperation } from '@/lib/offlineDb';
 
 type SyncStatus = 'online' | 'offline' | 'syncing' | 'synced' | 'issues';
 interface FailedOp { id: string; method: string; path: string; errorMessage?: string; attempts: number; createdAt: number }
@@ -17,21 +18,6 @@ function timeAgo(ts: number | undefined): string {
   const h = Math.floor(m / 60);
   if (h < 24) return `il y a ${h}h`;
   return `il y a ${Math.floor(h / 24)}j`;
-}
-
-/** "POST /orders" → "Vente" ; devine une étiquette lisible à partir de la
- *  route plutôt que d'afficher le chemin technique au commerçant. */
-function describeOp(method: string, path: string): string {
-  const p = path.split('?')[0];
-  if (p.startsWith('/orders')) return 'Vente';
-  if (p.startsWith('/products')) return method === 'DELETE' ? 'Suppression produit' : 'Produit';
-  if (p.startsWith('/clients')) return 'Client';
-  if (p.startsWith('/suppliers')) return 'Fournisseur';
-  if (p.includes('/pay')) return 'Paiement de dette';
-  if (p.startsWith('/crm/debts')) return 'Dette';
-  if (p.startsWith('/finance')) return 'Mouvement de caisse';
-  if (p.startsWith('/categories')) return 'Catégorie';
-  return p;
 }
 
 export function OfflineStatusBar() {
@@ -188,7 +174,7 @@ export function OfflineStatusBar() {
                   {failedOps.map(op => (
                     <div key={op.id} className="offline-panel-item">
                       <div className="offline-panel-item-info">
-                        <span className="offline-panel-item-title">{describeOp(op.method, op.path)}</span>
+                        <span className="offline-panel-item-title">{describeOperation(op.method, op.path)}</span>
                         <span className="offline-panel-item-error">{op.errorMessage || 'Erreur inconnue'}</span>
                       </div>
                       <div className="offline-panel-item-actions">
