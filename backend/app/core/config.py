@@ -11,6 +11,16 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str
+    # Connexion applicative restreinte (RLS) — voir migration
+    # a546853c47ae_structural_rls_policies. Optionnelle et vide par défaut :
+    # tant qu'elle n'est pas configurée, l'app continue de tourner
+    # exactement comme avant (repli sur DATABASE_URL, qui contourne RLS).
+    # La poser active réellement l'isolation en profondeur pour toutes les
+    # routes authentifiées normales ; les 3 endpoints d'auth publics et le
+    # panneau admin continuent d'utiliser DATABASE_URL (ils en ont besoin :
+    # chercher un tenant avant qu'un contexte n'existe, ou accès
+    # cross-tenant légitime pour l'admin).
+    APP_DATABASE_URL: str = ""
 
     # JWT
     SECRET_KEY: str

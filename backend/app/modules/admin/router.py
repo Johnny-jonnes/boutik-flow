@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func, or_, text
 
-from app.core.database import get_db
+from app.core.database import get_bypass_db
 from app.core.security import hash_password
 from app.core.deps import require_admin, CurrentUser
 from app.core.mailer import (
@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["Administration"])
 
 AdminUser = Annotated[CurrentUser, Depends(require_admin)]
-DB = Annotated[Session, Depends(get_db)]
+DB = Annotated[Session, Depends(get_bypass_db)]
 
 
 # ─── Helpers ────────────────────────────────────────────────────────────────

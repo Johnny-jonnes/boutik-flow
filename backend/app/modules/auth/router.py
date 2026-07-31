@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
 from app.core.config import settings
-from app.core.database import get_db
+from app.core.database import get_db, get_bypass_db
 from app.core.mailer import send_admin_new_registration_notification
 from app.core.security import (
     hash_password,
@@ -77,7 +77,7 @@ def _build_token_response(user: User) -> TokenResponse:
 )
 def register(
     payload: RegisterRequest,
-    db: Annotated[Session, Depends(get_db)],
+    db: Annotated[Session, Depends(get_bypass_db)],
     background_tasks: BackgroundTasks,
 ) -> RegisterResponse:
     """
@@ -189,7 +189,7 @@ def register(
 )
 def login(
     payload: LoginRequest,
-    db: Annotated[Session, Depends(get_db)],
+    db: Annotated[Session, Depends(get_bypass_db)],
 ) -> TokenResponse:
     """
     Connexion par slug boutique + email + mot de passe.
@@ -258,7 +258,7 @@ def login(
 )
 def refresh_token(
     payload: RefreshTokenRequest,
-    db: Annotated[Session, Depends(get_db)],
+    db: Annotated[Session, Depends(get_bypass_db)],
 ) -> TokenResponse:
     """Renouvelle l'access token à partir d'un refresh token valide."""
     token_payload = decode_token(payload.refresh_token)

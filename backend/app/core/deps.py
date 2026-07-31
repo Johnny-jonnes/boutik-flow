@@ -55,6 +55,17 @@ async def get_current_user(
     # Injecter le tenant dans le contexte pour l'isolation des données
     set_current_tenant_id(tenant_uuid)
 
+    # Filet de sécurité au niveau base de données (RLS, voir migration
+    # a546853c47ae) : sans effet tant que la connexion applicative
+    # restreinte n'est pas configurée (APP_DATABASE_URL), mais devient le
+    # dernier rempart contre un tenant_id oublié dans une requête dès
+    # qu'elle l'est. On stocke la valeur sur la session (pas d'exécution
+    # SQL directe ici) : l'event "after_begin" de app.core.database repose
+    # automatiquement SET LOCAL à chaque nouvelle transaction Postgres —
+    # y compris après un commit()+refresh() en plein milieu de la requête,
+    # ce qu'un simple SET LOCAL ponctuel ne survivrait pas.
+    db.info["tenant_id"] = str(tenant_uuid)
+
     return CurrentUser(
         user_id=uuid.UUID(user_id),
         tenant_id=tenant_uuid,
