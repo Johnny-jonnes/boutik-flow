@@ -342,8 +342,8 @@ export default function POSPage() {
                     {inCart && <span className="p-qty-badge">{inCart.cartQuantity}</span>}
                     
                     <div className="p-card-image-box">
-                      {product.images?.[0] ? (
-                        <img src={product.images[0]} alt={product.name} className="p-card-img" />
+                      {product.thumbnail ? (
+                        <img src={product.thumbnail} alt={product.name} className="p-card-img" />
                       ) : (
                         <div className="p-card-img-placeholder">
                           <span className="p-card-emoji"><Package size={24} style={{ color: 'var(--color-brand-400)' }} /></span>

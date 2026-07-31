@@ -12,12 +12,13 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.encoders import jsonable_encoder
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, selectinload, defer
 from sqlalchemy import and_, or_, func
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, CurrentUser
 from app.core.idempotency import IdempotencyHeader, get_cached_response, store_response
+from app.core.thumbnails import generate_thumbnail
 from app.modules.products.models import Product, InventoryLog, Category
 from app.modules.products.schemas import (
     ProductCreate,
@@ -192,6 +193,33 @@ def delete_category(
 
 # ──────────────────────────── GET /products ────────────────────────────
 
+def _product_to_list_response(p: Product) -> ProductResponse:
+    """Construit la réponse d'un produit pour une LISTE, sans jamais
+    accéder à p.images : ce champ est différé (defer) sur la requête de
+    list_products, et le lire ici déclencherait une requête de lazy-load
+    par produit (retour du problème qu'on corrige, en pire — un aller-
+    retour DB par ligne au lieu d'une grosse réponse)."""
+    return ProductResponse(
+        id=p.id,
+        tenant_id=p.tenant_id,
+        name=p.name,
+        description=p.description,
+        price=p.price,
+        cost_price=p.cost_price,
+        stock=p.stock,
+        category_id=p.category_id,
+        category_rel=CategoryResponse.model_validate(p.category_rel) if p.category_rel else None,
+        images=[],
+        thumbnail=p.thumbnail,
+        is_available=p.is_available,
+        sku=p.sku,
+        barcode=p.barcode,
+        created_at=p.created_at,
+        updated_at=p.updated_at,
+        deleted_at=p.deleted_at,
+    )
+
+
 @router.get(
     "",
     response_model=ProductListResponse,
@@ -217,7 +245,14 @@ def list_products(
     (deleted_at renseigné) pour que le client synchronise aussi les
     suppressions, jamais seulement les créations/modifications.
     """
-    query = db.query(Product).options(selectinload(Product.category_rel)).filter(
+    # images n'est jamais chargée pour une liste : une boutique avec des
+    # photos sur la plupart de son catalogue voyait cette réponse peser
+    # plusieurs dizaines de Mo (chaque image pleine résolution en
+    # base64), au point que la page ne chargeait plus du tout. La
+    # miniature compressée (thumbnail, voir app.core.thumbnails) suffit à
+    # l'affichage en liste/grille ; l'image pleine résolution reste
+    # disponible à la demande via GET /products/{id}.
+    query = db.query(Product).options(selectinload(Product.category_rel), defer(Product.images)).filter(
         Product.tenant_id == current_user.tenant_id,
     )
     if updated_since is not None:
@@ -256,7 +291,7 @@ def list_products(
     )
 
     return ProductListResponse(
-        items=[ProductResponse.model_validate(p) for p in items],
+        items=[_product_to_list_response(p) for p in items],
         total=total,
         page=page,
         per_page=per_page,
@@ -404,12 +439,13 @@ def create_product(
         stock=payload.stock,
         category_id=payload.category_id,
         images=payload.images,
+        thumbnail=generate_thumbnail(payload.images[0]) if payload.images else None,
         is_available=payload.is_available,
         sku=sku_val,
         barcode=payload.barcode,
     )
     db.add(product)
-    
+
     # Premier log (création)
     db.flush()
     _create_inventory_log(
@@ -516,6 +552,7 @@ def create_products_bulk(
                 stock=item.stock,
                 category_id=item.category_id,
                 images=item.images,
+                thumbnail=generate_thumbnail(item.images[0]) if item.images else None,
                 is_available=item.is_available,
                 sku=sku_val,
                 barcode=item.barcode,
@@ -687,6 +724,9 @@ def update_product(
     update_data = payload.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(product, field, value)
+
+    if "images" in update_data:
+        product.thumbnail = generate_thumbnail(update_data["images"][0]) if update_data["images"] else None
 
     db.commit()
     db.refresh(product)

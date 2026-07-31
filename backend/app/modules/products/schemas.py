@@ -84,6 +84,11 @@ class ProductResponse(BaseModel):
     category_id: uuid.UUID | None
     category_rel: CategoryResponse | None = None
     images: list[str]
+    # Miniature compressée dérivée de images[0] (voir app.core.thumbnails) —
+    # seule image renvoyée dans une liste de produits, jamais images[] en
+    # pleine résolution (voir list_products). Absente/vide tant qu'un
+    # produit existant avec photo n'a pas encore été rétro-rempli.
+    thumbnail: str | None = None
     is_available: bool
     sku: str | None
     barcode: str | None

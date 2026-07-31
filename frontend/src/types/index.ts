@@ -131,7 +131,13 @@ export interface Product {
   stock: number;
   category_id: string | null;
   category_rel: Category | null;
+  /** Vide dans une liste (GET /products) — jamais chargée en pleine résolution
+   *  pour éviter une réponse de plusieurs dizaines de Mo. Utiliser `thumbnail`
+   *  pour l'affichage en grille, ou récupérer le produit seul (GET /products/{id})
+   *  pour l'image complète (voir ouverture des modals détail/édition). */
   images: string[];
+  /** Miniature compressée (~5-10 Ko), présente en liste ET en détail. */
+  thumbnail?: string | null;
   is_available: boolean;
   sku: string | null;
   barcode: string | null;

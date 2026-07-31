@@ -132,21 +132,34 @@ function ProductsContent() {
     }
   };
 
-  // Edit
-  const openEdit = (product: Product) => {
-    setEditProduct(product);
+  // Edit — la liste (et donc `product` ici) ne contient jamais l'image en
+  // pleine résolution (voir GET /products, qui ne renvoie que `thumbnail`
+  // pour rester léger). handleEdit renvoie systématiquement editImagePreview
+  // comme nouvelles images à l'enregistrement, même sans y toucher : partir
+  // de la miniature dégraderait silencieusement la vraie photo à chaque
+  // modification qui ne change pas l'image. On recharge donc le produit
+  // complet avant d'ouvrir le formulaire.
+  const openEdit = async (product: Product) => {
+    let full = product;
+    try {
+      full = await api.getProduct(product.id);
+    } catch {
+      toast.error('Impossible de charger le produit, réessayez');
+      return;
+    }
+    setEditProduct(full);
     setEditForm({
-      name: product.name,
-      price: String(product.price),
-      cost_price: product.cost_price != null ? String(product.cost_price) : '',
-      stock: String(product.stock),
-      category_id: product.category_id || '',
-      description: product.description || '',
-      is_available: product.is_available,
-      sku: product.sku || '',
-      barcode: product.barcode || '',
+      name: full.name,
+      price: String(full.price),
+      cost_price: full.cost_price != null ? String(full.cost_price) : '',
+      stock: String(full.stock),
+      category_id: full.category_id || '',
+      description: full.description || '',
+      is_available: full.is_available,
+      sku: full.sku || '',
+      barcode: full.barcode || '',
     });
-    setEditImagePreview(product.images?.[0] || null);
+    setEditImagePreview(full.images?.[0] || null);
   };
 
   const handleEdit = async (e: React.FormEvent) => {
@@ -593,8 +606,8 @@ function ProductsContent() {
               <tr key={product.id} className={!product.is_available ? 'row-disabled' : ''}>
                 <td>
                   <div className="product-cell">
-                    {product.images && product.images[0] ? (
-                      <img src={product.images[0]} alt={product.name} className="product-list-img" />
+                    {product.thumbnail ? (
+                      <img src={product.thumbnail} alt={product.name} className="product-list-img" />
                     ) : (
                       <div className="product-img-placeholder"><ImageIcon size={20} /></div>
                     )}
@@ -686,9 +699,9 @@ function ProductsContent() {
       <Modal isOpen={!!viewProduct} onClose={() => setViewProduct(null)} title="Détails du produit">
         {viewProduct && (
           <div className="detail-grid">
-            {viewProduct.images && viewProduct.images[0] && (
+            {(viewProduct.images?.[0] || viewProduct.thumbnail) && (
               <div className="detail-image-wrap">
-                <img src={viewProduct.images[0]} alt={viewProduct.name} className="detail-product-img" />
+                <img src={viewProduct.images?.[0] || viewProduct.thumbnail!} alt={viewProduct.name} className="detail-product-img" />
               </div>
             )}
             <div className="detail-row"><span className="detail-label">Nom</span><span className="detail-value">{viewProduct.name}</span></div>

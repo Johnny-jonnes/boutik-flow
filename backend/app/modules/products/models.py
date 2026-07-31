@@ -43,6 +43,13 @@ class Product(Base):
     stock = Column(Integer, default=0, nullable=False)
     category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True)
     images = Column(ARRAY(String), default=[], nullable=False)
+    # Miniature compressée (petit data-URI JPEG, ~5-10 Ko) dérivée de
+    # images[0] côté serveur — voir app.core.thumbnails. Sert à afficher un
+    # aperçu dans les listes/grilles (catalogue, POS) sans jamais y
+    # transporter les images pleine résolution : un catalogue avec des
+    # photos sur la plupart des produits rendait la liste tout simplement
+    # injoignable (dizaines de Mo, la page ne chargeait plus du tout).
+    thumbnail = Column(Text, nullable=True)
     is_available = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
