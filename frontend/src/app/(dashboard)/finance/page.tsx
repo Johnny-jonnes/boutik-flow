@@ -110,7 +110,7 @@ export default function FinancePage() {
   // qu'elle est périmée et n'écrase pas un résultat plus récent.
   const fetchIdRef = useRef(0);
 
-  const fetchTransactions = useCallback(async () => {
+  const fetchTransactions = useCallback(async (silent = false) => {
     // Tant que les deux dates d'une période personnalisée ne sont pas
     // choisies, il n'y a rien de sensé à demander au serveur : celui-ci
     // renverrait "toutes les transactions", ce qui affichait un instant
@@ -121,7 +121,10 @@ export default function FinancePage() {
     }
 
     const requestId = ++fetchIdRef.current;
-    setIsLoading(true);
+    // Un rafraîchissement déclenché en arrière-plan (synchronisation, nouvelle
+    // vente ailleurs) ne doit jamais vider la liste déjà affichée avant de la
+    // repeupler — seul le tout premier chargement affiche le spinner plein écran.
+    if (!silent) setIsLoading(true);
     try {
       const typeParam = selectedType !== 'all' ? selectedType : undefined;
       const categoryParam = selectedCategory !== 'all' ? selectedCategory : undefined;
@@ -150,7 +153,7 @@ export default function FinancePage() {
       setTotal(res.total || 0);
       setTotalPages(res.pages || 1);
     } catch (err: any) {
-      if (requestId === fetchIdRef.current) {
+      if (requestId === fetchIdRef.current && !silent) {
         console.error('Error loading finance transactions:', err);
         toast.error(err?.message || 'Erreur lors du chargement des transactions');
       }
@@ -172,7 +175,7 @@ export default function FinancePage() {
   useEffect(() => {
     const onSyncComplete = (e: Event) => {
       const detail = (e as CustomEvent).detail as { succeeded: number } | undefined;
-      if (detail?.succeeded) fetchTransactions();
+      if (detail?.succeeded) fetchTransactions(true);
     };
     window.addEventListener('boutikflow:sync-complete', onSyncComplete);
     return () => window.removeEventListener('boutikflow:sync-complete', onSyncComplete);
@@ -182,7 +185,7 @@ export default function FinancePage() {
   // existe déjà en local à cet instant (voir handleOfflineRequest côté
   // client), visible immédiatement sans attendre le retour de connexion.
   useEffect(() => {
-    const onOrderCreated = () => fetchTransactions();
+    const onOrderCreated = () => fetchTransactions(true);
     window.addEventListener('boutikflow:order-created', onOrderCreated);
     return () => window.removeEventListener('boutikflow:order-created', onOrderCreated);
   }, [fetchTransactions]);
@@ -240,7 +243,7 @@ export default function FinancePage() {
           : (language === 'fr' ? "Dépense enregistrée avec succès !" : "Expense transaction recorded successfully!")
       );
       setIsModalOpen(false);
-      fetchTransactions();
+      fetchTransactions(true);
     } catch (err: any) {
       console.error('Create transaction error:', err);
       toast.error(err?.message || (language === 'fr' ? 'Erreur lors de la création de la transaction' : 'Error creating transaction'));

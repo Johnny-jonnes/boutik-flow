@@ -103,7 +103,7 @@ export default function SalesHistoryPage() {
   useEffect(() => {
     const onSyncComplete = (e: Event) => {
       const detail = (e as CustomEvent).detail as { succeeded: number } | undefined;
-      if (detail?.succeeded) fetchSales();
+      if (detail?.succeeded) fetchSales(true);
     };
     window.addEventListener('boutikflow:sync-complete', onSyncComplete);
     return () => window.removeEventListener('boutikflow:sync-complete', onSyncComplete);
@@ -237,7 +237,7 @@ export default function SalesHistoryPage() {
       await api.returnOrderItems(returnOrder.id, itemsToReturn, returnReason, restockInventory);
       toast.success(language === 'fr' ? 'Retour validé avec succès' : 'Return processed successfully');
       setReturnOrder(null);
-      fetchSales();
+      fetchSales(true);
     } catch (err: any) {
       toast.error(err.message || (language === 'fr' ? 'Erreur lors du retour' : 'Error processing return'));
     } finally {

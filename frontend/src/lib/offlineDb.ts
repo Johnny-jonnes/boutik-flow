@@ -117,6 +117,28 @@ async function replaceAll(store: StoreName, items: any[]): Promise<void> {
   });
 }
 
+/**
+ * Écrit plusieurs objets dans plusieurs stores en UNE seule transaction
+ * IndexedDB — tout ou rien. Utilisée pour les écritures où une perte
+ * partielle serait grave (ex: une vente créée en local mais jamais mise
+ * en file si l'app est tuée entre les deux écritures, auparavant deux
+ * transactions séparées — voir createOrderAtomic dans client.ts). Ne pas
+ * appeler await entre les writes.put() de l'appelant : IndexedDB referme
+ * une transaction dès que la pile d'appels synchrone se vide, un await
+ * intercalé la ferme prématurément et fait échouer les writes suivants.
+ */
+async function atomicWrite(writes: { store: StoreName; item: any }[]): Promise<void> {
+  if (writes.length === 0) return;
+  const db = await openDb();
+  const stores = Array.from(new Set(writes.map((w) => w.store)));
+  return new Promise((resolve, reject) => {
+    const t = db.transaction(stores, 'readwrite');
+    for (const w of writes) t.objectStore(w.store).put(w.item);
+    t.oncomplete = () => resolve();
+    t.onerror = () => reject(t.error);
+  });
+}
+
 async function upsert(store: StoreName, item: any): Promise<void> {
   if (!item || item.id == null) return;
   await tx(store, 'readwrite', (os) => os.put(item));
@@ -168,7 +190,7 @@ async function setMeta<T>(key: string, value: T): Promise<void> {
   await upsert('meta', { id: key, value });
 }
 
-export const OfflineStore = { getAll, replaceAll, upsert, remove, getOne, getMeta, setMeta };
+export const OfflineStore = { getAll, replaceAll, upsert, remove, getOne, getMeta, setMeta, atomicWrite };
 
 // ─── Interface par entité — mêmes noms que l'ancien OfflineDB (localStorage)
 // pour limiter la surface de changement côté client.ts, désormais async. ──

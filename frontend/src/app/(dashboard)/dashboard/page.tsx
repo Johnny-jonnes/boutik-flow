@@ -199,7 +199,7 @@ export default function DashboardPage() {
   // plus récent (voir plus bas).
   const fetchIdRef = useRef(0);
 
-  const fetchData = async () => {
+  const fetchData = async (silent = false) => {
     // Une période "personnalisée" tant que les deux dates ne sont pas
     // encore choisies n'a pas de sens à envoyer au serveur : celui-ci
     // l'interprète alors comme "aucune contrainte" et renvoie les KPI de
@@ -212,7 +212,10 @@ export default function DashboardPage() {
 
     const requestId = ++fetchIdRef.current;
     try {
-      setIsLoading(true);
+      // Un rafraîchissement déclenché en arrière-plan (synchronisation,
+      // nouvelle vente ailleurs) ne doit jamais vider le tableau de bord
+      // déjà affiché avant de le repeupler.
+      if (!silent) setIsLoading(true);
       // Mêmes paramètres que le module Finance : c'est ce qui garantit que
       // les deux écrans affichent les mêmes chiffres pour une même période.
       const range = buildPeriodParams(periodFilter, customStartDate, customEndDate);
@@ -242,7 +245,7 @@ export default function DashboardPage() {
       setFilteredOrders(ordersInPeriod);
       setAnalytics(analyticsData);
     } catch (error) {
-      if (requestId === fetchIdRef.current) {
+      if (requestId === fetchIdRef.current && !silent) {
         toast.error(language === 'fr' ? 'Erreur lors du chargement des données' : 'Error loading dashboard data');
       }
     } finally {
@@ -264,7 +267,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const onSyncComplete = (e: Event) => {
       const detail = (e as CustomEvent).detail as { succeeded: number } | undefined;
-      if (detail?.succeeded) fetchData();
+      if (detail?.succeeded) fetchData(true);
     };
     window.addEventListener('boutikflow:sync-complete', onSyncComplete);
     return () => window.removeEventListener('boutikflow:sync-complete', onSyncComplete);
@@ -275,7 +278,7 @@ export default function DashboardPage() {
   // immédiatement, sans attendre le retour de connexion : la vente existe
   // déjà en local (IndexedDB) à cet instant, il n'y a qu'à la relire.
   useEffect(() => {
-    const onOrderCreated = () => fetchData();
+    const onOrderCreated = () => fetchData(true);
     window.addEventListener('boutikflow:order-created', onOrderCreated);
     return () => window.removeEventListener('boutikflow:order-created', onOrderCreated);
     // eslint-disable-next-line react-hooks/exhaustive-deps

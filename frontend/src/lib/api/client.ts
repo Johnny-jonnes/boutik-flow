@@ -50,7 +50,7 @@ import type {
   TransactionCreatePayload,
   ClientDebt,
 } from '@/types';
-import { OfflineDB, OfflineQueue, SyncJournal, describeOperation, clearOfflineDatabase, type QueuedOp } from '@/lib/offlineDb';
+import { OfflineDB, OfflineStore, OfflineQueue, SyncJournal, describeOperation, clearOfflineDatabase, type QueuedOp } from '@/lib/offlineDb';
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
@@ -705,12 +705,13 @@ async function handleOfflineRequest<T>(path: string, options: RequestInit = {}):
       const products = await OfflineDB.getProducts();
       let orderTotal = 0;
       const items = [];
+      const productWrites: { store: 'products'; item: any }[] = [];
       for (const item of rawItems) {
         const prod = products.find(p => p.id === item.product_id);
         if (prod) {
           orderTotal += prod.price * item.quantity;
           prod.stock = Math.max(0, prod.stock - item.quantity);
-          await OfflineDB.upsertProduct(prod);
+          productWrites.push({ store: 'products', item: prod });
         }
         items.push({ ...item, unit_price: prod?.price ?? 0, product_name: prod?.name ?? null });
       }
@@ -738,7 +739,6 @@ async function handleOfflineRequest<T>(path: string, options: RequestInit = {}):
         updated_at: nowIso,
         deleted_at: null,
       };
-      await OfflineDB.upsertOrder(newOrder);
 
       // Miroir de create_order côté serveur, qui enregistre toujours
       // automatiquement une transaction de vente à la création d'une
@@ -748,7 +748,7 @@ async function handleOfflineRequest<T>(path: string, options: RequestInit = {}):
       // restait figé jusqu'au retour de connexion et à la synchronisation
       // — visible pour tout sauf l'argent, ce qui n'a pas de sens pour un
       // commerçant qui vient d'encaisser.
-      await OfflineDB.upsertTransaction({
+      const newTransaction = {
         id: uuid(),
         type: 'income',
         category: 'sale',
@@ -757,7 +757,49 @@ async function handleOfflineRequest<T>(path: string, options: RequestInit = {}):
         payment_method: 'cash',
         reference: newOrder.id,
         created_at: nowIso,
-      });
+      };
+
+      // Stock, commande, transaction, mise en file de synchronisation ET
+      // journal : une seule transaction IndexedDB pour tout. Auparavant
+      // chacune de ces écritures était une transaction séparée — si l'app
+      // était tuée entre deux d'entre elles (fermeture brutale, batterie
+      // vide), la vente pouvait exister en local sans jamais être mise en
+      // file, donc ne jamais atteindre le serveur : une perte silencieuse
+      // et définitive. Ici, soit tout est écrit, soit rien ne l'est.
+      const parsedBody = { ...data, allow_stock_shortage: true };
+      const queueOp: QueuedOp = {
+        id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        method: 'POST',
+        path,
+        body: JSON.stringify(parsedBody),
+        createdAt: Date.now(),
+        status: 'pending',
+        attempts: 0,
+        localId: newOrder.id,
+        idempotencyKey: extractHeader(options.headers, 'Idempotency-Key'),
+      };
+      const journalEntry = {
+        id: `j-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        opId: queueOp.id,
+        method: 'POST',
+        path,
+        description: describeOperation('POST', path),
+        status: 'pending' as const,
+        createdAt: queueOp.createdAt,
+        updatedAt: Date.now(),
+      };
+
+      await OfflineStore.atomicWrite([
+        ...productWrites,
+        { store: 'orders', item: newOrder },
+        { store: 'transactions', item: newTransaction },
+        { store: 'sync_queue', item: queueOp },
+        { store: 'sync_journal', item: journalEntry },
+      ]);
+      // Best-effort, non-critique (purge du journal au-delà de 500 entrées) :
+      // ne fait jamais partie de la garantie d'atomicité ci-dessus.
+      SyncJournal.prune().catch(() => {});
+      notifyQueueChanged().catch(() => {});
 
       return newOrder as any as T;
     }
@@ -1051,22 +1093,16 @@ function extractHeader(headers: HeadersInit | undefined, name: string): string |
 async function handleOfflineRequestAndQueue<T>(path: string, options: RequestInit): Promise<T> {
   const result = await handleOfflineRequest<T>(path, options);
   const method = (options.method || 'GET').toUpperCase();
-  if (method !== 'GET') {
+  // POST /orders s'écrit, se met en file ET se journalise déjà en une seule
+  // transaction atomique à l'intérieur de handleOfflineRequest (voir
+  // OfflineStore.atomicWrite plus haut) — la mettre en file une seconde
+  // fois ici créerait un doublon dans sync_queue, donc une vente rejouée
+  // deux fois contre le serveur.
+  const alreadyQueuedAtomically = path.startsWith('/orders') && method === 'POST';
+  if (method !== 'GET' && !alreadyQueuedAtomically) {
     const localId = (result as { id?: string } | null)?.id;
     const idempotencyKey = extractHeader(options.headers, 'Idempotency-Key');
-    let bodyToQueue = options.body as string | undefined;
-    // La vente a déjà été annoncée au client (reçu imprimé) au moment de la
-    // créer localement : son rejeu contre le vrai serveur ne doit jamais
-    // pouvoir échouer pour un désaccord de stock — voir allow_stock_shortage
-    // côté backend (app/modules/orders/schemas.py).
-    if (path.startsWith('/orders') && method === 'POST' && bodyToQueue) {
-      try {
-        const parsed = JSON.parse(bodyToQueue);
-        parsed.allow_stock_shortage = true;
-        bodyToQueue = JSON.stringify(parsed);
-      } catch {}
-    }
-    await enqueueOperation(method, path, bodyToQueue, localId, idempotencyKey);
+    await enqueueOperation(method, path, options.body as string | undefined, localId, idempotencyKey);
   }
   return result;
 }
