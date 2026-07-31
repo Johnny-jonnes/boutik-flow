@@ -73,6 +73,12 @@ function ProductsContent() {
 
   const [addImagePreview, setAddImagePreview] = useState<string | null>(null);
   const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
+  // true seulement si l'utilisateur a réellement importé une nouvelle photo
+  // pendant cette édition (voir handleImageUpload) — distingue "aucun
+  // changement d'image" de "nouvelle image", pour ne jamais renvoyer au
+  // serveur l'aperçu (potentiellement une simple miniature basse résolution
+  // de repli, voir openEdit) comme si c'était une vraie nouvelle photo.
+  const [editImageChanged, setEditImageChanged] = useState(false);
 
   // Ré-appelle les deux requêtes (produits + catégories) en arrière-plan —
   // utilisé après une opération groupée (import en masse, entrée de stock
@@ -134,18 +140,20 @@ function ProductsContent() {
 
   // Edit — la liste (et donc `product` ici) ne contient jamais l'image en
   // pleine résolution (voir GET /products, qui ne renvoie que `thumbnail`
-  // pour rester léger). handleEdit renvoie systématiquement editImagePreview
-  // comme nouvelles images à l'enregistrement, même sans y toucher : partir
-  // de la miniature dégraderait silencieusement la vraie photo à chaque
-  // modification qui ne change pas l'image. On recharge donc le produit
-  // complet avant d'ouvrir le formulaire.
+  // pour rester léger) : on tente de recharger le produit complet pour
+  // avoir la vraie photo dans l'aperçu. Un échec (connexion instable) ne
+  // doit JAMAIS empêcher de modifier les autres champs — retombe alors
+  // sur les données déjà en liste (miniature à la place de l'image en
+  // aperçu). editImageChanged (jamais mis à true ici) garantit que
+  // handleEdit n'enverra cette miniature de repli comme nouvelle photo
+  // que si l'utilisateur en importe réellement une.
   const openEdit = async (product: Product) => {
-    let full = product;
+    let full: Product = product;
     try {
-      full = await api.getProduct(product.id);
+      const fetched = await api.getProduct(product.id);
+      if (fetched && fetched.id === product.id) full = fetched;
     } catch {
-      toast.error('Impossible de charger le produit, réessayez');
-      return;
+      // Silencieux : les champs texte restent modifiables même sans image fraîche.
     }
     setEditProduct(full);
     setEditForm({
@@ -159,12 +167,13 @@ function ProductsContent() {
       sku: full.sku || '',
       barcode: full.barcode || '',
     });
-    setEditImagePreview(full.images?.[0] || null);
+    setEditImagePreview(full.images?.[0] || full.thumbnail || null);
+    setEditImageChanged(false);
   };
 
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editProduct) return;
+    if (!editProduct?.id) { toast.error('Produit invalide, réessayez'); return; }
     setIsEditing(true);
     try {
       const finalSku = editForm.sku.trim() || generateClientSku(editForm.name);
@@ -180,7 +189,11 @@ function ProductsContent() {
         is_available: editForm.is_available,
         sku: finalSku,
         barcode: editForm.barcode || undefined,
-        images: editImagePreview ? [editImagePreview] : [],
+        // Omis si l'image n'a pas changé (voir editImageChanged) : la
+        // renvoyer systématiquement risquait d'écraser la vraie photo par
+        // un simple aperçu de repli (miniature) quand le rechargement en
+        // pleine résolution avait échoué à l'ouverture du formulaire.
+        ...(editImageChanged ? { images: editImagePreview ? [editImagePreview] : [] } : {}),
       });
       toast.success('Produit modifié avec succès');
       setEditProduct(null);
@@ -225,6 +238,7 @@ function ProductsContent() {
       const compressed = await compressImage(base64String);
       if (isEdit) {
         setEditImagePreview(compressed);
+        setEditImageChanged(true);
       } else {
         setAddImagePreview(compressed);
       }

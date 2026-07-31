@@ -594,6 +594,23 @@ async function handleOfflineRequest<T>(path: string, options: RequestInit = {}):
   if (path.startsWith('/products')) {
     const products = await OfflineDB.getProducts();
     if (method === 'GET') {
+      // /products/<id> (segments.length > 2) : un seul produit demandé
+      // (voir openEdit, products/page.tsx). Avant ce correctif, ce cas
+      // retombait sur la forme liste ({items, total, ...}) faute de
+      // distinction — le formulaire d'édition se retrouvait avec un objet
+      // sans aucun des champs attendus (name, price...), tous "undefined"
+      // à l'affichage, ET editProduct.id valant "undefined" : la
+      // modification envoyait ensuite littéralement PUT /products/undefined,
+      // rejeté à la synchronisation avec "Input should be a valid UUID".
+      // Se déclenche dès qu'UNE requête réseau échoue (connexion instable),
+      // pas seulement hors ligne — voir le commentaire sur request().
+      const segments = path.split('/');
+      if (segments.length > 2) {
+        const prodId = segments[2];
+        const found = products.find(p => p.id === prodId);
+        if (found) return found as any as T;
+        throw new Error('Produit introuvable hors-ligne');
+      }
       return {
         items: products,
         total: products.length,
