@@ -79,7 +79,7 @@ function getRefreshToken(): string | null {
 /** Identité de l'utilisateur courant décodée depuis le JWT — utilisée pour
  *  que l'aperçu local d'une vente créée hors-ligne (avant toute synchronisation)
  *  affiche déjà le bon vendeur, au lieu d'attendre le retour du serveur. */
-function getCurrentUserFromToken(): { id: string; email: string; displayName: string } | null {
+function getCurrentUserFromToken(): { id: string; email: string; displayName: string; tenantId: string } | null {
   const token = getAccessToken();
   if (!token) return null;
   try {
@@ -87,7 +87,7 @@ function getCurrentUserFromToken(): { id: string; email: string; displayName: st
     const email = payload.email || payload.sub || '';
     const namePart = email.includes('@') ? email.split('@')[0] : email;
     const displayName = namePart ? namePart.charAt(0).toUpperCase() + namePart.slice(1) : '';
-    return { id: payload.sub || '', email, displayName };
+    return { id: payload.sub || '', email, displayName, tenantId: payload.tenant_id || '' };
   } catch {
     return null;
   }
@@ -722,8 +722,10 @@ async function handleOfflineRequest<T>(path: string, options: RequestInit = {}):
       const client = data.client_id ? clients.find(c => c.id === data.client_id) : null;
       const currentUser = getCurrentUserFromToken();
 
+      const nowIso = new Date().toISOString();
       const newOrder = {
         id: uuid(),
+        tenant_id: currentUser?.tenantId || null,
         status: data.status || 'delivered',
         items,
         total: orderTotal,
@@ -732,9 +734,30 @@ async function handleOfflineRequest<T>(path: string, options: RequestInit = {}):
         client_name: client?.name || 'Passant',
         created_by: currentUser?.id || null,
         created_by_name: currentUser?.displayName || null,
-        created_at: new Date().toISOString(),
+        created_at: nowIso,
+        updated_at: nowIso,
+        deleted_at: null,
       };
       await OfflineDB.upsertOrder(newOrder);
+
+      // Miroir de create_order côté serveur, qui enregistre toujours
+      // automatiquement une transaction de vente à la création d'une
+      // commande (voir orders/router.py). Sans ça, une vente hors ligne
+      // mettait bien à jour le stock et le nombre de commandes tout de
+      // suite, mais le chiffre d'affaires (Tableau de bord, Finance)
+      // restait figé jusqu'au retour de connexion et à la synchronisation
+      // — visible pour tout sauf l'argent, ce qui n'a pas de sens pour un
+      // commerçant qui vient d'encaisser.
+      await OfflineDB.upsertTransaction({
+        id: uuid(),
+        type: 'income',
+        category: 'sale',
+        amount: orderTotal,
+        description: `Vente Magasin (${newOrder.client_name})`,
+        payment_method: 'cash',
+        reference: newOrder.id,
+        created_at: nowIso,
+      });
 
       return newOrder as any as T;
     }

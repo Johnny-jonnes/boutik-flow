@@ -211,6 +211,16 @@ export default function OrdersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Une commande vient d'être créée (POS ou cette page) — visible
+  // immédiatement, sans attendre le retour de connexion : elle existe déjà
+  // en local (IndexedDB) à cet instant, il n'y a qu'à la relire.
+  useEffect(() => {
+    const onOrderCreated = () => fetchOrders(true);
+    window.addEventListener('boutikflow:order-created', onOrderCreated);
+    return () => window.removeEventListener('boutikflow:order-created', onOrderCreated);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Multi-product handlers
   const handleAddItem = () => {
     setCreateForm(prev => ({ ...prev, items: [...prev.items, { product_id: '', quantity: 1 }] }));
@@ -312,6 +322,7 @@ export default function OrdersPage() {
         items: createForm.items,
         notes: createForm.notes || undefined,
       });
+      window.dispatchEvent(new CustomEvent('boutikflow:order-created', { detail: { order } }));
 
       if (isDebt && finalDebtAmount > 0) {
         await api.createDebt({

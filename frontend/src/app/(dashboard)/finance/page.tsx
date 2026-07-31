@@ -178,6 +178,15 @@ export default function FinancePage() {
     return () => window.removeEventListener('boutikflow:sync-complete', onSyncComplete);
   }, [fetchTransactions]);
 
+  // Une vente vient d'être conclue (POS) — la transaction correspondante
+  // existe déjà en local à cet instant (voir handleOfflineRequest côté
+  // client), visible immédiatement sans attendre le retour de connexion.
+  useEffect(() => {
+    const onOrderCreated = () => fetchTransactions();
+    window.addEventListener('boutikflow:order-created', onOrderCreated);
+    return () => window.removeEventListener('boutikflow:order-created', onOrderCreated);
+  }, [fetchTransactions]);
+
   // Handle Type toggle in Modal Form
   const handleTypeChange = (newType: TransactionType) => {
     const defaultCategory = newType === 'income' ? 'sale' : 'supplier_purchase';

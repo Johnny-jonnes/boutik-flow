@@ -186,6 +186,13 @@ export default function POSPage() {
       // gonflés, pas un mélange de données entre boutiques.
       const order = await api.createOrder(payload);
 
+      // Une vente réussit ici même hors connexion (voir handleOfflineRequest
+      // côté client) : sans ce signal, elle restait invisible sur les pages
+      // Ventes/Commandes (qui ne se rafraîchissaient qu'à la synchronisation
+      // réussie) tant que la connexion n'était pas revenue, alors que la
+      // vente est bien enregistrée localement depuis le début.
+      window.dispatchEvent(new CustomEvent('boutikflow:order-created', { detail: { order } }));
+
       // Enregistrement de la dette — ne compte PAS comme encaissement
       if (isDebt && selectedClientId) {
         try {

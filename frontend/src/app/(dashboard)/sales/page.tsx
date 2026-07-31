@@ -68,9 +68,9 @@ export default function SalesHistoryPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(15);
 
-  const fetchSales = async () => {
+  const fetchSales = async (silent = false) => {
     try {
-      setIsLoading(true);
+      if (!silent) setIsLoading(true);
       // Charge toutes les commandes (pas seulement les 100 premières) avant
       // de filtrer sur "livrée" : sinon l'historique perdait silencieusement
       // les ventes les plus anciennes dès que la boutique dépassait 100
@@ -86,7 +86,7 @@ export default function SalesHistoryPage() {
     } catch (error) {
       toast.error(language === 'fr' ? "Erreur de récupération de l'historique" : "Error fetching history");
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
@@ -107,6 +107,16 @@ export default function SalesHistoryPage() {
     };
     window.addEventListener('boutikflow:sync-complete', onSyncComplete);
     return () => window.removeEventListener('boutikflow:sync-complete', onSyncComplete);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Une vente vient d'être conclue (POS) — visible immédiatement dans
+  // l'historique, sans attendre le retour de connexion : la vente existe
+  // déjà en local (IndexedDB) à cet instant, il n'y a qu'à la relire.
+  useEffect(() => {
+    const onOrderCreated = () => fetchSales(true);
+    window.addEventListener('boutikflow:order-created', onOrderCreated);
+    return () => window.removeEventListener('boutikflow:order-created', onOrderCreated);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

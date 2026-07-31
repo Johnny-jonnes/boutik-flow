@@ -271,6 +271,16 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [periodFilter, customStartDate, customEndDate]);
 
+  // Une vente vient d'être conclue (POS) — les KPI se mettent à jour
+  // immédiatement, sans attendre le retour de connexion : la vente existe
+  // déjà en local (IndexedDB) à cet instant, il n'y a qu'à la relire.
+  useEffect(() => {
+    const onOrderCreated = () => fetchData();
+    window.addEventListener('boutikflow:order-created', onOrderCreated);
+    return () => window.removeEventListener('boutikflow:order-created', onOrderCreated);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [periodFilter, customStartDate, customEndDate]);
+
   // Changer de période invalide la page courante : sans ce reset, rester
   // sur la page 3 après un nouveau filtre pouvait afficher une page vide.
   useEffect(() => {
