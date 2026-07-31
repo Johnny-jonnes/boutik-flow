@@ -19,8 +19,9 @@ from sqlalchemy import and_
 from fastapi.encoders import jsonable_encoder
 
 from app.core.database import get_db
-from app.core.deps import get_current_user, CurrentUser
+from app.core.deps import CurrentUser
 from app.core.idempotency import IdempotencyHeader, get_cached_response, store_response
+from app.core.permissions import require_permission, has_permission
 from app.modules.products.models import Order, OrderItem, OrderLog, OrderStatusEnum, Product, InventoryLog
 from app.modules.crm.models import Client
 from app.modules.auth.models import User
@@ -218,7 +219,7 @@ def _restore_sale_transaction(db: Session, order: Order, current_user: CurrentUs
     summary="Lister les commandes de la boutique",
 )
 def list_orders(
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("orders", "view"))],
     db: Annotated[Session, Depends(get_db)],
     page: int = Query(1, ge=1, description="Numéro de page"),
     per_page: int = Query(20, ge=1, le=500, description="Résultats par page"),
@@ -281,7 +282,7 @@ def list_orders(
 )
 def get_order(
     order_id: uuid.UUID,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("orders", "view"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> OrderResponse:
     order = db.query(Order).options(
@@ -314,7 +315,7 @@ def get_order(
 )
 def create_order(
     payload: OrderCreate,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("orders", "create"))],
     db: Annotated[Session, Depends(get_db)],
     idempotency_key: IdempotencyHeader = None,
 ) -> OrderResponse:
@@ -536,7 +537,7 @@ def create_order(
 def update_order_status(
     order_id: uuid.UUID,
     payload: OrderUpdateStatus,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("orders", "create"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> OrderResponse:
     """Modifie le statut de la commande et historise l'action."""
@@ -562,6 +563,15 @@ def update_order_status(
 
     was_cancelled = old_status == OrderStatusEnum.cancelled
     is_cancelled = new_status_enum == OrderStatusEnum.cancelled
+
+    # L'annulation (et sa réactivation) modifie stock et finances — réservée
+    # à owner/manager, contrairement aux autres transitions de statut
+    # (confirmer, livrer...) ouvertes aux rôles pouvant créer une commande.
+    if (is_cancelled or was_cancelled) and not has_permission(current_user.role, "orders", "cancel"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Seuls les propriétaires et gérants peuvent annuler une commande.",
+        )
 
     # ── Annulation : la vente n'a pas eu lieu ──
     # Sans ce traitement, la recette restait comptée dans le chiffre d'affaires
@@ -605,7 +615,7 @@ def update_order_status(
 def return_order_items(
     order_id: uuid.UUID,
     payload: OrderReturnRequest,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("returns", "create"))],
     db: Annotated[Session, Depends(get_db)],
     idempotency_key: IdempotencyHeader = None,
 ):

@@ -8,9 +8,12 @@ import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
 import Link from 'next/link';
 import { useLanguage } from '@/context/LanguageContext';
+import { usePermission } from '@/lib/permissions';
 
 export default function CategoriesPage() {
   const { t } = useLanguage();
+  const canWrite = usePermission('categories', 'write');
+  const canDelete = usePermission('categories', 'delete');
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -160,10 +163,12 @@ export default function CategoriesPage() {
           <p className="page-header__desc">{t('cat.subtitle')}</p>
         </div>
         <div className="page-header__actions">
-          <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => setIsAddOpen(true)}>
-            <Plus size={18} />
-            <span>{t('cat.new')}</span>
-          </button>
+          {canWrite && (
+            <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => setIsAddOpen(true)}>
+              <Plus size={18} />
+              <span>{t('cat.new')}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -209,12 +214,16 @@ export default function CategoriesPage() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button className="btn btn-ghost btn-icon" onClick={() => openEdit(category)}>
-                    <Edit2 size={14} />
-                  </button>
-                  <button className="btn btn-ghost btn-icon btn-danger-icon" onClick={() => setDeleteTarget(category)}>
-                    <Trash2 size={14} />
-                  </button>
+                  {canWrite && (
+                    <button className="btn btn-ghost btn-icon" onClick={() => openEdit(category)}>
+                      <Edit2 size={14} />
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button className="btn btn-ghost btn-icon btn-danger-icon" onClick={() => setDeleteTarget(category)}>
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)', marginTop: 'auto' }}>

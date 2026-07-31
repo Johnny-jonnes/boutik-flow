@@ -43,9 +43,13 @@ async def get_current_user(
     user_id = payload.get("sub")
     tenant_id = payload.get("tenant_id")
     email = payload.get("email")
-    role = payload.get("role", "owner")
+    role = payload.get("role")
 
-    if not user_id or not tenant_id:
+    # Un défaut sur "owner" ici aurait accordé le rôle le plus privilégié à
+    # tout jeton dont le claim role manquerait — un filet qui masque un bug
+    # au lieu d'en protéger. _build_token_response pose toujours ce claim ;
+    # son absence est un jeton invalide, pas un cas à couvrir en silence.
+    if not user_id or not tenant_id or not role:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token invalide : champs manquants",

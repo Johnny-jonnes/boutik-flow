@@ -35,6 +35,8 @@ import { clearOfflineDatabase } from '@/lib/offlineDb';
 import { SyncJournalModal } from '@/components/ui/SyncJournalModal';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+import { hasPermission, ROUTE_PERMISSIONS, firstAllowedRoute } from '@/lib/permissions';
 
 /* ─── Navigation simplifiée ─────────────────────────────────────── */
 const NAV_ITEMS = [
@@ -124,6 +126,7 @@ function Logo({ size = 20 }: { size?: number }) {
    ═══════════════════════════════════════════════════════════════════ */
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { isLocked, pinError, verifyPin, setPinError } = usePinLock();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
@@ -173,6 +176,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       window.location.href = '/login';
     }
   }, []);
+
+  /* Garde de route par rôle — le vrai contrôle d'accès reste côté FastAPI
+     (require_permission) : ceci n'est qu'un filet UX cohérent, pour ne
+     jamais laisser un rôle atterrir sur une page dont le menu est déjà
+     masqué pour lui (lien direct, favori, retour navigateur...). */
+  useEffect(() => {
+    if (!userInfo.email || !pathname) return;
+    if (userInfo.role?.toLowerCase() === 'admin') return;
+    const perm = ROUTE_PERMISSIONS.find((r) => pathname.startsWith(r.prefix));
+    if (perm && !hasPermission(userInfo.role, perm.module, perm.action)) {
+      router.replace(firstAllowedRoute(userInfo.role));
+    }
+  }, [pathname, userInfo.role, userInfo.email, router]);
 
   /* Alerte admin en temps réel — cloche + son quand une nouvelle demande
      d'inscription arrive, quel que soit l'appareil ou la distance du
@@ -235,10 +251,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const userInitial = userInfo.email ? userInfo.email.charAt(0).toUpperCase() : 'U';
   const userName    = userInfo.email ? userInfo.email.split('@')[0] : 'Utilisateur';
 
-  /* Nav items — admin gets extra entries */
+  /* Nav items — filtrés par permission du rôle, admin voit tout + entrée dédiée */
+  const visibleNavItems = NAV_ITEMS.filter((item) => {
+    const perm = ROUTE_PERMISSIONS.find((r) => r.prefix === item.href);
+    return !perm || hasPermission(userInfo.role, perm.module, perm.action);
+  });
   const navItems = userInfo.role?.toLowerCase() === 'admin'
-    ? [...NAV_ITEMS, { href: '/admin', icon: Store, label: 'Admin', labelEn: 'Admin', id: 'nav-admin' }]
-    : NAV_ITEMS;
+    ? [...visibleNavItems, { href: '/admin', icon: Store, label: 'Admin', labelEn: 'Admin', id: 'nav-admin' }]
+    : visibleNavItems;
 
   return (
     <div className="shell">

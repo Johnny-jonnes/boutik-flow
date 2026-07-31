@@ -8,8 +8,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
 from app.core.database import get_db
-from app.core.deps import get_current_user, CurrentUser
+from app.core.deps import CurrentUser
 from app.core.idempotency import IdempotencyHeader, get_cached_response, store_response
+from app.core.permissions import require_permission
 from app.modules.crm.debt_models import ClientDebt, DebtPayment, DebtStatusEnum
 from app.modules.crm.models import Client
 from pydantic import BaseModel, Field
@@ -55,7 +56,7 @@ class DebtResponse(BaseModel):
 def create_debt(
     payload: DebtCreateRequest,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("orders", "create")),
     idempotency_key: IdempotencyHeader = None,
 ) -> dict:
     """Créer une nouvelle dette pour un client."""
@@ -97,7 +98,7 @@ def list_debts(
     client_id: Optional[uuid.UUID] = None,
     status_filter: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("orders", "view")),
 ) -> list:
     """Lister les dettes de la boutique."""
     q = db.query(ClientDebt).filter(ClientDebt.tenant_id == current_user.tenant_id)
@@ -129,7 +130,7 @@ def record_payment(
     debt_id: uuid.UUID,
     payload: DebtPaymentRequest,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("orders", "create")),
     idempotency_key: IdempotencyHeader = None,
 ) -> dict:
     """Enregistrer un versement sur une dette."""

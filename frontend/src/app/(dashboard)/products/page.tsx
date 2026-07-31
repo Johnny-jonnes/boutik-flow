@@ -16,6 +16,7 @@ import { compressImage } from '@/lib/utils/imageCompressor';
 import { useSearchParams, useRouter } from 'next/navigation';
 import QRCode from 'qrcode';
 import { useProductsQuery, useCategoriesQuery, useProductStatsQuery, queryKeys } from '@/lib/queries';
+import { usePermission } from '@/lib/permissions';
 
 function formatGNF(amount: number) {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' GNF';
@@ -29,6 +30,9 @@ function ProductsContent() {
   const categoryIdFromUrl = searchParams.get('category_id');
   const router = useRouter();
   const queryClient = useQueryClient();
+  const canWrite = usePermission('products', 'write');
+  const canDelete = usePermission('products', 'delete');
+  const canWriteStock = usePermission('stock', 'write');
   // Couche mémoire globale : ces deux requêtes partagent leur clé de cache
   // avec le Dashboard, Vendre et Clients — la première de ces pages
   // visitée charge les données, les suivantes les trouvent déjà en
@@ -523,19 +527,25 @@ function ProductsContent() {
             <span>{t('common.download')}</span>
           </button>
 
-          <button className="btn btn-ghost" id="btn-bulk-stock-in" onClick={() => setIsBulkStockInOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <PackagePlus size={16} />
-            <span>{language === 'fr' ? 'Entrée de stock' : 'Stock-in'}</span>
-          </button>
+          {canWriteStock && (
+            <button className="btn btn-ghost" id="btn-bulk-stock-in" onClick={() => setIsBulkStockInOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <PackagePlus size={16} />
+              <span>{language === 'fr' ? 'Entrée de stock' : 'Stock-in'}</span>
+            </button>
+          )}
 
-          <button className="btn btn-ghost" id="btn-bulk-add-products" onClick={() => setIsBulkAddOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <Layers size={16} />
-            <span>{language === 'fr' ? 'Créer en groupe' : 'Bulk create'}</span>
-          </button>
+          {canWrite && (
+            <button className="btn btn-ghost" id="btn-bulk-add-products" onClick={() => setIsBulkAddOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Layers size={16} />
+              <span>{language === 'fr' ? 'Créer en groupe' : 'Bulk create'}</span>
+            </button>
+          )}
 
-          <button className="btn btn-primary" id="btn-add-product" onClick={() => setIsAddOpen(true)}>
-            <Plus size={16} /> {t('prod.add')}
-          </button>
+          {canWrite && (
+            <button className="btn btn-primary" id="btn-add-product" onClick={() => setIsAddOpen(true)}>
+              <Plus size={16} /> {t('prod.add')}
+            </button>
+          )}
         </div>
       </div>
 
@@ -649,12 +659,16 @@ function ProductsContent() {
                     <button className="btn btn-ghost btn-icon" title="Voir" onClick={() => setViewProduct(product)}>
                       <Eye size={16} />
                     </button>
-                    <button className="btn btn-ghost btn-icon" title="Modifier" onClick={() => openEdit(product)}>
-                      <Pencil size={16} />
-                    </button>
-                    <button className="btn btn-ghost btn-icon btn-danger-icon" title="Supprimer" onClick={() => setDeleteTarget(product)}>
-                      <Trash2 size={16} />
-                    </button>
+                    {canWrite && (
+                      <button className="btn btn-ghost btn-icon" title="Modifier" onClick={() => openEdit(product)}>
+                        <Pencil size={16} />
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button className="btn btn-ghost btn-icon btn-danger-icon" title="Supprimer" onClick={() => setDeleteTarget(product)}>
+                        <Trash2 size={16} />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -754,9 +768,11 @@ function ProductsContent() {
 
             <div className="modal-actions">
               <button className="btn btn-ghost" onClick={() => setViewProduct(null)}>Fermer</button>
-              <button className="btn btn-primary" onClick={() => { setViewProduct(null); openEdit(viewProduct); }}>
-                <Pencil size={14} /> Modifier
-              </button>
+              {canWrite && (
+                <button className="btn btn-primary" onClick={() => { setViewProduct(null); openEdit(viewProduct); }}>
+                  <Pencil size={14} /> Modifier
+                </button>
+              )}
             </div>
           </div>
         )}

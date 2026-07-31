@@ -19,7 +19,7 @@ export interface User {
   email: string;
   full_name: string | null;
   phone: string | null;
-  role: 'owner' | 'staff' | 'admin';
+  role: 'owner' | 'manager' | 'cashier' | 'stock_manager' | 'staff' | 'admin';
   is_active: boolean;
   tenant: Tenant;
 }

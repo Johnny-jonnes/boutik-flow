@@ -20,7 +20,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 
 from app.core.database import get_db
-from app.core.deps import get_current_user, CurrentUser
+from app.core.deps import CurrentUser
+from app.core.permissions import require_permission
 from app.core.period import resolve_period, previous_period
 from app.core.metrics import financial_totals, sales_metrics, product_margin, format_change
 from app.modules.products.models import Order, OrderStatusEnum, OrderItem, Product
@@ -56,7 +57,7 @@ DAY_MAP = {
     summary="Indicateurs clés (KPIs) sur une période",
 )
 def get_kpis(
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("dashboard", "view"))],
     db: Annotated[Session, Depends(get_db)],
     period: str = PERIOD_QUERY,
     start_date: str | None = Query(None, description="Date de début (YYYY-MM-DD)"),
@@ -169,7 +170,7 @@ def _build_buckets(
     summary="Indicateurs et graphiques d'analyse par période",
 )
 def get_analytics(
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("dashboard", "view"))],
     db: Annotated[Session, Depends(get_db)],
     period: str = PERIOD_QUERY,
     start_date: str | None = Query(None, description="Date de début (YYYY-MM-DD)"),

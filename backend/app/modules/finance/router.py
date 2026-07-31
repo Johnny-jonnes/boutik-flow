@@ -10,8 +10,9 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import get_current_user, require_owner_or_manager, CurrentUser
+from app.core.deps import require_owner_or_manager, CurrentUser
 from app.core.idempotency import IdempotencyHeader, get_cached_response, store_response
+from app.core.permissions import require_permission
 from app.core.period import resolve_period
 from app.core.metrics import financial_totals, product_margin
 from app.modules.finance.models import FinancialTransaction
@@ -33,7 +34,7 @@ router = APIRouter(prefix="/finance", tags=["Finance & Trésorerie"])
     summary="Consulter les transactions financières et le solde net",
 )
 def list_transactions(
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("finance", "view"))],
     db: Annotated[Session, Depends(get_db)],
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),

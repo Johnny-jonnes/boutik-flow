@@ -6,6 +6,7 @@ import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
 import { useLanguage } from '@/context/LanguageContext';
+import { usePermission } from '@/lib/permissions';
 
 interface Supplier {
   id: string;
@@ -25,6 +26,8 @@ interface Supplier {
 
 export default function SuppliersPage() {
   const { t } = useLanguage();
+  const canWrite = usePermission('suppliers', 'write');
+  const canDelete = usePermission('suppliers', 'delete');
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -174,9 +177,11 @@ export default function SuppliersPage() {
           <p className="page-subtitle">{t('sup.subtitle')}</p>
         </div>
         <div className="header-actions">
-          <button className="btn btn-primary" onClick={handleOpenAdd}>
-            <Plus size={16} /> {t('sup.new')}
-          </button>
+          {canWrite && (
+            <button className="btn btn-primary" onClick={handleOpenAdd}>
+              <Plus size={16} /> {t('sup.new')}
+            </button>
+          )}
         </div>
       </div>
 
@@ -235,12 +240,16 @@ export default function SuppliersPage() {
                     <button className="btn btn-ghost btn-icon" title={t('sup.details')} onClick={() => setViewSupplier(sup)}>
                       <Eye size={16} />
                     </button>
-                    <button className="btn btn-ghost btn-icon" title={t('sup.edit')} onClick={() => handleOpenEdit(sup)}>
-                      <Pencil size={16} />
-                    </button>
-                    <button className="btn btn-ghost btn-icon btn-danger-icon" title={t('common.delete')} onClick={() => setDeleteTarget(sup)}>
-                      <Trash2 size={16} />
-                    </button>
+                    {canWrite && (
+                      <button className="btn btn-ghost btn-icon" title={t('sup.edit')} onClick={() => handleOpenEdit(sup)}>
+                        <Pencil size={16} />
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button className="btn btn-ghost btn-icon btn-danger-icon" title={t('common.delete')} onClick={() => setDeleteTarget(sup)}>
+                        <Trash2 size={16} />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -364,9 +373,11 @@ export default function SuppliersPage() {
             </div>
             <div className="modal-actions">
               <button className="btn btn-ghost" onClick={() => setViewSupplier(null)}>{t('common.close')}</button>
-              <button className="btn btn-primary" onClick={() => { setViewSupplier(null); handleOpenEdit(viewSupplier); }}>
-                <Pencil size={14} /> {t('common.edit')}
-              </button>
+              {canWrite && (
+                <button className="btn btn-primary" onClick={() => { setViewSupplier(null); handleOpenEdit(viewSupplier); }}>
+                  <Pencil size={14} /> {t('common.edit')}
+                </button>
+              )}
             </div>
           </div>
         )}

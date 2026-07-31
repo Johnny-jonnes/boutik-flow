@@ -11,8 +11,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 
 from app.core.database import get_db
-from app.core.deps import get_current_user, CurrentUser
+from app.core.deps import CurrentUser
 from app.core.idempotency import IdempotencyHeader, get_cached_response, store_response
+from app.core.permissions import require_permission
 from app.modules.suppliers.models import Supplier
 from app.modules.suppliers.schemas import (
     SupplierCreate,
@@ -32,7 +33,7 @@ router = APIRouter(prefix="/suppliers", tags=["Catalogue - Fournisseurs"])
     summary="Lister les fournisseurs",
 )
 def list_suppliers(
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("suppliers", "view"))],
     db: Annotated[Session, Depends(get_db)],
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
@@ -68,7 +69,7 @@ def list_suppliers(
 )
 def get_supplier(
     supplier_id: uuid.UUID,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("suppliers", "view"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> SupplierResponse:
     supplier = db.query(Supplier).filter(
@@ -92,7 +93,7 @@ def get_supplier(
 )
 def create_supplier(
     payload: SupplierCreate,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("suppliers", "write"))],
     db: Annotated[Session, Depends(get_db)],
     idempotency_key: IdempotencyHeader = None,
 ) -> SupplierResponse:
@@ -121,7 +122,7 @@ def create_supplier(
 def update_supplier(
     supplier_id: uuid.UUID,
     payload: SupplierUpdate,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("suppliers", "write"))],
     db: Annotated[Session, Depends(get_db)],
     idempotency_key: IdempotencyHeader = None,
 ) -> SupplierResponse:
@@ -157,7 +158,7 @@ def update_supplier(
 )
 def delete_supplier(
     supplier_id: uuid.UUID,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("suppliers", "delete"))],
     db: Annotated[Session, Depends(get_db)],
     idempotency_key: IdempotencyHeader = None,
 ) -> None:

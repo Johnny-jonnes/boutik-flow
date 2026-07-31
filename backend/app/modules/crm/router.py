@@ -17,8 +17,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func
 
 from app.core.database import get_db
-from app.core.deps import get_current_user, CurrentUser
+from app.core.deps import CurrentUser
 from app.core.idempotency import IdempotencyHeader, get_cached_response, store_response
+from app.core.permissions import require_permission
 from app.modules.crm.models import Client, ClientStatusEnum, Segment
 from app.modules.crm.schemas import (
     ClientCreate,
@@ -71,7 +72,7 @@ def _segment_to_response(db: Session, segment: Segment, tenant_id) -> SegmentRes
     summary="Lister les segments de clients",
 )
 def list_segments(
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("clients", "view"))],
     db: Annotated[Session, Depends(get_db)],
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
@@ -94,7 +95,7 @@ def list_segments(
 )
 def create_segment(
     payload: SegmentCreate,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("clients", "create"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> SegmentResponse:
     segment = Segment(
@@ -117,7 +118,7 @@ def create_segment(
 def update_segment(
     segment_id: uuid.UUID,
     payload: SegmentUpdate,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("clients", "edit"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> SegmentResponse:
     segment = db.query(Segment).filter(
@@ -140,7 +141,7 @@ def update_segment(
 )
 def delete_segment(
     segment_id: uuid.UUID,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("clients", "delete"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> None:
     segment = db.query(Segment).filter(
@@ -161,7 +162,7 @@ def delete_segment(
     summary="Lister les clients de la boutique",
 )
 def list_clients(
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("clients", "view"))],
     db: Annotated[Session, Depends(get_db)],
     page: int = Query(1, ge=1, description="Numéro de page"),
     per_page: int = Query(20, ge=1, le=500, description="Résultats par page"),
@@ -230,7 +231,7 @@ def list_clients(
 )
 def get_client(
     client_id: uuid.UUID,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("clients", "view"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> ClientResponse:
     """Retourne un client par son ID (isolation tenant stricte)."""
@@ -261,7 +262,7 @@ def get_client(
 )
 def create_client(
     payload: ClientCreate,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("clients", "create"))],
     db: Annotated[Session, Depends(get_db)],
     idempotency_key: IdempotencyHeader = None,
 ) -> ClientResponse:
@@ -323,7 +324,7 @@ def create_client(
 def update_client(
     client_id: uuid.UUID,
     payload: ClientUpdate,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("clients", "edit"))],
     db: Annotated[Session, Depends(get_db)],
     idempotency_key: IdempotencyHeader = None,
 ) -> ClientResponse:
@@ -373,7 +374,7 @@ def update_client(
 )
 def delete_client(
     client_id: uuid.UUID,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("clients", "delete"))],
     db: Annotated[Session, Depends(get_db)],
     idempotency_key: IdempotencyHeader = None,
 ) -> None:

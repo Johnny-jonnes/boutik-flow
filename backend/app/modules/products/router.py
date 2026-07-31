@@ -16,8 +16,9 @@ from sqlalchemy.orm import Session, selectinload, defer
 from sqlalchemy import and_, or_, func
 
 from app.core.database import get_db
-from app.core.deps import get_current_user, CurrentUser
+from app.core.deps import CurrentUser
 from app.core.idempotency import IdempotencyHeader, get_cached_response, store_response
+from app.core.permissions import require_permission
 from app.core.thumbnails import generate_thumbnail
 from app.modules.products.models import Product, InventoryLog, Category
 from app.modules.products.schemas import (
@@ -85,7 +86,7 @@ def _generate_sku(name: str) -> str:
     summary="Lister les catégories",
 )
 def list_categories(
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("categories", "view"))],
     db: Annotated[Session, Depends(get_db)],
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
@@ -108,7 +109,7 @@ def list_categories(
 )
 def create_category(
     payload: CategoryCreate,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("categories", "write"))],
     db: Annotated[Session, Depends(get_db)],
     idempotency_key: IdempotencyHeader = None,
 ) -> CategoryResponse:
@@ -138,7 +139,7 @@ def create_category(
 def update_category(
     category_id: uuid.UUID,
     payload: CategoryUpdate,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("categories", "write"))],
     db: Annotated[Session, Depends(get_db)],
     idempotency_key: IdempotencyHeader = None,
 ) -> CategoryResponse:
@@ -168,7 +169,7 @@ def update_category(
 )
 def delete_category(
     category_id: uuid.UUID,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("categories", "delete"))],
     db: Annotated[Session, Depends(get_db)],
     idempotency_key: IdempotencyHeader = None,
 ) -> None:
@@ -226,7 +227,7 @@ def _product_to_list_response(p: Product) -> ProductResponse:
     summary="Lister les produits de la boutique",
 )
 def list_products(
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("products", "view"))],
     db: Annotated[Session, Depends(get_db)],
     page: int = Query(1, ge=1, description="Numéro de page"),
     per_page: int = Query(20, ge=1, le=500, description="Résultats par page"),
@@ -308,7 +309,7 @@ def list_products(
     summary="Statistiques agrégées du catalogue (toute la boutique)",
 )
 def get_product_stats(
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("products", "view"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> ProductStatsResponse:
     """
@@ -344,7 +345,7 @@ def get_product_stats(
 )
 def get_product(
     product_id: uuid.UUID,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("products", "view"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> ProductResponse:
     product = db.query(Product).filter(
@@ -374,7 +375,7 @@ def get_product(
 )
 def create_product(
     payload: ProductCreate,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("products", "write"))],
     db: Annotated[Session, Depends(get_db)],
     idempotency_key: IdempotencyHeader = None,
 ) -> ProductResponse:
@@ -472,7 +473,7 @@ def create_product(
 )
 def create_products_bulk(
     payload: ProductBulkCreate,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("products", "write"))],
     db: Annotated[Session, Depends(get_db)],
     idempotency_key: IdempotencyHeader = None,
 ) -> ProductBulkCreateResponse:
@@ -590,7 +591,7 @@ def create_products_bulk(
 )
 def bulk_stock_in(
     payload: StockBulkIn,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("stock", "write"))],
     db: Annotated[Session, Depends(get_db)],
     idempotency_key: IdempotencyHeader = None,
 ) -> StockBulkInResponse:
@@ -654,7 +655,7 @@ def bulk_stock_in(
 def update_product(
     product_id: uuid.UUID,
     payload: ProductUpdate,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("products", "write"))],
     db: Annotated[Session, Depends(get_db)],
     idempotency_key: IdempotencyHeader = None,
 ) -> ProductResponse:
@@ -744,7 +745,7 @@ def update_product(
 )
 def delete_product(
     product_id: uuid.UUID,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(require_permission("products", "delete"))],
     db: Annotated[Session, Depends(get_db)],
     idempotency_key: IdempotencyHeader = None,
 ) -> None:

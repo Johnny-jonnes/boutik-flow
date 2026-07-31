@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
 import { useLanguage } from '@/context/LanguageContext';
 import { useClientsQuery, queryKeys } from '@/lib/queries';
+import { usePermission } from '@/lib/permissions';
 
 const STATUS_COLORS: Record<string, string> = {
   nouveau: 'badge-info',
@@ -20,6 +21,9 @@ const STATUS_COLORS: Record<string, string> = {
 export default function CRMPage() {
   const { t, language } = useLanguage();
   const queryClient = useQueryClient();
+  const canCreate = usePermission('clients', 'create');
+  const canEdit = usePermission('clients', 'edit');
+  const canDelete = usePermission('clients', 'delete');
   // Cache partagé avec Dashboard, Vendre et Produits — voir products/page.tsx.
   const { data: clientsData, isLoading } = useClientsQuery();
   const clients = clientsData?.items ?? [];
@@ -197,9 +201,11 @@ export default function CRMPage() {
           <p className="page-subtitle">{t('crm.subtitle')}</p>
         </div>
         <div className="header-actions">
-          <button className="btn btn-primary" id="btn-add-client" onClick={() => setIsAddOpen(true)}>
-            <UserPlus size={16} /> {t('crm.new')}
-          </button>
+          {canCreate && (
+            <button className="btn btn-primary" id="btn-add-client" onClick={() => setIsAddOpen(true)}>
+              <UserPlus size={16} /> {t('crm.new')}
+            </button>
+          )}
         </div>
       </div>
 
@@ -258,12 +264,16 @@ export default function CRMPage() {
                     <button className="btn btn-ghost btn-icon" title="Voir" onClick={() => openView(client)}>
                       <Eye size={16} />
                     </button>
-                    <button className="btn btn-ghost btn-icon" title="Modifier" onClick={() => openEdit(client)}>
-                      <Pencil size={16} />
-                    </button>
-                    <button className="btn btn-ghost btn-icon btn-danger-icon" title="Supprimer" onClick={() => setDeleteTarget(client)}>
-                      <Trash2 size={16} />
-                    </button>
+                    {canEdit && (
+                      <button className="btn btn-ghost btn-icon" title="Modifier" onClick={() => openEdit(client)}>
+                        <Pencil size={16} />
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button className="btn btn-ghost btn-icon btn-danger-icon" title="Supprimer" onClick={() => setDeleteTarget(client)}>
+                        <Trash2 size={16} />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -411,9 +421,11 @@ export default function CRMPage() {
 
             <div className="modal-actions">
               <button className="btn btn-ghost" onClick={() => { setViewClient(null); setClientDebts([]); }}>{language === 'fr' ? 'Fermer' : 'Close'}</button>
-              <button className="btn btn-primary" onClick={() => { setViewClient(null); setClientDebts([]); openEdit(viewClient); }}>
-                <Pencil size={14} /> {language === 'fr' ? 'Modifier' : 'Edit'}
-              </button>
+              {canEdit && (
+                <button className="btn btn-primary" onClick={() => { setViewClient(null); setClientDebts([]); openEdit(viewClient); }}>
+                  <Pencil size={14} /> {language === 'fr' ? 'Modifier' : 'Edit'}
+                </button>
+              )}
             </div>
           </div>
         )}
