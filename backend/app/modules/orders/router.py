@@ -449,8 +449,15 @@ def create_order(
 
         total_amount += (product.price * item.quantity)
 
+    # Remise globale : déduite du total réellement dû et de la transaction
+    # financière ci-dessous, mais jamais des lignes de commande — le prix
+    # catalogue de chaque article reste la référence pour la marge produit
+    # (voir app.core.metrics.product_margin), la remise est un rabais sur
+    # la vente dans son ensemble, pas une renégociation prix par prix.
+    net_amount = max(Decimal("0"), total_amount - payload.discount)
+
     # Mise à jour du total
-    order.total = total_amount
+    order.total = net_amount
 
     # Trace visible dans l'historique des ventes (fiche détail) — le
     # commerçant doit pouvoir repérer et régulariser un stock devenu négatif
@@ -485,7 +492,7 @@ def create_order(
             tenant_id=current_user.tenant_id,
             type=TransactionTypeEnum.income,
             category=TransactionCategoryEnum.sale,
-            amount=total_amount,
+            amount=net_amount,
             description=f"Vente Magasin N°{str(order.id)[:8]} ({client.name})",
             payment_method="cash",
             reference=str(order.id),
@@ -504,7 +511,7 @@ def create_order(
         action="create_sale",
         target_entity="order",
         target_id=str(order.id),
-        details=f"Vente validée N°{str(order.id)[:8]} ({client.name}) pour {total_amount} GNF",
+        details=f"Vente validée N°{str(order.id)[:8]} ({client.name}) pour {net_amount} GNF",
     )
 
     db.commit()

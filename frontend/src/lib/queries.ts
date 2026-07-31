@@ -6,24 +6,32 @@ import { api } from '@/lib/api/client';
 /**
  * Clés de requête partagées — Dashboard, Vendre, Produits et Clients
  * appellent toutes ces mêmes hooks avec les mêmes paramètres (page 1,
- * 100 par page), donc ils pointent vers la même entrée de cache : la
+ * 500 par page), donc ils pointent vers la même entrée de cache : la
  * première page visitée charge les données, les suivantes les trouvent
  * déjà en mémoire.
+ *
+ * 500 = le plafond serveur (voir products/router.py, crm/router.py —
+ * per_page le=500). Un plafond plus bas ici (100 auparavant) faisait
+ * silencieusement disparaître tout produit/client au-delà du 100e : la
+ * liste ne contenait jamais qu'une seule page serveur, jamais rechargée
+ * au-delà. Un catalogue ou fichier client dépassant 500 se heurtera au
+ * même plafond — la recherche (voir POS/Produits) interroge alors le
+ * serveur directement plutôt que de filtrer cette liste en mémoire.
  */
 export const queryKeys = {
-  products: (page = 1, perPage = 100) => ['products', page, perPage] as const,
-  clients: (page = 1, perPage = 100) => ['clients', page, perPage] as const,
+  products: (page = 1, perPage = 500) => ['products', page, perPage] as const,
+  clients: (page = 1, perPage = 500) => ['clients', page, perPage] as const,
   categories: (page = 1, perPage = 100) => ['categories', page, perPage] as const,
 };
 
-export function useProductsQuery(page = 1, perPage = 100) {
+export function useProductsQuery(page = 1, perPage = 500) {
   return useQuery({
     queryKey: queryKeys.products(page, perPage),
     queryFn: ({ signal }) => api.getProducts(page, perPage, undefined, undefined, undefined, signal),
   });
 }
 
-export function useClientsQuery(page = 1, perPage = 100) {
+export function useClientsQuery(page = 1, perPage = 500) {
   return useQuery({
     queryKey: queryKeys.clients(page, perPage),
     queryFn: ({ signal }) => api.getClients(page, perPage, undefined, undefined, signal),

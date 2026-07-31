@@ -188,6 +188,7 @@ export interface OrderCreate {
   items: { product_id: string; quantity: number }[];
   notes?: string;
   allow_stock_shortage?: boolean;
+  discount?: number;
 }
 
 // ─── Dashboard KPIs ───────────────────────────────────────────────────────

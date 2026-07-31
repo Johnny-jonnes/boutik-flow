@@ -173,9 +173,17 @@ export default function POSPage() {
         items: cart.map(i => ({ product_id: i.id, quantity: i.cartQuantity })),
         notes: buildSaleNotes({ paymentMethod, discount, isDebt, debtTotal: total }),
         is_debt: isDebt,
+        discount,
       };
       if (selectedClientId) payload.client_id = selectedClientId;
 
+      // La création de commande enregistre déjà automatiquement la
+      // transaction financière d'entrée d'argent côté serveur (voir
+      // create_order, orders/router.py) — remise déduite. Un second appel
+      // à createFinanceTransaction ici comptait CHAQUE vente deux fois
+      // dans le Tableau de bord et Finance (une fois au montant brut, une
+      // fois au montant net de remise) : c'était la cause des chiffres
+      // gonflés, pas un mélange de données entre boutiques.
       const order = await api.createOrder(payload);
 
       // Enregistrement de la dette — ne compte PAS comme encaissement
@@ -190,18 +198,6 @@ export default function POSPage() {
           });
           toast.success(language === 'fr' ? '📋 Dette enregistrée — sera comptabilisée à l\'encaissement' : '📋 Debt recorded — will be counted on payment');
         } catch { toast.error(language === 'fr' ? 'Erreur enregistrement dette' : 'Error recording debt'); }
-      } else {
-        // Vente normale → transaction finance positive
-        try {
-          await api.createFinanceTransaction({
-            type: 'income',
-            category: 'sale',
-            amount: total,
-            description: `Vente caisse — ${cart.length} article(s)`,
-            payment_method: paymentMethod,
-            reference: order.id,
-          });
-        } catch { /* Finance non bloquante */ }
       }
 
       // Mise à jour stock local — patch direct du cache partagé, sans

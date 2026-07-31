@@ -21,6 +21,10 @@ class OrderCreate(BaseModel):
     status: str | None = Field(None, description="Statut initial: pending | confirmed | delivered")
     notes: str | None = Field(None, max_length=2000)
     items: list[OrderItemCreate] = Field(..., min_length=1, description="Au moins un produit requis")
+    discount: Decimal = Field(
+        Decimal("0"), ge=0,
+        description="Remise globale sur la vente, déduite du total et de la transaction financière automatique",
+    )
     # Posé à True uniquement par le rejeu de la file de synchronisation
     # hors-ligne : une vente déjà annoncée au client (reçu imprimé,
     # paiement encaissé) pendant une coupure ne doit jamais être rejetée

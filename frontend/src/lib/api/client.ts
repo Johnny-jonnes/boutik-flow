@@ -543,6 +543,54 @@ async function handleOfflineRequest<T>(path: string, options: RequestInit = {}):
     return { updated, errors } as any as T;
   }
 
+  // Catégories : /products/categories commence par /products — doit être
+  // vérifié AVANT le bloc générique `/products` ci-dessous (même piège déjà
+  // corrigé pour /products/stats, /products/bulk et /products/stock/bulk-in
+  // plus haut, et pour la mise en cache après une réponse en ligne réussie
+  // plus bas). Sans ce garde-fou, un GET renvoie le catalogue produit à la
+  // place des catégories — le menu déroulant catégorie affiche alors des
+  // noms de produits — et une écriture crée ou modifie un produit fantôme
+  // au lieu d'une catégorie. Se déclenche dès qu'une connexion instable
+  // fait échouer UNE requête /products/categories, pas seulement hors ligne.
+  if (path.startsWith('/products/categories')) {
+    const categories = await ensureSeedCategories();
+    if (method === 'GET') {
+      return {
+        items: categories,
+        total: categories.length,
+        page: 1,
+        per_page: 200,
+        pages: 1
+      } as any as T;
+    }
+    if (method === 'POST') {
+      const data = JSON.parse(options.body as string);
+      const newCat = {
+        id: uuid(),
+        created_at: new Date().toISOString(),
+        slug: (data.name || '').toLowerCase().replace(/\s+/g, '-'),
+        ...data
+      };
+      await OfflineDB.upsertCategory(newCat);
+      return newCat as any as T;
+    }
+    if (method === 'PUT') {
+      const catId = path.split('/')[3];
+      const data = JSON.parse(options.body as string);
+      const cat = categories.find(c => c.id === catId);
+      if (cat) {
+        const updated = { ...cat, ...data };
+        await OfflineDB.upsertCategory(updated);
+        return updated as any as T;
+      }
+    }
+    if (method === 'DELETE') {
+      const catId = path.split('/')[3];
+      await OfflineDB.removeCategory(catId);
+      return undefined as any as T;
+    }
+  }
+
   if (path.startsWith('/products')) {
     const products = await OfflineDB.getProducts();
     if (method === 'GET') {
@@ -649,6 +697,9 @@ async function handleOfflineRequest<T>(path: string, options: RequestInit = {}):
         }
         items.push({ ...item, unit_price: prod?.price ?? 0, product_name: prod?.name ?? null });
       }
+      // Cohérent avec create_order côté serveur : la remise réduit le total
+      // affiché/synchronisé localement, pas le prix catalogue de chaque ligne.
+      orderTotal = Math.max(0, orderTotal - (Number(data.discount) || 0));
 
       const clients = await OfflineDB.getClients();
       const client = data.client_id ? clients.find(c => c.id === data.client_id) : null;
@@ -859,45 +910,6 @@ async function handleOfflineRequest<T>(path: string, options: RequestInit = {}):
       revenue_data.push({ name: dateStr, value: dayTotal });
     }
     return { revenue_data } as any as T;
-  }
-
-  if (path.startsWith('/categories')) {
-    const categories = await ensureSeedCategories();
-    if (method === 'GET') {
-      return {
-        items: categories,
-        total: categories.length,
-        page: 1,
-        per_page: 200,
-        pages: 1
-      } as any as T;
-    }
-    if (method === 'POST') {
-      const data = JSON.parse(options.body as string);
-      const newCat = {
-        id: uuid(),
-        created_at: new Date().toISOString(),
-        slug: (data.name || '').toLowerCase().replace(/\s+/g, '-'),
-        ...data
-      };
-      await OfflineDB.upsertCategory(newCat);
-      return newCat as any as T;
-    }
-    if (method === 'PUT') {
-      const catId = path.split('/')[2];
-      const data = JSON.parse(options.body as string);
-      const cat = categories.find(c => c.id === catId);
-      if (cat) {
-        const updated = { ...cat, ...data };
-        await OfflineDB.upsertCategory(updated);
-        return updated as any as T;
-      }
-    }
-    if (method === 'DELETE') {
-      const catId = path.split('/')[2];
-      await OfflineDB.removeCategory(catId);
-      return undefined as any as T;
-    }
   }
 
   if (path.startsWith('/suppliers')) {

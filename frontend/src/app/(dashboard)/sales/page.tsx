@@ -463,7 +463,7 @@ export default function SalesHistoryPage() {
       <Modal isOpen={!!selectedSale} onClose={() => setSelectedSale(null)} title={language === 'fr' ? 'Détails de la Vente' : 'Sale Details'}>
         {selectedSale && (
           <div className="detail-grid">
-            <div className="detail-row"><span className="detail-label">{language === 'fr' ? 'N° Vente' : 'Sale ID'}</span><span className="detail-value">BF-{selectedSale.id.slice(0, 8).toUpperCase()}</span></div>
+            <div className="detail-row"><span className="detail-label">{language === 'fr' ? 'Article(s)' : 'Item(s)'}</span><span className="detail-value">{getItemsSummary(selectedSale)}</span></div>
             <div className="detail-row"><span className="detail-label">Client</span><span className="detail-value">{getClientName(selectedSale)}</span></div>
             <div className="detail-row"><span className="detail-label">{language === 'fr' ? 'Vendu par' : 'Sold by'}</span><span className="detail-value">{getSellerName(selectedSale)}</span></div>
             <div className="detail-row"><span className="detail-label">{language === 'fr' ? 'Mode de Paiement' : 'Payment Method'}</span><span className="detail-value">{getPaymentLabel(extractPaymentMethod(selectedSale.notes))}</span></div>
