@@ -1,14 +1,16 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Download, Eye, Printer, RotateCcw, Search, Calendar, CreditCard as CardIcon, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
-import type { Order, Client, Product } from '@/types';
+import type { Order } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { ReceiptModal } from '@/components/ui/ReceiptModal';
 import { useLanguage } from '@/context/LanguageContext';
 import { extractPaymentMethod } from '@/lib/saleNotes';
+import { useOrdersQuery, useClientsQuery, useProductsQuery, queryKeys } from '@/lib/queries';
 
 function formatGNF(amount: number) {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' GNF';
@@ -23,12 +25,19 @@ function formatDate(isoString: string, language: string) {
 
 export default function SalesHistoryPage() {
   const { t, language } = useLanguage();
-  const [sales, setSales] = useState<Order[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Data
-  const [clients, setClients] = useState<Client[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const queryClient = useQueryClient();
+  // Cache partagé avec Dashboard, Vendre, Produits et Clients — la première
+  // de ces pages visitée charge les données, les suivantes les trouvent déjà
+  // en mémoire, ici comme partout ailleurs.
+  const { data: ordersData, isLoading } = useOrdersQuery();
+  const { data: clientsData } = useClientsQuery();
+  const { data: productsData } = useProductsQuery();
+  const clients = clientsData?.items ?? [];
+  const products = productsData?.items ?? [];
+  const sales = useMemo(
+    () => (ordersData?.items || []).filter(o => o.status === 'delivered'),
+    [ordersData]
+  );
 
   // Modals state
   const [selectedSale, setSelectedSale] = useState<Order | null>(null);
@@ -67,58 +76,6 @@ export default function SalesHistoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(15);
-
-  const fetchSales = async (silent = false) => {
-    try {
-      if (!silent) setIsLoading(true);
-      // Charge toutes les commandes (pas seulement les 100 premières) avant
-      // de filtrer sur "livrée" : sinon l'historique perdait silencieusement
-      // les ventes les plus anciennes dès que la boutique dépassait 100
-      // commandes au total, tous statuts confondus.
-      const first = await api.getOrders(1, undefined, 100);
-      let all = first.items;
-      const totalPages = Math.min(first.pages || 1, 50); // garde-fou anti-boucle infinie
-      for (let page = 2; page <= totalPages; page++) {
-        const next = await api.getOrders(page, undefined, 100);
-        all = all.concat(next.items);
-      }
-      setSales(all.filter(o => o.status === 'delivered'));
-    } catch (error) {
-      toast.error(language === 'fr' ? "Erreur de récupération de l'historique" : "Error fetching history");
-    } finally {
-      if (!silent) setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchSales();
-    api.getClients(1, 100).then(res => setClients(res.items)).catch(() => {});
-    api.getProducts(1, 100).then(res => setProducts(res.items)).catch(() => {});
-  }, []);
-
-  // Une vente conclue hors connexion n'existe nulle part côté serveur tant
-  // qu'elle n'a pas été synchronisée : sans ce rafraîchissement, l'historique
-  // restait affiché avec des ventes à identifiant local jusqu'à un
-  // rechargement manuel de la page.
-  useEffect(() => {
-    const onSyncComplete = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { succeeded: number } | undefined;
-      if (detail?.succeeded) fetchSales(true);
-    };
-    window.addEventListener('boutikflow:sync-complete', onSyncComplete);
-    return () => window.removeEventListener('boutikflow:sync-complete', onSyncComplete);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Une vente vient d'être conclue (POS) — visible immédiatement dans
-  // l'historique, sans attendre le retour de connexion : la vente existe
-  // déjà en local (IndexedDB) à cet instant, il n'y a qu'à la relire.
-  useEffect(() => {
-    const onOrderCreated = () => fetchSales(true);
-    window.addEventListener('boutikflow:order-created', onOrderCreated);
-    return () => window.removeEventListener('boutikflow:order-created', onOrderCreated);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Le backend résout désormais client_name/created_by_name/product_name
   // directement (voir OrderResponse) — le repli sur les listes clients/
@@ -237,7 +194,9 @@ export default function SalesHistoryPage() {
       await api.returnOrderItems(returnOrder.id, itemsToReturn, returnReason, restockInventory);
       toast.success(language === 'fr' ? 'Retour validé avec succès' : 'Return processed successfully');
       setReturnOrder(null);
-      fetchSales(true);
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.products() });
+      queryClient.invalidateQueries({ queryKey: ['product-stats'] });
     } catch (err: any) {
       toast.error(err.message || (language === 'fr' ? 'Erreur lors du retour' : 'Error processing return'));
     } finally {

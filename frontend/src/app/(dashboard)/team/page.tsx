@@ -1,27 +1,24 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { UserPlus, Pencil, Trash2, Shield, AlertTriangle, Eye, EyeOff, KeyRound } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
 import { useLanguage } from '@/context/LanguageContext';
-
-interface TeamMember {
-  id: string;
-  tenant_id: string;
-  email: string;
-  full_name: string | null;
-  phone: string | null;
-  role: 'owner' | 'manager' | 'cashier' | 'stock_manager' | 'staff';
-  is_active: boolean;
-  created_at: string;
-}
+import { useTeamQuery } from '@/lib/queries';
+import type { TeamMember } from '@/types';
 
 export default function TeamPage() {
   const { t } = useLanguage();
-  const [members, setMembers] = useState<TeamMember[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+  // Couche mémoire partagée, comme Produits/Vendre/Clients : revalidée
+  // silencieusement en arrière-plan après chaque action (invitation,
+  // changement de rôle, activation/désactivation, suppression), jamais un
+  // rechargement complet de la page.
+  const { data: members = [], isLoading, error } = useTeamQuery();
+  const fetchError = error ? (error as any)?.message || 'Erreur de connexion au serveur' : null;
 
   // Invite modal
   const [isInviteOpen, setIsInviteOpen] = useState(false);
@@ -47,32 +44,6 @@ export default function TeamPage() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
 
-  const [fetchError, setFetchError] = useState<string | null>(null);
-
-  const fetchMembers = async () => {
-    setFetchError(null);
-    try {
-      const response = await api.getTeamMembers();
-      if (Array.isArray(response)) {
-        setMembers(response);
-      } else if (response && Array.isArray((response as any).items)) {
-        setMembers((response as any).items);
-      } else {
-        setMembers([]);
-      }
-    } catch (error: any) {
-      console.error('Fetch team error:', error);
-      setFetchError(error?.message || 'Erreur de connexion au serveur');
-      setMembers([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchMembers();
-  }, []);
-
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsInviting(true);
@@ -87,7 +58,7 @@ export default function TeamPage() {
       toast.success(t('team.invite_success'));
       setIsInviteOpen(false);
       setInviteForm({ full_name: '', email: '', password: '', phone: '', role: 'staff' });
-      fetchMembers();
+      queryClient.invalidateQueries({ queryKey: ['team'] });
     } catch (err: any) {
       toast.error(err.message || t('team.error_invite'));
     } finally {
@@ -103,7 +74,7 @@ export default function TeamPage() {
       await api.updateTeamMemberRole(editMember.id, editRole);
       toast.success(t('common.saving'));
       setEditMember(null);
-      fetchMembers();
+      queryClient.invalidateQueries({ queryKey: ['team'] });
     } catch (err: any) {
       toast.error(err.message || 'Erreur');
     } finally {
@@ -115,7 +86,7 @@ export default function TeamPage() {
     try {
       await api.updateTeamMemberStatus(member.id, !member.is_active);
       toast.success(t('team.status_updated'));
-      fetchMembers();
+      queryClient.invalidateQueries({ queryKey: ['team'] });
     } catch (err: any) {
       toast.error(err.message || 'Erreur');
     }
@@ -128,7 +99,7 @@ export default function TeamPage() {
       await api.deleteTeamMember(deleteTarget.id);
       toast.success(t('common.deleting'));
       setDeleteTarget(null);
-      fetchMembers();
+      queryClient.invalidateQueries({ queryKey: ['team'] });
     } catch (err: any) {
       toast.error(err.message || 'Erreur');
     } finally {

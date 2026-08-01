@@ -79,16 +79,41 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
     const onSyncComplete = (e: Event) => {
       const detail = (e as CustomEvent).detail as {
         succeeded: number;
-        deltas?: { products: any[]; clients: any[] };
+        deltas?: { products: any[]; clients: any[]; orders: any[]; transactions: any[] };
       } | undefined;
       if (!detail?.succeeded) return;
       mergeDeltaIntoListCache(queryClient, queryKeys.products(), detail.deltas?.products);
       mergeDeltaIntoListCache(queryClient, queryKeys.clients(), detail.deltas?.clients);
+      mergeDeltaIntoListCache(queryClient, queryKeys.orders(), detail.deltas?.orders);
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       queryClient.invalidateQueries({ queryKey: ['product-stats'] });
+      // Finance/Dashboard/Analytics varient par filtre (période, type...) —
+      // trop de combinaisons possibles pour un merge de delta précis comme
+      // products()/clients()/orders(). Invalidation ciblée par préfixe :
+      // TanStack ne vide jamais l'écran, il ne fait que revalider en
+      // arrière-plan ce qui est actuellement affiché, silencieusement.
+      queryClient.invalidateQueries({ queryKey: ['finance-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
     };
     window.addEventListener('boutikflow:sync-complete', onSyncComplete);
     return () => window.removeEventListener('boutikflow:sync-complete', onSyncComplete);
+  }, [queryClient]);
+
+  // Une vente vient d'être conclue (POS) — elle existe déjà en local
+  // (IndexedDB) à cet instant : commandes, chiffre d'affaires et finances
+  // se mettent à jour immédiatement partout, sans attendre une
+  // synchronisation ni un rechargement de page.
+  useEffect(() => {
+    const onOrderCreated = () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['finance-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
+      queryClient.invalidateQueries({ queryKey: ['product-stats'] });
+    };
+    window.addEventListener('boutikflow:order-created', onOrderCreated);
+    return () => window.removeEventListener('boutikflow:order-created', onOrderCreated);
   }, [queryClient]);
 
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;

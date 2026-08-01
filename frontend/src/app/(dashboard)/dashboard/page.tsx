@@ -1,14 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CircleDollarSign, ShoppingBag, Users, Clock, Crown, CheckCircle, BarChart3, MessageCircle, ArrowDownRight, Wallet, Package, TrendingUp } from 'lucide-react';
-import type { DashboardKPIs, Order, AnalyticsData } from '@/types';
-import { api } from '@/lib/api/client';
-import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
 import { buildPeriodParams, isWithinPeriod, periodLabel, type PeriodKey } from '@/lib/period';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { useProductsQuery, useClientsQuery } from '@/lib/queries';
+import { useProductsQuery, useClientsQuery, useOrdersQuery, useDashboardKpisQuery, useAnalyticsQuery } from '@/lib/queries';
 
 const STATUS_CONFIG = {
   pending: { label_fr: 'En attente', label_en: 'Pending', cls: 'badge-warning' },
@@ -165,26 +162,20 @@ function KPICard({
 }
 
 export default function DashboardPage() {
-  const [kpis, setKpis] = useState<DashboardKPIs | null>(null);
-  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
-  // Ensemble déjà trié et filtré par période : la pagination ci-dessous
-  // découpe CE tableau côté client. Elle ne doit jamais redemander une autre
-  // page au serveur, sans quoi "Suivant" saute vers un lot de commandes non
-  // lié plutôt que de continuer la même liste triée (bug du tri "cassé").
-  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [orderPage, setOrderPage] = useState(1);
   const [ordersPerPage, setOrdersPerPage] = useState(10);
   const [periodFilter, setPeriodFilter] = useState<PeriodKey>('30j');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
-  // Cache partagé avec Produits, Vendre et Clients — visiter le Dashboard
-  // en premier préchauffe leur cache ; les revisiter ensuite est instantané.
+  // Cache partagé avec Produits, Vendre, Clients et Ventes — visiter le
+  // Dashboard en premier préchauffe leur cache ; les revisiter ensuite est
+  // instantané, et réciproquement.
   const { data: productsData } = useProductsQuery();
   const { data: clientsData } = useClientsQuery();
+  const { data: ordersData } = useOrdersQuery();
   const clients = clientsData?.items ?? [];
   const products = productsData?.items ?? [];
   const [greeting, setGreeting] = useState('Bonjour');
-  const [isLoading, setIsLoading] = useState(true);
   const { t, language } = useLanguage();
 
   useEffect(() => {
@@ -194,95 +185,27 @@ export default function DashboardPage() {
     else setGreeting(t('dash.welcome_evening'));
   }, [language, t]);
 
-  // Incrémenté à chaque fetchData() : permet à une réponse arrivée en
-  // retard de savoir qu'elle est périmée et de ne pas écraser un résultat
-  // plus récent (voir plus bas).
-  const fetchIdRef = useRef(0);
+  // Mêmes paramètres que le module Finance : c'est ce qui garantit que les
+  // deux écrans affichent les mêmes chiffres pour une même période. Tant
+  // que les deux dates d'une période personnalisée ne sont pas choisies, il
+  // n'y a rien de sensé à demander au serveur — les requêtes restent
+  // désactivées (`enabled`) plutôt que d'envoyer "aucune contrainte" et
+  // afficher un instant les totaux globaux à la place de la période choisie.
+  const range = buildPeriodParams(periodFilter, customStartDate, customEndDate);
+  const hasValidRange = !(periodFilter === 'custom' && (!customStartDate || !customEndDate));
 
-  const fetchData = async (silent = false) => {
-    // Une période "personnalisée" tant que les deux dates ne sont pas
-    // encore choisies n'a pas de sens à envoyer au serveur : celui-ci
-    // l'interprète alors comme "aucune contrainte" et renvoie les KPI de
-    // tout l'historique. Ce fetch prématuré affichait un instant les
-    // totaux globaux (ex : 12 commandes / 12 929 992 GNF) à la place de
-    // ceux de la période réellement choisie.
-    if (periodFilter === 'custom' && (!customStartDate || !customEndDate)) {
-      return;
-    }
+  const { data: kpis, isLoading } = useDashboardKpisQuery(range.period, range.start_date, range.end_date, hasValidRange);
+  const { data: analytics } = useAnalyticsQuery(range.period, range.start_date, range.end_date, hasValidRange);
 
-    const requestId = ++fetchIdRef.current;
-    try {
-      // Un rafraîchissement déclenché en arrière-plan (synchronisation,
-      // nouvelle vente ailleurs) ne doit jamais vider le tableau de bord
-      // déjà affiché avant de le repeupler.
-      if (!silent) setIsLoading(true);
-      // Mêmes paramètres que le module Finance : c'est ce qui garantit que
-      // les deux écrans affichent les mêmes chiffres pour une même période.
-      const range = buildPeriodParams(periodFilter, customStartDate, customEndDate);
-
-      const [kpiData, ordersData, analyticsData] = await Promise.all([
-        api.getDashboardKPIs(range.period, range.start_date, range.end_date),
-        // Un seul lot des commandes les plus récentes (borne max de l'API) :
-        // la pagination affichée en dessous ne fait que re-découper ce même
-        // tableau, elle ne redemande jamais une autre page au serveur.
-        api.getOrders(1, undefined, 100),
-        api.getAnalyticsData(range.period, range.start_date, range.end_date).catch(() => null)
-      ]);
-
-      // Une sélection de période plus récente a peut-être déjà déclenché
-      // un autre appel entre-temps (ex : passage rapide de "30 jours" à
-      // une période personnalisée) ; si sa réponse à LUI est déjà arrivée,
-      // celle-ci est obsolète et ne doit pas l'écraser avec des chiffres
-      // périmés — c'était la cause du KPI figé sur le total global.
-      if (requestId !== fetchIdRef.current) return;
-
-      setKpis(kpiData);
-
-      const ordersInPeriod = (ordersData.items || [])
-        .filter((o: any) => isWithinPeriod(o.created_at, range))
-        .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-
-      setFilteredOrders(ordersInPeriod);
-      setAnalytics(analyticsData);
-    } catch (error) {
-      if (requestId === fetchIdRef.current && !silent) {
-        toast.error(language === 'fr' ? 'Erreur lors du chargement des données' : 'Error loading dashboard data');
-      }
-    } finally {
-      if (requestId === fetchIdRef.current) {
-        setIsLoading(false);
-      }
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
+  // Ensemble trié et filtré par période, dérivé du cache partagé des
+  // commandes (jamais une seconde requête serveur) — la pagination
+  // ci-dessous découpe CE tableau côté client.
+  const filteredOrders = useMemo(() => {
+    return (ordersData?.items || [])
+      .filter((o: any) => isWithinPeriod(o.created_at, range))
+      .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [language, periodFilter, customStartDate, customEndDate]);
-
-  // Une vente créée hors connexion ne compte nulle part tant qu'elle n'a
-  // pas été rejouée contre le serveur : sans ce rafraîchissement, le
-  // Tableau de bord restait affiché avec des chiffres d'avant la
-  // synchronisation jusqu'à ce que l'utilisateur change un filtre à la main.
-  useEffect(() => {
-    const onSyncComplete = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { succeeded: number } | undefined;
-      if (detail?.succeeded) fetchData(true);
-    };
-    window.addEventListener('boutikflow:sync-complete', onSyncComplete);
-    return () => window.removeEventListener('boutikflow:sync-complete', onSyncComplete);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [periodFilter, customStartDate, customEndDate]);
-
-  // Une vente vient d'être conclue (POS) — les KPI se mettent à jour
-  // immédiatement, sans attendre le retour de connexion : la vente existe
-  // déjà en local (IndexedDB) à cet instant, il n'y a qu'à la relire.
-  useEffect(() => {
-    const onOrderCreated = () => fetchData(true);
-    window.addEventListener('boutikflow:order-created', onOrderCreated);
-    return () => window.removeEventListener('boutikflow:order-created', onOrderCreated);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [periodFilter, customStartDate, customEndDate]);
+  }, [ordersData, range.period, range.start_date, range.end_date]);
 
   // Changer de période invalide la page courante : sans ce reset, rester
   // sur la page 3 après un nouveau filtre pouvait afficher une page vide.

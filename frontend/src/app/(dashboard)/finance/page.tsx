@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Plus,
   Search,
@@ -18,9 +19,8 @@ import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
 import { useLanguage } from '@/context/LanguageContext';
 import { buildPeriodParams, type PeriodKey } from '@/lib/period';
+import { useFinanceTransactionsQuery } from '@/lib/queries';
 import type {
-  FinancialTransaction,
-  FinanceSummary,
   TransactionType,
   TransactionCategory,
   PaymentMethod,
@@ -33,6 +33,7 @@ function formatGNF(amount: number): string {
 
 export default function FinancePage() {
   const { t, language } = useLanguage();
+  const queryClient = useQueryClient();
 
   const CATEGORY_LABELS: Record<string, string> = {
     sale: language === 'fr' ? 'Vente' : 'Sale',
@@ -66,16 +67,9 @@ export default function FinancePage() {
     { value: 'other_expense', label: language === 'fr' ? 'Autre dépense' : 'Other expense' },
   ];
 
-  // Data states
-  const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
-  const [summary, setSummary] = useState<FinanceSummary | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
   // Pagination states
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(50);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
 
   // Filter states
   const [selectedPeriod, setSelectedPeriod] = useState<string>('30j');
@@ -104,91 +98,32 @@ export default function FinancePage() {
     reference: '',
   });
 
-  // Incrémenté à chaque fetchTransactions() : une réponse arrivée en
-  // retard (ex : l'appel "toutes périodes" déclenché en passant par
-  // "personnalisée" avant d'avoir choisi les deux dates) sait alors
-  // qu'elle est périmée et n'écrase pas un résultat plus récent.
-  const fetchIdRef = useRef(0);
+  // Même fonction que le Tableau de bord : une sélection identique y
+  // produit exactement les mêmes bornes de dates. Tant que les deux dates
+  // d'une période personnalisée ne sont pas choisies, la requête reste
+  // désactivée (`enabled`) plutôt que d'envoyer "aucune contrainte" et
+  // afficher un instant les totaux globaux à la place de la période choisie.
+  const range = buildPeriodParams(selectedPeriod as PeriodKey, filterDateFrom, filterDateTo);
+  const hasValidRange = !(selectedPeriod === 'custom' && (!filterDateFrom || !filterDateTo));
+  const typeParam = selectedType !== 'all' ? selectedType : undefined;
+  const categoryParam = selectedCategory !== 'all' ? selectedCategory : undefined;
 
-  const fetchTransactions = useCallback(async (silent = false) => {
-    // Tant que les deux dates d'une période personnalisée ne sont pas
-    // choisies, il n'y a rien de sensé à demander au serveur : celui-ci
-    // renverrait "toutes les transactions", ce qui affichait un instant
-    // les totaux globaux à la place de ceux de la période choisie — et
-    // pouvait même écraser le bon résultat si cette réponse arrivait après.
-    if (selectedPeriod === 'custom' && (!filterDateFrom || !filterDateTo)) {
-      return;
-    }
+  // Couche mémoire partagée, comme Produits/Vendre : une combinaison de
+  // filtres déjà consultée reste en cache, revalidée silencieusement en
+  // arrière-plan (synchronisation, nouvelle vente ailleurs — voir
+  // QueryProvider) sans jamais vider la liste affichée.
+  const { data: transactionsData, isLoading } = useFinanceTransactionsQuery(
+    page, perPage, typeParam, categoryParam, range.period, range.start_date, range.end_date, hasValidRange
+  );
 
-    const requestId = ++fetchIdRef.current;
-    // Un rafraîchissement déclenché en arrière-plan (synchronisation, nouvelle
-    // vente ailleurs) ne doit jamais vider la liste déjà affichée avant de la
-    // repeupler — seul le tout premier chargement affiche le spinner plein écran.
-    if (!silent) setIsLoading(true);
-    try {
-      const typeParam = selectedType !== 'all' ? selectedType : undefined;
-      const categoryParam = selectedCategory !== 'all' ? selectedCategory : undefined;
-      // Même fonction que le Tableau de bord : une sélection identique y
-      // produit exactement les mêmes bornes de dates.
-      const range = buildPeriodParams(selectedPeriod as PeriodKey, filterDateFrom, filterDateTo);
-
-      const res = await api.getFinanceTransactions(
-        page,
-        perPage,
-        typeParam,
-        categoryParam,
-        range.period,
-        range.start_date,
-        range.end_date
-      );
-
-      // Une sélection plus récente a peut-être déjà déclenché un autre
-      // appel entre-temps ; si celui-ci est déjà arrivé, cette réponse-ci
-      // est obsolète et ne doit pas l'écraser avec des chiffres périmés.
-      if (requestId !== fetchIdRef.current) return;
-
-      const items = (res.items || []).sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-      setTransactions(items);
-      setSummary(res.summary || null);
-      setTotal(res.total || 0);
-      setTotalPages(res.pages || 1);
-    } catch (err: any) {
-      if (requestId === fetchIdRef.current && !silent) {
-        console.error('Error loading finance transactions:', err);
-        toast.error(err?.message || 'Erreur lors du chargement des transactions');
-      }
-    } finally {
-      if (requestId === fetchIdRef.current) {
-        setIsLoading(false);
-      }
-    }
-  }, [page, perPage, selectedType, selectedCategory, selectedPeriod, filterDateFrom, filterDateTo]);
-
-  useEffect(() => {
-    fetchTransactions();
-  }, [fetchTransactions]);
-
-  // Une transaction créée hors connexion (vente, dépense...) ne compte
-  // nulle part tant qu'elle n'a pas été rejouée contre le serveur : sans ce
-  // rafraîchissement, les totaux Finance restaient affichés avec des
-  // chiffres d'avant la synchronisation jusqu'à un changement de filtre manuel.
-  useEffect(() => {
-    const onSyncComplete = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { succeeded: number } | undefined;
-      if (detail?.succeeded) fetchTransactions(true);
-    };
-    window.addEventListener('boutikflow:sync-complete', onSyncComplete);
-    return () => window.removeEventListener('boutikflow:sync-complete', onSyncComplete);
-  }, [fetchTransactions]);
-
-  // Une vente vient d'être conclue (POS) — la transaction correspondante
-  // existe déjà en local à cet instant (voir handleOfflineRequest côté
-  // client), visible immédiatement sans attendre le retour de connexion.
-  useEffect(() => {
-    const onOrderCreated = () => fetchTransactions(true);
-    window.addEventListener('boutikflow:order-created', onOrderCreated);
-    return () => window.removeEventListener('boutikflow:order-created', onOrderCreated);
-  }, [fetchTransactions]);
+  const transactions = useMemo(() => {
+    return (transactionsData?.items || [])
+      .slice()
+      .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+  }, [transactionsData]);
+  const summary = transactionsData?.summary ?? null;
+  const total = transactionsData?.total ?? 0;
+  const totalPages = transactionsData?.pages ?? 1;
 
   // Handle Type toggle in Modal Form
   const handleTypeChange = (newType: TransactionType) => {
@@ -243,7 +178,9 @@ export default function FinancePage() {
           : (language === 'fr' ? "Dépense enregistrée avec succès !" : "Expense transaction recorded successfully!")
       );
       setIsModalOpen(false);
-      fetchTransactions(true);
+      queryClient.invalidateQueries({ queryKey: ['finance-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
     } catch (err: any) {
       console.error('Create transaction error:', err);
       toast.error(err?.message || (language === 'fr' ? 'Erreur lors de la création de la transaction' : 'Error creating transaction'));
