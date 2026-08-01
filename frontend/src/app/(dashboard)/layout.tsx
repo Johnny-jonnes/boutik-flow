@@ -260,6 +260,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     ? [...visibleNavItems, { href: '/admin', icon: Store, label: 'Admin', labelEn: 'Admin', id: 'nav-admin' }]
     : visibleNavItems;
 
+  /* Même filtrage par permission que le menu latéral — la nav du bas ne
+     doit jamais proposer un raccourci vers une page que le rôle ne peut
+     pas ouvrir. */
+  const visibleBottomNav = BOTTOM_NAV.filter((item) => {
+    const perm = ROUTE_PERMISSIONS.find((r) => r.prefix === item.href);
+    return !perm || hasPermission(userInfo.role, perm.module, perm.action);
+  });
+
   return (
     <div className="shell">
       {isLocked && <PinLock onVerify={verifyPin} error={pinError} onClearError={() => setPinError('')} />}
@@ -408,7 +416,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* ══ BOTTOM NAV — Glassmorphism Dock ══ */}
       <nav className="bottom-nav" aria-label="Navigation principale mobile">
         <div className="bottom-nav-glass">
-          {BOTTOM_NAV.map((item) => {
+          {visibleBottomNav.map((item) => {
             const Icon = item.icon;
             const isDash = item.href === '/dashboard';
             const active = isDash ? pathname === item.href : pathname.startsWith(item.href);
