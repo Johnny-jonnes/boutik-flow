@@ -7,6 +7,7 @@ import uuid
 from datetime import datetime
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.encoders import jsonable_encoder
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -76,21 +77,28 @@ def list_transactions(
         .all()
     )
 
-    # Totaux calculés par le service partagé (agrégation SQL) : plus de
-    # chargement de toutes les lignes en mémoire pour faire une somme.
-    totals = financial_totals(
-        db,
-        current_user.tenant_id,
-        start,
-        end,
-        type_filter=type,
-        category_filter=category,
-    )
+    # Totaux TOUJOURS non filtrés par type/catégorie — c'est le vrai solde
+    # de la période, celui que "Solde Net" doit afficher. Un filtre
+    # appliqué ici en plus de la fenêtre de dates produisait un solde
+    # trompeur : filtrer sur "Remboursement" pour inspecter un retour
+    # faisait retomber total_income à 0 pendant que total_expense gardait
+    # le montant du remboursement, affichant un solde négatif (ex.
+    # -200 000 GNF) alors que le vrai solde de la période était 0.
+    totals = financial_totals(db, current_user.tenant_id, start, end)
 
     # Marge produits sur la même fenêtre de dates — indépendante du filtre
     # type/catégorie de la liste, qui ne concerne que les transactions
     # affichées, pas les ventes de produits sous-jacentes.
     margin = product_margin(db, current_user.tenant_id, start, end)
+
+    # Somme des lignes réellement affichées par la liste filtrée (si un
+    # filtre type/catégorie est actif) — sert à montrer "combien pour ce
+    # que je regarde", sans jamais se substituer au vrai solde ci-dessus.
+    filtered_total = None
+    if type or category:
+        filtered_total = (
+            query.with_entities(func.coalesce(func.sum(FinancialTransaction.amount), 0)).scalar()
+        )
 
     summary = FinanceSummary(
         total_income=totals.total_income,
@@ -99,6 +107,7 @@ def list_transactions(
         transactions_count=totals.transactions_count,
         product_margin=margin.gross_margin,
         product_margin_coverage=margin.coverage_pct,
+        filtered_total=filtered_total,
     )
 
     return TransactionListResponse(

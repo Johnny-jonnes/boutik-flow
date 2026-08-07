@@ -513,6 +513,7 @@ export interface FinanceSummary {
   transactions_count: number;
   product_margin?: number;
   product_margin_coverage?: number;
+  filtered_total?: number | null;
 }
 
 export interface TransactionListResponse {

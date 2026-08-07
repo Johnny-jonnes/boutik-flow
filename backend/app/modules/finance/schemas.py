@@ -44,6 +44,11 @@ class FinanceSummary(BaseModel):
     # que cette marge couvre réellement.
     product_margin: Decimal = Decimal("0.00")
     product_margin_coverage: float = 0.0
+    # Somme des lignes réellement affichées quand un filtre type/catégorie
+    # est actif (ex : "combien de remboursements sur cette période ?") —
+    # jamais utilisée pour net_balance ci-dessus, qui reste toujours le
+    # vrai solde non filtré de la période. None si aucun filtre actif.
+    filtered_total: Decimal | None = None
 
 
 class TransactionListResponse(BaseModel):
