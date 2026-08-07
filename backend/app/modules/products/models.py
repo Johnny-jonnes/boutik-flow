@@ -109,6 +109,19 @@ class Order(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
+    # Mode de paiement structuré — NULL pour les commandes antérieures à
+    # cette colonne (jamais rétro-deviné) ; le texte libre historique dans
+    # `notes` (voir lib/saleNotes.ts) reste le repli de lecture pour elles.
+    payment_method = Column(String(50), nullable=True)
+    # Cumul remboursé sur cette commande (voir return_order_items) — jamais
+    # soustrait de `total` lui-même, pour garder le reçu/l'historique
+    # intacts ; sales_metrics/product_margin le déduisent au moment de
+    # l'agrégation.
+    returned_amount = Column(Numeric(15, 2), nullable=False, default=0, server_default="0")
+    # Vente à crédit uniquement : montant réellement encaissé à la vente
+    # (0 = différé total). NULL pour une vente comptant classique — le
+    # total est alors considéré intégralement encaissé.
+    amount_paid_now = Column(Numeric(15, 2), nullable=True)
 
     client = relationship("Client", back_populates="orders")
     items = relationship("OrderItem", back_populates="order", lazy="joined")

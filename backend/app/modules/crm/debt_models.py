@@ -53,6 +53,12 @@ class DebtPayment(Base):
     payment_method = Column(String(50), default="cash", nullable=False)
     notes = Column(Text, nullable=True)
     paid_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    # Traçabilité (demande 8) — qui a enregistré le versement, et le solde
+    # de la dette juste avant/après ce versement précis. NULL pour les
+    # paiements antérieurs à ces colonnes, jamais rétro-deviné.
+    paid_by = Column(UUID(as_uuid=True), nullable=True)
+    balance_before = Column(Numeric(12, 2), nullable=True)
+    balance_after = Column(Numeric(12, 2), nullable=True)
 
     # Relations
     debt = relationship("ClientDebt", back_populates="payments")

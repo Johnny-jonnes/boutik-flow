@@ -24,6 +24,8 @@ class TransactionCategoryEnum(str, enum.Enum):
     refund = "refund"             # Remboursement client (retour)
     other_income = "other_income" # Autre revenu
     other_expense = "other_expense" # Autre dépense / charge
+    credit_sale = "credit_sale"       # Part encaissée immédiatement d'une vente à crédit
+    debt_repayment = "debt_repayment" # Remboursement d'une dette client
 
 
 class FinancialTransaction(Base):
