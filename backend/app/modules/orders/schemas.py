@@ -86,6 +86,14 @@ class OrderResponse(BaseModel):
     status: str
     total: Decimal
     notes: str | None
+    payment_method: str | None = None
+    # Cumul remboursé sur cette commande (voir POST /orders/{id}/return) —
+    # jamais soustrait de `total` lui-même. is_returned/is_partially_returned
+    # sont dérivés, jamais stockés, pour ne jamais diverger des vraies
+    # transactions de remboursement.
+    returned_amount: Decimal = Decimal("0")
+    is_returned: bool = False
+    is_partially_returned: bool = False
     created_at: datetime
     updated_at: datetime
     # Présent uniquement pour une synchronisation incrémentale (voir

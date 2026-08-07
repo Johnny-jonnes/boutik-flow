@@ -22,6 +22,7 @@ from app.core.database import get_db
 from app.core.deps import CurrentUser
 from app.core.idempotency import IdempotencyHeader, get_cached_response, store_response
 from app.core.permissions import require_permission, has_permission
+from app.core.period import resolve_period
 from app.modules.products.models import Order, OrderItem, OrderLog, OrderStatusEnum, Product, InventoryLog
 from app.modules.crm.models import Client
 from app.modules.auth.models import User
@@ -34,6 +35,7 @@ from app.modules.orders.schemas import (
     OrderReturnRequest,
 )
 from app.modules.finance.models import FinancialTransaction, TransactionTypeEnum, TransactionCategoryEnum
+from app.modules.crm.debt_models import ClientDebt, DebtStatusEnum
 from app.modules.audit.router import log_action
 
 logger = logging.getLogger(__name__)
@@ -89,6 +91,7 @@ def _build_order_response(order: Order, user_names: dict) -> OrderResponse:
         for item in order.items
     ]
     status_value = order.status.value if hasattr(order.status, "value") else order.status
+    returned_amount = order.returned_amount or Decimal("0")
     return OrderResponse(
         id=order.id,
         tenant_id=order.tenant_id,
@@ -99,6 +102,10 @@ def _build_order_response(order: Order, user_names: dict) -> OrderResponse:
         status=status_value,
         total=order.total,
         notes=order.notes,
+        payment_method=order.payment_method,
+        returned_amount=returned_amount,
+        is_returned=returned_amount > 0 and returned_amount >= order.total,
+        is_partially_returned=Decimal("0") < returned_amount < order.total,
         created_at=order.created_at,
         updated_at=order.updated_at,
         deleted_at=order.deleted_at,
@@ -225,17 +232,36 @@ def list_orders(
     per_page: int = Query(20, ge=1, le=500, description="Résultats par page"),
     status_filter: str | None = Query(None, alias="status", description="Filtrer par statut"),
     client_id: uuid.UUID | None = Query(None, description="Filtrer par client"),
+    product_id: uuid.UUID | None = Query(None, description="Filtrer par produit acheté"),
+    category_id: uuid.UUID | None = Query(None, description="Filtrer par catégorie de produit acheté"),
+    seller_id: uuid.UUID | None = Query(None, description="Filtrer par vendeur (created_by)"),
+    payment_method: str | None = Query(None, description="Filtrer par mode de paiement"),
+    sale_type: str | None = Query(
+        None, description="normal | credit | returned | partial_return — dérivé de status/returned_amount, jamais stocké séparément."
+    ),
+    period: str | None = Query(None, description="24h, 7j, 30j, 90j, all, custom — voir resolve_period"),
+    start_date: str | None = Query(None, description="Date de début (YYYY-MM-DD), utilisable seule sans period"),
+    end_date: str | None = Query(None, description="Date de fin incluse (YYYY-MM-DD)"),
+    sort_by: str = Query("created_at", description="created_at | total"),
+    sort_dir: str = Query("desc", description="asc | desc"),
     updated_since: datetime | None = Query(
         None, description="Synchronisation incrémentale : ne renvoie que les commandes créées/modifiées/supprimées après cette date."
     ),
 ) -> OrderListResponse:
     """
     Liste paginée des commandes, filtrée par tenant_id.
-    Supporte le filtrage par statut et par client.
+
+    Tous les filtres (statut, client, produit, catégorie, vendeur, mode de
+    paiement, type de vente, période) sont combinables et optionnels — un
+    appelant qui n'en passe aucun (ex. la couche mémoire du Dashboard,
+    voir useOrdersQuery) garde exactement le comportement d'avant leur
+    ajout.
 
     Avec `updated_since`, inclut aussi les commandes annulées/supprimées
     depuis cette date pour que le client synchronise ces changements de
-    statut, pas seulement les nouvelles commandes.
+    statut, pas seulement les nouvelles commandes — ce filtre reste
+    prioritaire et mutuellement exclusif avec `period`/`start_date`/
+    `end_date`, comme avant.
     """
     query = db.query(Order).options(
         selectinload(Order.items).selectinload(OrderItem.product),
@@ -252,10 +278,56 @@ def list_orders(
     if client_id:
         query = query.filter(Order.client_id == client_id)
 
+    if seller_id:
+        query = query.filter(Order.created_by == seller_id)
+
+    if payment_method:
+        query = query.filter(Order.payment_method == payment_method)
+
+    if product_id:
+        query = query.filter(
+            Order.id.in_(
+                db.query(OrderItem.order_id).filter(OrderItem.product_id == product_id)
+            )
+        )
+
+    if category_id:
+        query = query.filter(
+            Order.id.in_(
+                db.query(OrderItem.order_id)
+                .join(Product, Product.id == OrderItem.product_id)
+                .filter(Product.category_id == category_id)
+            )
+        )
+
+    if sale_type:
+        if sale_type == "credit":
+            query = query.filter(Order.status == OrderStatusEnum.pending)
+        elif sale_type == "returned":
+            query = query.filter(Order.returned_amount > 0, Order.returned_amount >= Order.total)
+        elif sale_type == "partial_return":
+            query = query.filter(Order.returned_amount > 0, Order.returned_amount < Order.total)
+        elif sale_type == "normal":
+            query = query.filter(Order.returned_amount == 0, Order.status != OrderStatusEnum.pending)
+
+    # Fenêtre de dates — même fonction que Dashboard/Finance/Ventes, mêmes
+    # bornes pour une même sélection. N'entre en jeu que si explicitement
+    # demandé (period ou dates) ; ne remplace jamais updated_since ci-dessus.
+    if updated_since is None and (period or start_date or end_date):
+        window_start, window_end = resolve_period(period, start_date, end_date)
+        if window_start is not None:
+            query = query.filter(Order.created_at >= window_start)
+        if window_end is not None:
+            query = query.filter(Order.created_at < window_end)
+
     total = query.count()
     # Ordre chronologique croissant en incrémental (voir la même remarque
-    # dans products/router.py::list_products).
-    order = Order.updated_at.asc() if updated_since is not None else Order.created_at.desc()
+    # dans products/router.py::list_products) — prioritaire sur sort_by/sort_dir.
+    if updated_since is not None:
+        order = Order.updated_at.asc()
+    else:
+        sort_column = Order.total if sort_by == "total" else Order.created_at
+        order = sort_column.asc() if sort_dir == "asc" else sort_column.desc()
     items = (
         query
         .order_by(order)
@@ -677,14 +749,48 @@ def return_order_items(
                 )
                 db.add(inventory_log)
 
-    # Créer la transaction financière de remboursement (dépense)
+    # Cumul remboursé sur cette commande — jamais order.total lui-même
+    # (garde le reçu/l'historique intacts) ; sales_metrics/product_margin
+    # le déduisent au moment de l'agrégation.
+    order.returned_amount = (order.returned_amount or Decimal("0")) + refund_amount
+
+    # Si cette commande a une dette client active liée, le retour réduit
+    # d'abord ce qu'elle doit encore (le client ne doit que ce qu'il a
+    # réellement gardé) plutôt que de rembourser du cash qui, pour la part
+    # à crédit, n'a jamais été encaissé. Seul le surplus éventuel — si le
+    # client avait déjà payé plus que ce qui reste dû une fois le retour
+    # pris en compte — donne lieu à un vrai remboursement en espèces.
+    debt_adjustment_note = ""
+    cash_refund_amount = refund_amount
     if refund_amount > 0:
+        linked_debt = db.query(ClientDebt).filter(
+            and_(
+                ClientDebt.order_id == order.id,
+                ClientDebt.tenant_id == current_user.tenant_id,
+            )
+        ).first()
+        if linked_debt and linked_debt.remaining_amount > 0:
+            delta = min(refund_amount, linked_debt.remaining_amount)
+            linked_debt.original_amount = linked_debt.original_amount - delta
+            linked_debt.remaining_amount = linked_debt.remaining_amount - delta
+            if linked_debt.remaining_amount <= 0:
+                linked_debt.remaining_amount = Decimal("0")
+                linked_debt.status = DebtStatusEnum.paid
+            elif linked_debt.paid_amount > 0:
+                linked_debt.status = DebtStatusEnum.partial
+            cash_refund_amount = refund_amount - delta
+            debt_adjustment_note = f" Dette liée réduite de {delta} GNF (reste {linked_debt.remaining_amount} GNF)."
+
+    # Transaction financière de remboursement (dépense) — uniquement pour
+    # la part réellement encaissée en espèces, jamais la part qui vient
+    # d'être simplement retirée d'une dette non encore payée.
+    if cash_refund_amount > 0:
         fin_trans = FinancialTransaction(
             id=uuid.uuid4(),
             tenant_id=current_user.tenant_id,
             type=TransactionTypeEnum.expense,
             category=TransactionCategoryEnum.refund,
-            amount=refund_amount,
+            amount=cash_refund_amount,
             description=f"Remboursement Retour N°{str(order.id)[:8]} : {payload.reason}",
             payment_method="cash",
             reference=str(order.id),
@@ -701,7 +807,7 @@ def return_order_items(
         action="return_order_items",
         target_entity="order",
         target_id=str(order.id),
-        details=f"Retour sur commande {str(order.id)[:8]}: {', '.join(returned_details)}. Motif: {payload.reason}. Remboursé: {refund_amount} GNF",
+        details=f"Retour sur commande {str(order.id)[:8]}: {', '.join(returned_details)}. Motif: {payload.reason}. Remboursé: {refund_amount} GNF.{debt_adjustment_note}",
     )
 
     db.commit()
@@ -710,6 +816,8 @@ def return_order_items(
         "message": "Retour enregistré avec succès",
         "order_id": str(order.id),
         "refund_amount": float(refund_amount),
+        "cash_refund_amount": float(cash_refund_amount),
+        "debt_reduced_amount": float(refund_amount - cash_refund_amount),
         "restocked": payload.restock_inventory,
         "details": ", ".join(returned_details),
     }

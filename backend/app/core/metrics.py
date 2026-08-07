@@ -163,9 +163,14 @@ def sales_metrics(
     delivered_orders = base.filter(Order.status == OrderStatusEnum.delivered).count()
     pending_orders = base.filter(Order.status == OrderStatusEnum.pending).count()
 
+    # Order.total - Order.returned_amount : un retour (total ou partiel)
+    # réduit le chiffre d'affaires de la période du montant réellement
+    # retourné, jamais order.total lui-même qui reste le reçu d'origine.
     orders_total = Decimal(
         str(
-            active.with_entities(func.coalesce(func.sum(Order.total), 0)).scalar() or 0
+            active.with_entities(
+                func.coalesce(func.sum(Order.total - Order.returned_amount), 0)
+            ).scalar() or 0
         )
     )
 
@@ -206,9 +211,20 @@ def product_margin(
     `sales_metrics`. Le calcul se fait ligne par ligne car il doit
     distinguer les articles avec prix d'achat connu de ceux sans —
     une agrégation SQL directe masquerait cette distinction.
+
+    Un retour n'est tracé qu'au niveau de la commande (Order.returned_amount),
+    jamais ligne par ligne : la part de chaque ligne réduite par un retour
+    est donc approximée au prorata de la valeur retournée sur le total de
+    la commande, plutôt que sur un décompte exact d'articles rendus. Cette
+    approximation ne s'applique qu'aux montants GNF (revenu, marge) — les
+    compteurs d'unités (items_total/items_with_cost) restent les quantités
+    réellement vendues à l'origine.
     """
     query = (
-        db.query(OrderItem.quantity, OrderItem.unit_price, OrderItem.cost_price)
+        db.query(
+            OrderItem.quantity, OrderItem.unit_price, OrderItem.cost_price,
+            Order.total, Order.returned_amount,
+        )
         .join(Order, Order.id == OrderItem.order_id)
         .filter(
             Order.tenant_id == tenant_id,
@@ -224,17 +240,24 @@ def product_margin(
     items_with_cost = 0
     items_total = 0
 
-    for quantity, unit_price, cost_price in query.all():
+    for quantity, unit_price, cost_price, order_total, returned_amount in query.all():
         qty = int(quantity or 0)
         price = Decimal(str(unit_price or 0))
         line_revenue = price * qty
+
+        ot = Decimal(str(order_total or 0))
+        ra = Decimal(str(returned_amount or 0))
+        keep_ratio = Decimal("1")
+        if ot > 0 and ra > 0:
+            keep_ratio = max(Decimal("0"), (ot - ra) / ot)
+        line_revenue *= keep_ratio
 
         revenue_total += line_revenue
         items_total += qty
 
         if cost_price is not None:
             cost = Decimal(str(cost_price))
-            gross_margin += (price - cost) * qty
+            gross_margin += (price - cost) * qty * keep_ratio
             revenue_with_cost += line_revenue
             items_with_cost += qty
 
