@@ -264,6 +264,12 @@ export default function POSPage() {
         client: client ? { name: client.name, phone: client.phone || '' } : { name: language === 'fr' ? 'Client passant' : 'Walk-in', phone: '' },
         created_at: order.created_at || new Date().toISOString(),
         status: isCreditSale ? 'pending' : 'confirmed',
+        // Repris directement de la réponse serveur (source de vérité) plutôt
+        // que recalculés côté client — le reçu doit toujours refléter ce qui
+        // a réellement été persisté, pas ce que le formulaire s'apprêtait à
+        // envoyer.
+        payment_method: order.payment_method ?? paymentMethod,
+        amount_paid_now: order.amount_paid_now ?? amountPaidNow,
       });
       setIsReceiptModalOpen(true);
 
@@ -1235,6 +1241,7 @@ export default function POSPage() {
           display: flex; flex-direction: column; gap: 0.5rem;
           animation: slideUp 0.25s var(--ease-spring);
           margin: 0.5rem 0;
+          min-width: 0; max-width: 100%; box-sizing: border-box;
         }
         .p-debt-label {
           display: flex; align-items: center; gap: 0.5rem;
@@ -1242,8 +1249,9 @@ export default function POSPage() {
           cursor: pointer;
         }
         .p-mode-tabs {
-          display: grid; grid-template-columns: repeat(3, 1fr);
+          display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 0.35rem;
+          min-width: 0;
         }
         .p-mode-tab {
           display: flex; align-items: center; justify-content: center;
@@ -1258,6 +1266,10 @@ export default function POSPage() {
           text-align: center;
           user-select: none;
           -webkit-tap-highlight-color: transparent;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
         .p-mode-tab.active {
           border-color: var(--color-error);

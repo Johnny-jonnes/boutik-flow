@@ -183,6 +183,9 @@ export interface Order {
   total: number;
   notes: string | null;
   payment_method?: string | null;
+  /** Part réellement encaissée à la vente (vente à crédit) — absent/null
+   *  pour une vente comptant classique où tout `total` est encaissé. */
+  amount_paid_now?: number | null;
   /** Cumul remboursé sur cette commande — jamais soustrait de `total`. */
   returned_amount?: number;
   is_returned?: boolean;

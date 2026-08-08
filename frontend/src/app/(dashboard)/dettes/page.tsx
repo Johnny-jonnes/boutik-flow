@@ -215,11 +215,15 @@ export default function DettesPage() {
         .page-subtitle { color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem; }
 
         .filters-bar { padding: 1.25rem; }
-        .filters-row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
-        .filter-group { display: flex; align-items: center; gap: 0.5rem; background: var(--surface-0); border: 1px solid var(--border-subtle); padding: 0.25rem 0.75rem; border-radius: 8px; }
+        .filters-row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; max-width: 100%; }
+        /* min-width:0 — voir la même remarque dans sales/page.tsx : sans
+           ça, un item flex refuse de rétrécir sous la taille naturelle de
+           son contenu (un nom de client long dans le <select>), ce qui
+           faisait défiler toute la page horizontalement sur téléphone. */
+        .filter-group { display: flex; align-items: center; gap: 0.5rem; background: var(--surface-0); border: 1px solid var(--border-subtle); padding: 0.25rem 0.75rem; border-radius: 8px; min-width: 0; max-width: 100%; }
         .filter-icon { color: var(--text-muted); flex-shrink: 0; }
-        .filter-separator { color: var(--text-muted); font-size: 0.85rem; }
-        .filter-group .input { border: none; padding: 0.25rem 0; background: transparent; color: var(--text-primary); outline: none; font-size: 0.9rem; max-width: 200px; }
+        .filter-separator { color: var(--text-muted); font-size: 0.85rem; flex-shrink: 0; }
+        .filter-group .input { border: none; padding: 0.25rem 0; background: transparent; color: var(--text-primary); outline: none; font-size: 0.9rem; max-width: 200px; min-width: 0; }
       `}</style>
     </div>
   );

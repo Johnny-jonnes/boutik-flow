@@ -104,6 +104,7 @@ def _build_order_response(order: Order, user_names: dict, debt_id: uuid.UUID | N
         total=order.total,
         notes=order.notes,
         payment_method=order.payment_method,
+        amount_paid_now=order.amount_paid_now,
         returned_amount=returned_amount,
         is_returned=returned_amount > 0 and returned_amount >= order.total,
         is_partially_returned=Decimal("0") < returned_amount < order.total,

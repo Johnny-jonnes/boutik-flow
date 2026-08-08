@@ -653,11 +653,17 @@ export default function SalesHistoryPage() {
         .header-actions { display: flex; gap: 0.75rem; }
 
         .filters-bar { padding: 1.25rem; }
-        .filters-row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
-        .filter-group { display: flex; align-items: center; gap: 0.5rem; background: var(--surface-0); border: 1px solid var(--border-subtle); padding: 0.25rem 0.75rem; border-radius: 8px; }
+        .filters-row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; max-width: 100%; }
+        /* min-width:0 est essentiel : un item flex refuse par défaut de
+           rétrécir sous la taille "naturelle" de son contenu (ici, un
+           <select> dont une option — un long nom de client/produit —
+           dépasse le viewport d'un téléphone), même avec flex-wrap sur le
+           parent. Sans ça, un seul filtre avec un nom long forçait toute
+           la barre (et donc la page) à défiler horizontalement. */
+        .filter-group { display: flex; align-items: center; gap: 0.5rem; background: var(--surface-0); border: 1px solid var(--border-subtle); padding: 0.25rem 0.75rem; border-radius: 8px; min-width: 0; max-width: 100%; }
         .filter-icon { color: var(--text-muted); flex-shrink: 0; }
-        .filter-separator { color: var(--text-muted); font-size: 0.85rem; }
-        .filter-group .input { border: none; padding: 0.25rem 0; background: transparent; color: var(--text-primary); outline: none; font-size: 0.9rem; max-width: 180px; }
+        .filter-separator { color: var(--text-muted); font-size: 0.85rem; flex-shrink: 0; }
+        .filter-group .input { border: none; padding: 0.25rem 0; background: transparent; color: var(--text-primary); outline: none; font-size: 0.9rem; max-width: 180px; min-width: 0; }
 
         .receipt-badge { background: rgba(59, 130, 246, 0.1); color: #3b82f6; font-family: monospace; font-weight: 700; padding: 0.25rem 0.5rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
         .receipt-badge:hover { background: rgba(59, 130, 246, 0.2); }

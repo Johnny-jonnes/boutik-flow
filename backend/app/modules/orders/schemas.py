@@ -94,6 +94,11 @@ class OrderResponse(BaseModel):
     total: Decimal
     notes: str | None
     payment_method: str | None = None
+    # Part réellement encaissée à la vente pour une vente à crédit (Phase 4) —
+    # None pour une vente comptant classique. Le reçu et l'historique des
+    # ventes s'en servent pour afficher "Payé maintenant" / "Reste dû" au
+    # lieu de laisser croire que `total` a été intégralement encaissé.
+    amount_paid_now: Decimal | None = None
     # Cumul remboursé sur cette commande (voir POST /orders/{id}/return) —
     # jamais soustrait de `total` lui-même. is_returned/is_partially_returned
     # sont dérivés, jamais stockés, pour ne jamais diverger des vraies

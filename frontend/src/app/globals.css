@@ -295,6 +295,14 @@
 html {
   scroll-behavior: smooth;
   -webkit-tap-highlight-color: transparent;
+  /* Filet de sécurité mobile : un flex/grid item peut refuser de rétrécir
+     sous la taille naturelle de son contenu (ex: un <select> avec un nom
+     de client long) même avec flex-wrap — sans cette borne, UN SEUL
+     élément trop large fait défiler toute la page horizontalement sur
+     téléphone, quel que soit l'écran. Ne change rien pour un contenu qui
+     tenait déjà dans le viewport. */
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 body {
@@ -302,6 +310,8 @@ body {
   background-color: var(--surface-0);
   color: var(--text-primary);
   line-height: 1.5;
+  overflow-x: hidden;
+  max-width: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 300ms var(--ease-in-out),

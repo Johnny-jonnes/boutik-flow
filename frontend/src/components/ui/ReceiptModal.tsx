@@ -19,6 +19,12 @@ interface ReceiptModalProps {
     client?: { name: string; phone: string } | null;
     created_at: string;
     status: string;
+    // Structurés (Phase 4) — prioritaires sur le texte libre parsé dans
+    // `notes` (extractPaymentMethod), qui reste le seul repli pour les
+    // ventes antérieures à ces colonnes. Sans amount_paid_now, un reçu de
+    // vente à crédit affichait le total comme intégralement encaissé.
+    payment_method?: string | null;
+    amount_paid_now?: number | null;
   };
   shopName: string;
   sellerName?: string;
@@ -189,8 +195,16 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
   const receiptNumber = `BF-${order.id.slice(0, 8).toUpperCase()}`;
   const subtotal = order.items?.reduce((acc, item) => acc + (item.unit_price || 0) * item.quantity, 0) || 0;
-  const paymentInfo = extractPaymentMethod(order.notes);
+  const paymentInfo = order.payment_method || extractPaymentMethod(order.notes);
   const discountAmount = extractDiscount(order.notes);
+
+  // Vente à crédit (partielle ou 100% différée) : amount_paid_now < total.
+  // Absent (vente comptant classique, ou ancien reçu antérieur à ce champ)
+  // -> aucune mention, comportement inchangé.
+  const hasAmountPaidNow = order.amount_paid_now !== undefined && order.amount_paid_now !== null;
+  const amountPaidNow = hasAmountPaidNow ? Number(order.amount_paid_now) : order.total;
+  const remainingAmount = Math.max(0, order.total - amountPaidNow);
+  const isCreditSale = hasAmountPaidNow && remainingAmount > 0;
 
   const paymentLabels: Record<string, string> = {
     cash: language === 'fr' ? 'Espèces' : 'Cash',
@@ -323,10 +337,32 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                 <span>TOTAL :</span>
                 <span>{formatGNF(order.total)}</span>
               </div>
+              {isCreditSale && (
+                <>
+                  <div className="total-row">
+                    <span>{language === 'fr' ? 'Payé maintenant' : 'Paid now'} :</span>
+                    <span>{formatGNF(amountPaidNow)}</span>
+                  </div>
+                  <div className="total-row" style={{ color: '#dc2626', fontWeight: 700 }}>
+                    <span>{language === 'fr' ? 'Reste dû (dette)' : 'Remaining (debt)'} :</span>
+                    <span>{formatGNF(remainingAmount)}</span>
+                  </div>
+                </>
+              )}
               <div className="total-row payment-method">
                 <span>{language === 'fr' ? 'Paiement' : 'Payment'} :</span>
                 <span>{paymentLabels[paymentInfo] || paymentInfo}</span>
               </div>
+              {isCreditSale && (
+                <div className="total-row" style={{ color: '#dc2626', fontWeight: 700, fontStyle: 'italic' }}>
+                  <span>
+                    {amountPaidNow <= 0
+                      ? (language === 'fr' ? '⚠ VENTE ENTIÈREMENT À CRÉDIT' : '⚠ FULLY DEFERRED CREDIT SALE')
+                      : (language === 'fr' ? '⚠ VENTE À CRÉDIT — PAIEMENT PARTIEL' : '⚠ CREDIT SALE — PARTIAL PAYMENT')}
+                  </span>
+                  <span></span>
+                </div>
+              )}
             </div>
 
             {/* ===== Pied de page ===== */}
