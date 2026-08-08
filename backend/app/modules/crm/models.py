@@ -31,7 +31,7 @@ class Client(Base):
     name = Column(String(255), nullable=False)
     phone = Column(String(20), nullable=False, index=True)
     email = Column(String(255), nullable=True)
-    status = Column(Enum(ClientStatusEnum), default=ClientStatusEnum.nouveau, nullable=False)
+    status = Column(Enum(ClientStatusEnum), default=ClientStatusEnum.nouveau, nullable=False, index=True)
     tags = Column(ARRAY(String), default=[], nullable=False)
     notes = Column(Text, nullable=True)
     # Date de naissance (pour messages anniversaire)

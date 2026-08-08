@@ -23,13 +23,13 @@ class ClientDebt(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
     client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id"), nullable=False, index=True)
-    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=True)  # Commande liée
+    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=True, index=True)  # Commande liée
 
     original_amount = Column(Numeric(12, 2), nullable=False)  # Montant total initial
     paid_amount = Column(Numeric(12, 2), default=0, nullable=False)  # Montant déjà payé
     remaining_amount = Column(Numeric(12, 2), nullable=False)  # Reste à payer
-    
-    status = Column(Enum(DebtStatusEnum), default=DebtStatusEnum.pending, nullable=False)
+
+    status = Column(Enum(DebtStatusEnum), default=DebtStatusEnum.pending, nullable=False, index=True)
     description = Column(Text, nullable=True)  # Note sur la dette
     due_date = Column(DateTime(timezone=True), nullable=True)  # Date échéance optionnelle
 

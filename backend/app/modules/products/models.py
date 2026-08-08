@@ -41,7 +41,7 @@ class Product(Base):
     # jamais estimé quand il ne l'est pas (voir app.core.metrics.product_margin).
     cost_price = Column(Numeric(15, 2), nullable=True)
     stock = Column(Integer, default=0, nullable=False)
-    category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True)
+    category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True, index=True)
     images = Column(ARRAY(String), default=[], nullable=False)
     # Miniature compressée (petit data-URI JPEG, ~5-10 Ko) dérivée de
     # images[0] côté serveur — voir app.core.thumbnails. Sert à afficher un
@@ -72,7 +72,7 @@ class InventoryLog(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"), nullable=False)
+    product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"), nullable=False, index=True)
     change_type = Column(String(50), nullable=False)  # price_change, stock_change, availability_change
     old_value = Column(String(255), nullable=True)
     new_value = Column(String(255), nullable=True)
@@ -97,15 +97,15 @@ class Order(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id"), nullable=False)
-    status = Column(Enum(OrderStatusEnum), default=OrderStatusEnum.pending, nullable=False)
+    client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id"), nullable=False, index=True)
+    status = Column(Enum(OrderStatusEnum), default=OrderStatusEnum.pending, nullable=False, index=True)
     total = Column(Numeric(15, 2), nullable=False, default=0)
     notes = Column(Text, nullable=True)
     # Vendeur ayant réalisé la vente (utilisateur du tenant) — pas de FK dure
     # vers users, même convention que changed_by/user_id ailleurs (log
     # d'inventaire, transactions) : un utilisateur supprimé ne doit jamais
     # faire échouer une contrainte sur l'historique des ventes.
-    created_by = Column(UUID(as_uuid=True), nullable=True)
+    created_by = Column(UUID(as_uuid=True), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
@@ -133,8 +133,8 @@ class OrderItem(Base):
     __tablename__ = "order_items"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=False)
-    product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"), nullable=False)
+    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=False, index=True)
+    product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"), nullable=False, index=True)
     quantity = Column(Integer, nullable=False, default=1)
     unit_price = Column(Numeric(15, 2), nullable=False)  # Prix de vente au moment de la commande
     # Prix d'achat au moment de la commande (copié depuis Product.cost_price
