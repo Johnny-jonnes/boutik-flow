@@ -99,6 +99,10 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       // logique que finance-transactions ci-dessus : invalidation par
       // préfixe, jamais un merge de delta précis.
       queryClient.invalidateQueries({ queryKey: ['sales-list'] });
+      // Idem pour debts-list (module Dettes Clients) — une synchronisation
+      // peut avoir créé une dette (vente à crédit hors-ligne) ou modifié
+      // son solde (paiement hors-ligne).
+      queryClient.invalidateQueries({ queryKey: ['debts-list'] });
     };
     window.addEventListener('boutikflow:sync-complete', onSyncComplete);
     return () => window.removeEventListener('boutikflow:sync-complete', onSyncComplete);
@@ -116,9 +120,30 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
       queryClient.invalidateQueries({ queryKey: ['product-stats'] });
       queryClient.invalidateQueries({ queryKey: ['sales-list'] });
+      // Une vente à crédit (partielle ou différée) crée une dette dans la
+      // même transaction côté serveur (voir create_order) — le module
+      // Dettes Clients doit la voir apparaître immédiatement, sans
+      // attendre une synchronisation.
+      queryClient.invalidateQueries({ queryKey: ['debts-list'] });
     };
     window.addEventListener('boutikflow:order-created', onOrderCreated);
     return () => window.removeEventListener('boutikflow:order-created', onOrderCreated);
+  }, [queryClient]);
+
+  // Un versement de dette vient d'être enregistré (CRM ou module Dettes
+  // Clients) — met à jour immédiatement Dettes/Finance/Dashboard, sans
+  // attendre le staleTime de 60s ni un changement de fenêtre.
+  useEffect(() => {
+    const onDebtPaid = () => {
+      queryClient.invalidateQueries({ queryKey: ['debts-list'] });
+      queryClient.invalidateQueries({ queryKey: ['finance-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-list'] });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    };
+    window.addEventListener('boutikflow:debt-paid', onDebtPaid);
+    return () => window.removeEventListener('boutikflow:debt-paid', onDebtPaid);
   }, [queryClient]);
 
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;

@@ -41,6 +41,10 @@ export const queryKeys = {
   // orders(), dont le Dashboard reste l'unique consommateur inchangé.
   salesList: (filters: SalesFilters, page: number, perPage: number) =>
     ['sales-list', filters, page, perPage] as const,
+  // Même logique que salesList ci-dessus : clé séparée de getDebts (fiche
+  // client CRM), filtres + pagination propres au module Dettes Clients.
+  debtsList: (filters: DebtsFilters, page: number, perPage: number) =>
+    ['debts-list', filters, page, perPage] as const,
 };
 
 export interface SalesFilters {
@@ -151,5 +155,23 @@ export function useSalesListQuery(filters: SalesFilters, page: number, perPage: 
   return useQuery({
     queryKey: queryKeys.salesList(filters, page, perPage),
     queryFn: () => api.getOrdersFiltered({ ...filters, page, perPage }),
+  });
+}
+
+export interface DebtsFilters {
+  statusFilter?: string;
+  search?: string;
+  sellerId?: string;
+  period?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+// Dettes filtrées/paginées côté serveur — module Dettes Clients, voir
+// queryKeys.debtsList.
+export function useDebtsQuery(filters: DebtsFilters, page: number, perPage: number) {
+  return useQuery({
+    queryKey: queryKeys.debtsList(filters, page, perPage),
+    queryFn: () => api.getDebtsFiltered({ ...filters, page, perPage }),
   });
 }

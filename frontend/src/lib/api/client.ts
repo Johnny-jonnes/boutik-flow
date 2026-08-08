@@ -1453,6 +1453,29 @@ export const api = {
   async recordDebtPayment(debtId: string, data: { amount: number; payment_method: string; notes?: string }): Promise<{ message: string; remaining_amount: number; status: string }> {
     return request(`/crm/debts/${debtId}/pay`, { method: 'POST', body: JSON.stringify(data), headers: withIdempotencyKey(generateIdempotencyKey()) });
   },
+  // Filtres avancés + pagination serveur (module Dettes Clients) — requête
+  // dédiée envoyant `page`, ce qui bascule list_debts vers sa réponse
+  // paginée. Séparée de getDebts ci-dessus, qui garde sa signature et sa
+  // réponse (tableau brut) inchangées pour la fiche client CRM.
+  async getDebtsFiltered(params: {
+    page?: number; perPage?: number; clientId?: string; statusFilter?: string;
+    search?: string; sellerId?: string; period?: string; startDate?: string; endDate?: string;
+  } = {}) {
+    const raw = await request<{ items: ClientDebt[]; total: number; page: number; per_page: number }>(
+      `/crm/debts${buildQuery({
+        page: params.page ?? 1,
+        per_page: params.perPage ?? 20,
+        client_id: params.clientId,
+        status_filter: params.statusFilter,
+        search: params.search,
+        seller_id: params.sellerId,
+        period: params.period,
+        start_date: params.startDate,
+        end_date: params.endDate,
+      })}`
+    );
+    return withPages(raw);
+  },
 
   // ── CRM — Segments ────────────────────────────────────────────────────
   async getSegments(page = 1, perPage = 20) {

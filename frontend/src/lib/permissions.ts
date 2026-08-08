@@ -18,6 +18,7 @@ export type Module =
   | 'orders'
   | 'returns'
   | 'clients'
+  | 'debts'
   | 'suppliers'
   | 'finance'
   | 'team'
@@ -58,6 +59,12 @@ export const PERMISSIONS: Record<Module, Record<string, Role[]>> = {
     create: ALL_SELLING_ROLES,
     edit: ['owner', 'manager', 'cashier'],
     delete: ['owner', 'manager'],
+  },
+  // Miroir exact de PERMISSIONS["debts"] dans core/permissions.py (Phase 4).
+  debts: {
+    view: ALL_SELLING_ROLES,
+    create: ['owner', 'manager', 'cashier', 'staff'],
+    pay: ['owner', 'manager', 'cashier', 'staff'],
   },
   suppliers: {
     view: ['owner', 'manager', 'stock_manager'],
@@ -114,6 +121,7 @@ export const ROUTE_PERMISSIONS: { prefix: string; module: Module; action: string
   { prefix: '/categories', module: 'categories', action: 'view' },
   { prefix: '/crm', module: 'clients', action: 'view' },
   { prefix: '/segments', module: 'clients', action: 'view' },
+  { prefix: '/dettes', module: 'debts', action: 'view' },
   { prefix: '/sales', module: 'orders', action: 'view' },
   { prefix: '/orders', module: 'orders', action: 'view' },
   { prefix: '/suppliers', module: 'suppliers', action: 'view' },

@@ -4,16 +4,18 @@ Router des dettes clients — CRUD + paiements.
 import uuid
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import and_
 
 from app.core.database import get_db
 from app.core.deps import CurrentUser
 from app.core.idempotency import IdempotencyHeader, get_cached_response, store_response
 from app.core.permissions import require_permission
+from app.core.period import resolve_period
 from app.modules.crm.debt_models import ClientDebt, DebtPayment, DebtStatusEnum
 from app.modules.crm.models import Client
 from app.modules.products.models import Order, OrderStatusEnum
+from app.modules.auth.models import User
 from app.modules.finance.models import FinancialTransaction, TransactionTypeEnum, TransactionCategoryEnum
 from app.modules.audit.router import log_action
 from pydantic import BaseModel, Field
@@ -123,19 +125,65 @@ def create_debt(
 def list_debts(
     client_id: Optional[uuid.UUID] = None,
     status_filter: Optional[str] = None,
+    search: Optional[str] = None,
+    seller_id: Optional[uuid.UUID] = None,
+    period: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    page: Optional[int] = None,
+    per_page: int = 20,
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("debts", "view")),
-) -> list:
-    """Lister les dettes de la boutique."""
+):
+    """Lister les dettes de la boutique.
+
+    Sans `page` : renvoie la liste complète triée, EXACTEMENT le
+    comportement historique — c'est ainsi que la fiche client CRM appelle
+    cette route (`client_id` seul), et elle doit continuer de recevoir un
+    tableau brut, pas un objet paginé. Avec `page` : renvoie un objet
+    paginé `{items, total, page, per_page}`, utilisé par le nouveau module
+    Dettes Clients qui a besoin de filtres combinables sur potentiellement
+    beaucoup de dettes.
+    """
     q = db.query(ClientDebt).filter(ClientDebt.tenant_id == current_user.tenant_id)
     if client_id:
         q = q.filter(ClientDebt.client_id == client_id)
     if status_filter:
         q = q.filter(ClientDebt.status == status_filter)
-    debts = q.order_by(ClientDebt.created_at.desc()).all()
-    result = []
-    for d in debts:
-        result.append({
+    if search:
+        q = q.join(Client, Client.id == ClientDebt.client_id).filter(Client.name.ilike(f"%{search}%"))
+    if seller_id:
+        # Une dette n'a pas de "vendeur" propre — seulement celui de la
+        # vente qui l'a éventuellement créée. Une dette manuelle (sans
+        # order_id) n'a donc aucun vendeur associable et est exclue quand
+        # ce filtre est actif : il n'existe pas de meilleure réponse avec
+        # le modèle de données actuel.
+        q = q.filter(ClientDebt.order_id.in_(
+            db.query(Order.id).filter(Order.created_by == seller_id)
+        ))
+    start, end = resolve_period(period, start_date, end_date)
+    if start:
+        q = q.filter(ClientDebt.created_at >= start)
+    if end:
+        q = q.filter(ClientDebt.created_at < end)
+
+    total = q.count() if page is not None else None
+    q = q.order_by(ClientDebt.created_at.desc()).options(selectinload(ClientDebt.payments))
+    if page is not None:
+        q = q.offset(max(0, page - 1) * per_page).limit(per_page)
+    debts = q.all()
+
+    # Résout en une seule requête le nom de chaque utilisateur ayant
+    # enregistré un versement — jamais une requête par dette (même
+    # patron que _user_names_for_orders dans orders/router.py).
+    payer_ids = {p.paid_by for d in debts for p in d.payments if p.paid_by}
+    user_names = {}
+    if payer_ids:
+        users = db.query(User).filter(User.id.in_(payer_ids)).all()
+        user_names = {u.id: (u.full_name or u.email) for u in users}
+
+    def serialize(d: ClientDebt) -> dict:
+        return {
             "id": str(d.id),
             "client_id": str(d.client_id),
             "client_name": d.client.name if d.client else "—",
@@ -147,7 +195,26 @@ def list_debts(
             "description": d.description,
             "due_date": d.due_date.isoformat() if d.due_date else None,
             "created_at": d.created_at.isoformat(),
-        })
+            # Historique complet des versements (demande 6/8) — déclaré
+            # depuis toujours dans DebtResponse mais jamais peuplé ici.
+            "payments": [
+                {
+                    "id": str(p.id),
+                    "amount": float(p.amount),
+                    "payment_method": p.payment_method,
+                    "notes": p.notes,
+                    "paid_at": p.paid_at.isoformat(),
+                    "paid_by_name": user_names.get(p.paid_by) if p.paid_by else None,
+                    "balance_before": float(p.balance_before) if p.balance_before is not None else None,
+                    "balance_after": float(p.balance_after) if p.balance_after is not None else None,
+                }
+                for p in sorted(d.payments, key=lambda p: p.paid_at, reverse=True)
+            ],
+        }
+
+    result = [serialize(d) for d in debts]
+    if page is not None:
+        return {"items": result, "total": total, "page": page, "per_page": per_page}
     return result
 
 

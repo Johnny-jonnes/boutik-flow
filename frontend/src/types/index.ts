@@ -543,6 +543,17 @@ export interface TransactionCreatePayload {
   reference?: string;
 }
 
+export interface DebtPaymentEntry {
+  id: string;
+  amount: number;
+  payment_method: string;
+  notes?: string | null;
+  paid_at: string;
+  paid_by_name?: string | null;
+  balance_before?: number | null;
+  balance_after?: number | null;
+}
+
 export interface ClientDebt {
   id: string;
   client_id: string;
@@ -555,5 +566,8 @@ export interface ClientDebt {
   description?: string;
   due_date?: string;
   created_at: string;
+  // Absent des dettes hors-ligne pas encore synchronisées (voir
+  // OfflineDB.getDebts) — toujours présent pour une dette venue du serveur.
+  payments?: DebtPaymentEntry[];
 }
 
