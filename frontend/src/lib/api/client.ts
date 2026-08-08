@@ -348,6 +348,21 @@ export async function syncOfflineQueue(): Promise<{ succeeded: number; failed: n
 
   for (const op of pending) {
     try {
+      // `pending` est un instantané pris AVANT le début de la boucle : une
+      // opération traitée plus tôt dans CETTE MÊME synchronisation peut
+      // avoir corrigé le path/body de celle-ci entre-temps (réconciliation
+      // d'id local -> serveur, voir replaceMatching plus bas — ex: une
+      // vente à crédit hors-ligne suivie d'un paiement de sa dette, tous
+      // deux mis en file avant tout retour de connexion). getAll()
+      // désérialise de nouveaux objets à chaque appel IndexedDB : la
+      // mutation faite par replaceMatching ne se reflète JAMAIS sur cet
+      // objet `op` figé sans cette relecture explicite — sans elle, ce
+      // paiement repartirait avec l'id local périmé et échouerait à 404
+      // une fois rejoué contre le serveur.
+      const current = (await OfflineStore.getOne<QueuedOp>('sync_queue', op.id)) || op;
+      op.path = current.path;
+      op.body = current.body;
+
       const token = getAccessToken();
       const headers = new Headers();
       if (op.body) headers.set('Content-Type', 'application/json');
@@ -378,6 +393,24 @@ export async function syncOfflineQueue(): Promise<{ succeeded: number; failed: n
         if (op.localId) {
           const created = await res.clone().json().catch(() => null);
           if (created?.id) await OfflineQueue.replaceMatching(op.localId, String(created.id));
+          // Une vente à crédit hors-ligne a créé sa dette en miroir local
+          // AVANT synchronisation (id local, voir handleOfflineRequest,
+          // POST /orders) — si un paiement de cette dette a déjà été
+          // enregistré (et donc mis en file) hors-ligne avant de se
+          // reconnecter, l'opération en attente référence encore cet id
+          // local. Le réconcilier avec le vrai id serveur (OrderResponse.
+          // debt_id) exactement comme replaceMatching le fait déjà pour
+          // l'id de la commande : sans ça, ce paiement échouerait à 404
+          // "Dette introuvable" une fois rejoué contre le serveur, qui n'a
+          // jamais entendu parler de cet id local.
+          if (op.localDebtId && created?.debt_id) {
+            await OfflineQueue.replaceMatching(op.localDebtId, String(created.debt_id));
+            // La vraie dette (id serveur) sera récupérée par la
+            // synchronisation incrémentale juste après (voir plus bas) —
+            // retire ici le mirroir local à id périmé pour ne jamais
+            // laisser deux lignes coexister pour la même dette.
+            await OfflineDB.removeDebt(op.localDebtId);
+          }
         }
       } else if (res.status >= 400 && res.status < 500) {
         // Erreur définitive (validation, stock insuffisant, conflit...) :
@@ -432,18 +465,19 @@ export async function syncOfflineQueue(): Promise<{ succeeded: number; failed: n
   // au serveur — jamais toute la base. Le delta est fusionné dans
   // IndexedDB ET renvoyé dans l'événement sync-complete pour que la
   // couche mémoire (TanStack Query) se mette à jour pareillement.
-  let deltas: { products: any[]; clients: any[]; orders: any[]; transactions: any[] } = {
-    products: [], clients: [], orders: [], transactions: [],
+  let deltas: { products: any[]; clients: any[]; orders: any[]; transactions: any[]; debts: any[] } = {
+    products: [], clients: [], orders: [], transactions: [], debts: [],
   };
   if (succeeded > 0) {
     await OfflineDB.setLastSyncAt(Date.now());
-    const [products, clients, transactions, orders] = await Promise.all([
+    const [products, clients, transactions, orders, debts] = await Promise.all([
       incrementalSyncCollection('products', '/products', 'updated_at', OfflineDB.mergeProducts),
       incrementalSyncCollection('clients', '/clients', 'updated_at', OfflineDB.mergeClients),
       incrementalSyncCollection('finance', '/finance?period=all', 'created_at', OfflineDB.mergeTransactions),
       incrementalSyncCollection('orders', '/orders', 'updated_at', OfflineDB.mergeOrders),
+      incrementalSyncCollection('debts', '/crm/debts', 'updated_at', OfflineDB.mergeDebts),
     ]);
-    deltas = { products, clients, orders, transactions };
+    deltas = { products, clients, orders, transactions, debts };
   }
 
   await notifyQueueChanged();
@@ -723,14 +757,42 @@ async function handleOfflineRequest<T>(path: string, options: RequestInit = {}):
       const client = data.client_id ? clients.find(c => c.id === data.client_id) : null;
       const currentUser = getCurrentUserFromToken();
 
+      // Miroir de la répartition CA/dette de create_order (Phase 4) :
+      // amount_paid_now absent (ancien appelant, jamais mis à jour) ->
+      // comportement historique inchangé, tout est encaissé. Sinon,
+      // plafonné à [0, total] — jamais de dépassement possible, jamais de
+      // saisie négative propagée localement.
+      const amountPaidRaw = data.amount_paid_now;
+      let amountPaidNow = amountPaidRaw !== undefined && amountPaidRaw !== null
+        ? Math.min(orderTotal, Math.max(0, Number(amountPaidRaw) || 0))
+        : orderTotal;
+      let isCreditSale = amountPaidNow < orderTotal;
+      // Filet de sécurité local, miroir du refus 400 de create_order côté
+      // serveur ("Un client doit être sélectionné pour une vente à
+      // crédit.") : jamais de dette orpheline pour un client "Passant" si
+      // cette validation avait été contournée avant d'arriver ici.
+      if (isCreditSale && !data.client_id) {
+        amountPaidNow = orderTotal;
+        isCreditSale = false;
+      }
+      const remainingAmount = Math.max(0, orderTotal - amountPaidNow);
+
       const nowIso = new Date().toISOString();
       const newOrder = {
         id: uuid(),
         tenant_id: currentUser?.tenantId || null,
-        status: data.status || 'delivered',
+        // Le statut 'pending' d'une vente à crédit est forcé ici comme
+        // côté serveur (voir create_order) — prioritaire sur un statut
+        // explicite du payload, pour ne jamais dépendre du frontend.
+        status: isCreditSale ? 'pending' : (data.status || 'delivered'),
         items,
         total: orderTotal,
         notes: data.notes || '',
+        payment_method: data.payment_method || null,
+        amount_paid_now: isCreditSale ? amountPaidNow : null,
+        returned_amount: 0,
+        is_returned: false,
+        is_partially_returned: false,
         client_id: data.client_id || null,
         client_name: client?.name || 'Passant',
         created_by: currentUser?.id || null,
@@ -747,20 +809,55 @@ async function handleOfflineRequest<T>(path: string, options: RequestInit = {}):
       // suite, mais le chiffre d'affaires (Tableau de bord, Finance)
       // restait figé jusqu'au retour de connexion et à la synchronisation
       // — visible pour tout sauf l'argent, ce qui n'a pas de sens pour un
-      // commerçant qui vient d'encaisser.
-      const newTransaction = {
-        id: uuid(),
-        type: 'income',
-        category: 'sale',
-        amount: orderTotal,
-        description: `Vente Magasin (${newOrder.client_name})`,
-        payment_method: 'cash',
-        reference: newOrder.id,
-        created_at: nowIso,
-      };
+      // commerçant qui vient d'encaisser. N'enregistre rien si rien n'a été
+      // réellement encaissé (vente 100% différée), comme côté serveur.
+      const transactionWrites: { store: 'transactions'; item: any }[] = [];
+      if (amountPaidNow > 0) {
+        transactionWrites.push({
+          store: 'transactions',
+          item: {
+            id: uuid(),
+            type: 'income',
+            category: isCreditSale ? 'credit_sale' : 'sale',
+            amount: amountPaidNow,
+            description: `Vente Magasin (${newOrder.client_name})`,
+            payment_method: data.payment_method || 'cash',
+            reference: newOrder.id,
+            created_at: nowIso,
+          },
+        });
+      }
 
-      // Stock, commande, transaction, mise en file de synchronisation ET
-      // journal : une seule transaction IndexedDB pour tout. Auparavant
+      // Le reste devient une dette, créée dans la MÊME écriture atomique
+      // que la commande — miroir de create_client_debt appelé depuis
+      // create_order, jamais un second appel séparé (c'était la cause
+      // d'une vente à crédit sans dette liée en cas de coupure entre les
+      // deux, avant Phase 4). Id local distinct de celui de la commande :
+      // réconcilié avec le vrai id serveur (OrderResponse.debt_id) une
+      // fois synchronisé, voir syncOfflineQueue.
+      let localDebt: any = null;
+      const debtWrites: { store: 'debts'; item: any }[] = [];
+      if (isCreditSale) {
+        localDebt = {
+          id: uuid(),
+          client_id: data.client_id,
+          client_name: client?.name || 'Client',
+          order_id: newOrder.id,
+          original_amount: remainingAmount,
+          paid_amount: 0,
+          remaining_amount: remainingAmount,
+          status: 'pending',
+          description: `Vente à crédit N°${newOrder.id.slice(0, 8)}`,
+          due_date: null,
+          created_at: nowIso,
+          updated_at: nowIso,
+          payments: [],
+        };
+        debtWrites.push({ store: 'debts', item: localDebt });
+      }
+
+      // Stock, commande, transaction, dette, mise en file de synchronisation
+      // ET journal : une seule transaction IndexedDB pour tout. Auparavant
       // chacune de ces écritures était une transaction séparée — si l'app
       // était tuée entre deux d'entre elles (fermeture brutale, batterie
       // vide), la vente pouvait exister en local sans jamais être mise en
@@ -776,6 +873,7 @@ async function handleOfflineRequest<T>(path: string, options: RequestInit = {}):
         status: 'pending',
         attempts: 0,
         localId: newOrder.id,
+        localDebtId: localDebt?.id,
         idempotencyKey: extractHeader(options.headers, 'Idempotency-Key'),
       };
       const journalEntry = {
@@ -792,7 +890,8 @@ async function handleOfflineRequest<T>(path: string, options: RequestInit = {}):
       await OfflineStore.atomicWrite([
         ...productWrites,
         { store: 'orders', item: newOrder },
-        { store: 'transactions', item: newTransaction },
+        ...transactionWrites,
+        ...debtWrites,
         { store: 'sync_queue', item: queueOp },
         { store: 'sync_journal', item: journalEntry },
       ]);
@@ -818,29 +917,70 @@ async function handleOfflineRequest<T>(path: string, options: RequestInit = {}):
 
     const debt = debts.find(d => d.id === debtId);
     if (debt) {
-      debt.remaining_amount = Math.max(0, debt.remaining_amount - amountPaid);
+      const nowIso = new Date().toISOString();
+      const balanceBefore = debt.remaining_amount;
+      debt.paid_amount = (debt.paid_amount || 0) + amountPaid;
+      debt.remaining_amount = Math.max(0, balanceBefore - amountPaid);
       debt.status = debt.remaining_amount <= 0 ? 'paid' : 'partial';
-      await OfflineDB.upsertDebt(debt);
+      debt.updated_at = nowIso;
+      // Historique local du versement — même forme que le serveur
+      // (voir list_debts, debt_router.py) pour que DebtCard affiche un
+      // historique cohérent avant même la synchronisation.
+      const currentUser = getCurrentUserFromToken();
+      const paymentEntry = {
+        id: uuid(),
+        amount: amountPaid,
+        payment_method: data.payment_method || 'cash',
+        notes: data.notes || null,
+        paid_at: nowIso,
+        paid_by_name: currentUser?.displayName || null,
+        balance_before: balanceBefore,
+        balance_after: debt.remaining_amount,
+      };
+      debt.payments = [paymentEntry, ...(debt.payments || [])];
 
       const clients = await OfflineDB.getClients();
-      const clientName = clients.find(c => c.id === debt.client_id)?.name || 'Client';
+      const clientName = clients.find(c => c.id === debt.client_id)?.name || debt.client_name || 'Client';
 
+      // Catégorie dédiée (demande 9) — jamais confondue avec un encaissement
+      // de vente directe, miroir exact de record_payment côté serveur.
       const newTx = {
         id: uuid(),
         type: 'income',
-        category: 'sale',
+        category: 'debt_repayment',
         amount: amountPaid,
-        description: `Paiement dette client — ${clientName} (${debt.description})`,
+        description: `Remboursement dette — ${clientName}` + (data.notes ? ` — ${data.notes}` : ''),
         payment_method: data.payment_method || 'cash',
         reference: debt.id,
-        created_at: new Date().toISOString(),
+        created_at: nowIso,
       };
-      await OfflineDB.upsertTransaction(newTx);
+
+      // Une dette liée à une vente reste "pending" tant qu'elle n'est pas
+      // soldée — invisible de l'historique des Ventes filtré dessus tant
+      // que ce n'est pas le cas. Une fois le solde à zéro, miroir exact de
+      // record_payment côté serveur : la commande passe enfin "delivered".
+      const writes: { store: 'debts' | 'transactions' | 'orders'; item: any }[] = [
+        { store: 'debts', item: debt },
+        { store: 'transactions', item: newTx },
+      ];
+      let orderMarkedDelivered = false;
+      if (debt.order_id && debt.remaining_amount <= 0) {
+        const orders = await OfflineDB.getOrders();
+        const linkedOrder = orders.find(o => o.id === debt.order_id);
+        if (linkedOrder && linkedOrder.status === 'pending') {
+          linkedOrder.status = 'delivered';
+          linkedOrder.updated_at = nowIso;
+          writes.push({ store: 'orders', item: linkedOrder });
+          orderMarkedDelivered = true;
+        }
+      }
+      await OfflineStore.atomicWrite(writes);
 
       return {
         message: 'Paiement de dette enregistré',
         remaining_amount: debt.remaining_amount,
-        status: debt.status
+        status: debt.status,
+        order_marked_delivered: orderMarkedDelivered,
       } as any as T;
     }
   }
@@ -848,6 +988,20 @@ async function handleOfflineRequest<T>(path: string, options: RequestInit = {}):
   if (path.startsWith('/crm/debts')) {
     const debts = await OfflineDB.getDebts();
     if (method === 'GET') {
+      // Même bifurcation que côté serveur (list_debts) : la fiche client
+      // CRM (getDebts, jamais de `page`) doit continuer de recevoir un
+      // tableau brut ; le module Dettes Clients (getDebtsFiltered, param
+      // `page` toujours présent) attend l'objet paginé. Hors-ligne, comme
+      // pour /orders et /products ci-dessus, les filtres eux-mêmes
+      // (recherche, statut, vendeur, période) restent ignorés : le
+      // meilleur résultat possible reste "tout ce qui est en cache local".
+      const url = new URL(path, 'http://localhost');
+      const pageParam = url.searchParams.get('page');
+      if (pageParam) {
+        const page = Number(pageParam) || 1;
+        const perPage = Number(url.searchParams.get('per_page')) || 20;
+        return { items: debts, total: debts.length, page, per_page: perPage } as any as T;
+      }
       return debts as any as T;
     }
     if (method === 'POST') {
@@ -858,10 +1012,13 @@ async function handleOfflineRequest<T>(path: string, options: RequestInit = {}):
         order_id: data.order_id || null,
         original_amount: Number(data.original_amount),
         remaining_amount: Number(data.original_amount),
+        paid_amount: 0,
         description: data.description || 'Achat à crédit',
         due_date: data.due_date || null,
-        status: 'unpaid',
+        status: 'pending',
+        payments: [],
         created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
       await OfflineDB.upsertDebt(newDebt);
       return newDebt as any as T;

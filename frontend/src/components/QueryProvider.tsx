@@ -79,7 +79,7 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
     const onSyncComplete = (e: Event) => {
       const detail = (e as CustomEvent).detail as {
         succeeded: number;
-        deltas?: { products: any[]; clients: any[]; orders: any[]; transactions: any[] };
+        deltas?: { products: any[]; clients: any[]; orders: any[]; transactions: any[]; debts: any[] };
       } | undefined;
       if (!detail?.succeeded) return;
       mergeDeltaIntoListCache(queryClient, queryKeys.products(), detail.deltas?.products);

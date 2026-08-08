@@ -101,6 +101,13 @@ class OrderResponse(BaseModel):
     returned_amount: Decimal = Decimal("0")
     is_returned: bool = False
     is_partially_returned: bool = False
+    # Renseigné uniquement par POST /orders quand cette vente crée une dette
+    # (voir create_client_debt) — permet à la synchronisation hors-ligne de
+    # réconcilier l'id local de la dette (créée en miroir avant la
+    # synchronisation) avec son vrai id serveur, exactement comme le fait
+    # déjà OfflineQueue.replaceMatching pour l'id de la commande elle-même.
+    # None partout ailleurs (liste, détail...) : jamais résolu a posteriori.
+    debt_id: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime
     # Présent uniquement pour une synchronisation incrémentale (voir

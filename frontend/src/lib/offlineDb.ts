@@ -220,7 +220,9 @@ export const OfflineDB = {
 
   getDebts: () => getAll<any>('debts'),
   saveDebts: (items: any[]) => replaceAll('debts', items),
+  mergeDebts: (items: any[]) => mergeBatch('debts', items),
   upsertDebt: (item: any) => upsert('debts', item),
+  removeDebt: (id: string) => remove('debts', id),
 
   getTransactions: () => getAll<any>('transactions'),
   saveTransactions: (items: any[]) => replaceAll('transactions', items),
@@ -261,6 +263,14 @@ export interface QueuedOp {
   /** Prochaine tentative au plus tôt (backoff exponentiel) — epoch ms. */
   nextAttemptAt?: number;
   localId?: string;
+  // Id local de la dette créée en miroir par une vente à crédit hors-ligne
+  // (voir handleOfflineRequest, POST /orders) — distinct de `localId`
+  // (celui de la commande elle-même). Une fois la commande synchronisée,
+  // la réponse serveur porte le vrai id de la dette créée dans la même
+  // transaction (voir OrderResponse.debt_id) : sert à réconcilier cet id
+  // local avec lui, exactement comme replaceMatching le fait déjà pour
+  // l'id de la commande.
+  localDebtId?: string;
   idempotencyKey?: string;
 }
 

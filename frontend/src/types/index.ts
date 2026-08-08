@@ -187,6 +187,11 @@ export interface Order {
   returned_amount?: number;
   is_returned?: boolean;
   is_partially_returned?: boolean;
+  // Renseigné uniquement par la réponse de POST /orders quand cette vente
+  // crée une dette (voir OrderResponse.debt_id côté backend) — utilisé par
+  // la réconciliation d'id local->serveur après une synchronisation
+  // hors-ligne (voir syncOfflineQueue). Absent partout ailleurs.
+  debt_id?: string | null;
   items: OrderItem[];
   client?: Client;
   created_at: string;

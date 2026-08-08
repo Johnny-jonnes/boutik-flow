@@ -77,7 +77,7 @@ def _user_names_for_orders(db: Session, orders: list[Order]) -> dict:
     return {u.id: (u.full_name or u.email) for u in users}
 
 
-def _build_order_response(order: Order, user_names: dict) -> OrderResponse:
+def _build_order_response(order: Order, user_names: dict, debt_id: uuid.UUID | None = None) -> OrderResponse:
     """Construit la réponse en résolvant explicitement les noms (client,
     vendeur, produit) depuis les relations chargées — plutôt qu'un
     model_validate() aveugle qui ne verrait que les colonnes brutes."""
@@ -107,6 +107,7 @@ def _build_order_response(order: Order, user_names: dict) -> OrderResponse:
         returned_amount=returned_amount,
         is_returned=returned_amount > 0 and returned_amount >= order.total,
         is_partially_returned=Decimal("0") < returned_amount < order.total,
+        debt_id=debt_id,
         created_at=order.created_at,
         updated_at=order.updated_at,
         deleted_at=order.deleted_at,
@@ -621,8 +622,9 @@ def create_order(
     # commande (jamais un second appel HTTP séparé comme auparavant côté
     # POS) : un crash entre les deux ne peut plus laisser une vente à
     # crédit sans sa dette, ou l'inverse.
+    debt = None
     if is_credit_sale:
-        create_client_debt(
+        debt = create_client_debt(
             db, current_user.tenant_id, target_client_id, order.id, remaining_amount,
             description=f"Vente à crédit N°{str(order.id)[:8]}",
         )
@@ -643,7 +645,7 @@ def create_order(
     db.refresh(order)
 
     logger.info("Commande créée : %s (Total=%s)", order.id, order.total)
-    response = _build_order_response(order, _user_names_for_orders(db, [order]))
+    response = _build_order_response(order, _user_names_for_orders(db, [order]), debt_id=debt.id if debt else None)
     store_response(
         db, current_user.tenant_id, "orders.create", idempotency_key,
         status.HTTP_201_CREATED, jsonable_encoder(response),

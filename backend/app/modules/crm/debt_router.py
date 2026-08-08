@@ -3,7 +3,7 @@ Router des dettes clients — CRUD + paiements.
 """
 import uuid
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import and_
 
@@ -132,18 +132,24 @@ def list_debts(
     end_date: Optional[str] = None,
     page: Optional[int] = None,
     per_page: int = 20,
+    updated_since: Optional[datetime] = Query(
+        None, description="Synchronisation incrémentale hors-ligne : ne renvoie que les dettes créées/modifiées après cette date."
+    ),
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("debts", "view")),
 ):
     """Lister les dettes de la boutique.
 
-    Sans `page` : renvoie la liste complète triée, EXACTEMENT le
-    comportement historique — c'est ainsi que la fiche client CRM appelle
-    cette route (`client_id` seul), et elle doit continuer de recevoir un
-    tableau brut, pas un objet paginé. Avec `page` : renvoie un objet
-    paginé `{items, total, page, per_page}`, utilisé par le nouveau module
-    Dettes Clients qui a besoin de filtres combinables sur potentiellement
-    beaucoup de dettes.
+    Sans `page` ni `updated_since` : renvoie la liste complète triée,
+    EXACTEMENT le comportement historique — c'est ainsi que la fiche
+    client CRM appelle cette route (`client_id` seul), et elle doit
+    continuer de recevoir un tableau brut, pas un objet paginé. Avec
+    `page` : renvoie un objet paginé `{items, total, page, per_page}`,
+    utilisé par le module Dettes Clients. Avec `updated_since` (utilisé
+    par la synchronisation hors-ligne incrémentale, voir
+    incrementalSyncCollection dans lib/api/client.ts) : bascule aussi vers
+    la réponse paginée — ce filtre reste prioritaire et mutuellement
+    exclusif avec `period`/`start_date`/`end_date`, comme list_orders.
     """
     q = db.query(ClientDebt).filter(ClientDebt.tenant_id == current_user.tenant_id)
     if client_id:
@@ -161,16 +167,27 @@ def list_debts(
         q = q.filter(ClientDebt.order_id.in_(
             db.query(Order.id).filter(Order.created_by == seller_id)
         ))
-    start, end = resolve_period(period, start_date, end_date)
-    if start:
-        q = q.filter(ClientDebt.created_at >= start)
-    if end:
-        q = q.filter(ClientDebt.created_at < end)
+    if updated_since is not None:
+        q = q.filter(ClientDebt.updated_at > updated_since)
+    else:
+        start, end = resolve_period(period, start_date, end_date)
+        if start:
+            q = q.filter(ClientDebt.created_at >= start)
+        if end:
+            q = q.filter(ClientDebt.created_at < end)
 
-    total = q.count() if page is not None else None
-    q = q.order_by(ClientDebt.created_at.desc()).options(selectinload(ClientDebt.payments))
-    if page is not None:
-        q = q.offset(max(0, page - 1) * per_page).limit(per_page)
+    paginate = page is not None or updated_since is not None
+    total = q.count() if paginate else None
+    if updated_since is not None:
+        # Ordre chronologique croissant en incrémental (même raison que
+        # list_orders/list_products : le curseur avance sur la dernière
+        # ligne VUE, jamais sur un tri par pertinence).
+        q = q.order_by(ClientDebt.updated_at.asc())
+    else:
+        q = q.order_by(ClientDebt.created_at.desc())
+    q = q.options(selectinload(ClientDebt.payments))
+    if paginate:
+        q = q.offset(max(0, (page or 1) - 1) * per_page).limit(per_page)
     debts = q.all()
 
     # Résout en une seule requête le nom de chaque utilisateur ayant
@@ -195,6 +212,7 @@ def list_debts(
             "description": d.description,
             "due_date": d.due_date.isoformat() if d.due_date else None,
             "created_at": d.created_at.isoformat(),
+            "updated_at": d.updated_at.isoformat(),
             # Historique complet des versements (demande 6/8) — déclaré
             # depuis toujours dans DebtResponse mais jamais peuplé ici.
             "payments": [
@@ -213,8 +231,8 @@ def list_debts(
         }
 
     result = [serialize(d) for d in debts]
-    if page is not None:
-        return {"items": result, "total": total, "page": page, "per_page": per_page}
+    if paginate:
+        return {"items": result, "total": total, "page": page or 1, "per_page": per_page}
     return result
 
 
