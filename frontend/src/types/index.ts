@@ -182,6 +182,11 @@ export interface Order {
   status: OrderStatus;
   total: number;
   notes: string | null;
+  payment_method?: string | null;
+  /** Cumul remboursé sur cette commande — jamais soustrait de `total`. */
+  returned_amount?: number;
+  is_returned?: boolean;
+  is_partially_returned?: boolean;
   items: OrderItem[];
   client?: Client;
   created_at: string;
@@ -195,6 +200,10 @@ export interface OrderCreate {
   notes?: string;
   allow_stock_shortage?: boolean;
   discount?: number;
+  payment_method?: string;
+  /** Vente à crédit : montant réellement encaissé à la vente (absent =
+   *  vente comptant classique, comportement inchangé). */
+  amount_paid_now?: number;
 }
 
 // ─── Dashboard KPIs ───────────────────────────────────────────────────────

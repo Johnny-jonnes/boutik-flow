@@ -1557,6 +1557,39 @@ export const api = {
     return withPages(raw);
   },
 
+  // Filtres avancés (page Ventes) — requête serveur dédiée, jamais tout
+  // l'historique en mémoire : reste rapide même à plusieurs milliers de
+  // ventes. Séparée de getOrders ci-dessus, qui garde sa signature
+  // positionnelle inchangée pour ses appelants existants (Dashboard,
+  // Commandes).
+  async getOrdersFiltered(params: {
+    page?: number; perPage?: number; status?: string; clientId?: string;
+    productId?: string; categoryId?: string; sellerId?: string;
+    paymentMethod?: string; saleType?: string;
+    period?: string; startDate?: string; endDate?: string;
+    sortBy?: string; sortDir?: string;
+  } = {}) {
+    const raw = await request<{ items: Order[]; total: number; page: number; per_page: number }>(
+      `/orders${buildQuery({
+        page: params.page ?? 1,
+        per_page: params.perPage ?? 20,
+        status: params.status,
+        client_id: params.clientId,
+        product_id: params.productId,
+        category_id: params.categoryId,
+        seller_id: params.sellerId,
+        payment_method: params.paymentMethod,
+        sale_type: params.saleType,
+        period: params.period,
+        start_date: params.startDate,
+        end_date: params.endDate,
+        sort_by: params.sortBy,
+        sort_dir: params.sortDir,
+      })}`
+    );
+    return withPages(raw);
+  },
+
   getOrder(id: string): Promise<Order> {
     return request(`/orders/${id}`);
   },

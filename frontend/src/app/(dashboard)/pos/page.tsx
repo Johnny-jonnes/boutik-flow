@@ -46,10 +46,15 @@ export default function POSPage() {
   // où le panneau latéral reste en permanence visible.
   const [isCartSheetOpen, setIsCartSheetOpen] = useState(false);
 
-  // Dette
-  const [isDebt, setIsDebt]               = useState(false);
-  const [debtDescription, setDebtDescription] = useState('');
-  const [debtDueDate, setDebtDueDate]     = useState('');
+  // Vente à crédit — 3 modes (demande 3/4) : 'full' encaisse tout
+  // immédiatement (comportement historique) ; 'partial' encaisse une
+  // partie, le reste devient une dette créée automatiquement côté serveur
+  // (create_order, voir orders/router.py) dans la même transaction que la
+  // commande — plus de second appel api.createDebt séparé, qui pouvait
+  // laisser une commande sans sa dette en cas de coupure entre les deux
+  // requêtes ; 'deferred' n'encaisse rien, tout devient une dette.
+  const [saleMode, setSaleMode] = useState<'full' | 'partial' | 'deferred'>('full');
+  const [amountPaidInput, setAmountPaidInput] = useState('');
 
   // Reçu
   const [receiptData, setReceiptData]               = useState<any>(null);
@@ -163,17 +168,40 @@ export default function POSPage() {
   const totalItems = cart.reduce((s, i) => s + i.cartQuantity, 0);
   const total      = Math.max(0, subtotal - discount);
 
+  // Montant réellement encaissé maintenant, jamais saisi directement pour
+  // 'partial' — dérivé et plafonné à [0, total] pour qu'il ne puisse
+  // jamais dépasser le total (demande 11 : pas de dépassement possible).
+  const isCreditSale = saleMode !== 'full';
+  const amountPaidNow = saleMode === 'full'
+    ? total
+    : saleMode === 'deferred'
+      ? 0
+      : Math.min(total, Math.max(0, Number(amountPaidInput) || 0));
+  // Reste dû — affiché en lecture seule, jamais modifiable directement
+  // (demande 4).
+  const remainingAmount = Math.max(0, total - amountPaidNow);
+
   // ─── Validation vente ────────────────────────────────────────────
   const handleValidateSale = async () => {
     if (cart.length === 0 || isProcessing) return;
+    if (isCreditSale && !selectedClientId) {
+      toast.error(language === 'fr' ? 'Sélectionnez un client pour une vente à crédit' : 'Select a client for a credit sale');
+      return;
+    }
     setIsProcessing(true);
     try {
       const payload: any = {
-        status: isDebt ? 'pending' : 'delivered',
+        // Le statut 'pending' pour une vente à crédit est forcé côté
+        // serveur dès que le reste à payer est positif (voir create_order,
+        // orders/router.py) — envoyer 'delivered' ici ne change rien pour
+        // une vente à crédit, et garde le comportement exact d'avant pour
+        // une vente comptant.
+        status: 'delivered',
         items: cart.map(i => ({ product_id: i.id, quantity: i.cartQuantity })),
-        notes: buildSaleNotes({ paymentMethod, discount, isDebt, debtTotal: total }),
-        is_debt: isDebt,
+        notes: buildSaleNotes({ paymentMethod, discount, isDebt: isCreditSale, debtTotal: remainingAmount }),
         discount,
+        payment_method: paymentMethod,
+        amount_paid_now: amountPaidNow,
       };
       if (selectedClientId) payload.client_id = selectedClientId;
 
@@ -184,6 +212,12 @@ export default function POSPage() {
       // dans le Tableau de bord et Finance (une fois au montant brut, une
       // fois au montant net de remise) : c'était la cause des chiffres
       // gonflés, pas un mélange de données entre boutiques.
+      //
+      // La dette (si reste à payer > 0) est désormais créée par le
+      // serveur dans la MÊME transaction que la commande (voir
+      // create_client_debt appelé depuis create_order) — plus de second
+      // appel api.createDebt séparé, qui pouvait laisser une commande
+      // sans sa dette liée en cas de coupure réseau entre les deux appels.
       const order = await api.createOrder(payload);
 
       // Une vente réussit ici même hors connexion (voir handleOfflineRequest
@@ -192,20 +226,6 @@ export default function POSPage() {
       // réussie) tant que la connexion n'était pas revenue, alors que la
       // vente est bien enregistrée localement depuis le début.
       window.dispatchEvent(new CustomEvent('boutikflow:order-created', { detail: { order } }));
-
-      // Enregistrement de la dette — ne compte PAS comme encaissement
-      if (isDebt && selectedClientId) {
-        try {
-          await api.createDebt({
-            client_id: selectedClientId,
-            order_id: order.id,
-            original_amount: total,
-            description: debtDescription.trim() || (language === 'fr' ? 'Achat à crédit' : 'Credit purchase'),
-            due_date: debtDueDate || undefined,
-          });
-          toast.success(language === 'fr' ? '📋 Dette enregistrée — sera comptabilisée à l\'encaissement' : '📋 Debt recorded — will be counted on payment');
-        } catch { toast.error(language === 'fr' ? 'Erreur enregistrement dette' : 'Error recording debt'); }
-      }
 
       // Mise à jour stock local — patch direct du cache partagé, sans
       // rechargement : le nouveau stock se reflète aussi immédiatement sur
@@ -228,7 +248,13 @@ export default function POSPage() {
       triggerHaptic([30, 50, 30]);
       setSuccessAnim(true);
       setTimeout(() => setSuccessAnim(false), 1400);
-      if (!isDebt) toast.success(language === 'fr' ? '✓ Vente encaissée !' : '✓ Sale recorded!');
+      if (saleMode === 'full') {
+        toast.success(language === 'fr' ? '✓ Vente encaissée !' : '✓ Sale recorded!');
+      } else if (saleMode === 'partial') {
+        toast.success(language === 'fr' ? `📋 Paiement partiel enregistré — dette de ${fmt(remainingAmount)} créée` : `📋 Partial payment recorded — debt of ${fmt(remainingAmount)} created`);
+      } else {
+        toast.success(language === 'fr' ? '📋 Vente à crédit enregistrée' : '📋 Credit sale recorded');
+      }
 
       const client = clients.find(c => c.id === selectedClientId);
       setReceiptData({
@@ -237,13 +263,13 @@ export default function POSPage() {
         items: cart.map(i => ({ product_id: i.id, quantity: i.cartQuantity, unit_price: i.price, product: { name: i.name } })),
         client: client ? { name: client.name, phone: client.phone || '' } : { name: language === 'fr' ? 'Client passant' : 'Walk-in', phone: '' },
         created_at: order.created_at || new Date().toISOString(),
-        status: isDebt ? 'pending' : 'confirmed',
+        status: isCreditSale ? 'pending' : 'confirmed',
       });
       setIsReceiptModalOpen(true);
 
       // Reset
       setCart([]); setDiscount(0); setSelectedClientId('');
-      setIsDebt(false); setDebtDescription(''); setDebtDueDate('');
+      setSaleMode('full'); setAmountPaidInput('');
       setIsCartSheetOpen(false);
     } catch (err: any) {
       SoundEffects.playError();
@@ -417,7 +443,7 @@ export default function POSPage() {
               value={selectedClientId}
               onChange={e => {
                 setSelectedClientId(e.target.value);
-                if (!e.target.value) { setIsDebt(false); setDebtDescription(''); setDebtDueDate(''); }
+                if (!e.target.value) { setSaleMode('full'); setAmountPaidInput(''); }
               }}
             >
               <option value="">{language === 'fr' ? 'Client passant' : 'Walk-in customer'}</option>
@@ -505,24 +531,46 @@ export default function POSPage() {
               ))}
             </div>
 
-            {/* Dette — visible uniquement si client sélectionné */}
+            {/* Mode de paiement — visible uniquement si client sélectionné,
+                car une vente à crédit (partielle ou différée) exige un
+                client identifié (voir create_order, orders/router.py). */}
             {selectedClientId && (
               <div className="p-debt-box">
-                <label className="p-debt-label">
-                  <input
-                    type="checkbox" checked={isDebt}
-                    onChange={e => setIsDebt(e.target.checked)}
-                    style={{ accentColor: 'var(--color-error)', width:15, height:15, cursor:'pointer', flexShrink:0 }}
-                  />
-                  <span style={{ display:'flex', alignItems:'center', gap:'0.35rem' }}>
-                    <ArrowUpRight size={13} style={{ opacity:0.6 }}/>
-                    {language === 'fr' ? 'Vente à crédit' : 'Credit sale'}
-                  </span>
-                </label>
-                {isDebt && (
+                <div className="p-mode-tabs">
+                  {([
+                    { v: 'full', label: language === 'fr' ? 'Total' : 'Full' },
+                    { v: 'partial', label: language === 'fr' ? 'Partiel' : 'Partial' },
+                    { v: 'deferred', label: language === 'fr' ? 'Différé' : 'Deferred' },
+                  ] as const).map(({ v, label }) => (
+                    <label key={v} className={`p-mode-tab ${saleMode === v ? 'active' : ''}`}>
+                      <input type="radio" name="sale-mode" value={v} checked={saleMode === v} onChange={() => setSaleMode(v)} style={{ display: 'none' }}/>
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
+
+                {saleMode === 'partial' && (
                   <div className="p-debt-fields">
-                    <input className="p-debt-input" type="text" placeholder={language === 'fr' ? 'Motif (optionnel)' : 'Reason'} value={debtDescription} onChange={e => setDebtDescription(e.target.value)}/>
-                    <input className="p-debt-input" type="date" value={debtDueDate} onChange={e => setDebtDueDate(e.target.value)}/>
+                    <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700 }}>
+                      {language === 'fr' ? 'Montant payé maintenant' : 'Amount paid now'}
+                    </label>
+                    <input
+                      className="p-debt-input"
+                      type="number" min={0} max={total}
+                      value={amountPaidInput}
+                      onChange={e => setAmountPaidInput(e.target.value)}
+                      placeholder="0"
+                    />
+                    <div className="p-remaining-row">
+                      {language === 'fr' ? 'Reste dû (dette)' : 'Remaining (debt)'}
+                      <strong>{fmt(remainingAmount)}</strong>
+                    </div>
+                  </div>
+                )}
+                {saleMode === 'deferred' && (
+                  <div className="p-remaining-row">
+                    {language === 'fr' ? 'Montant total à crédit' : 'Full amount on credit'}
+                    <strong>{fmt(total)}</strong>
                   </div>
                 )}
               </div>
@@ -532,7 +580,7 @@ export default function POSPage() {
           {/* BOUTON VALIDER — STICKY FOOTER toujours visible */}
           <div className="p-validate-footer">
             <button
-              className={`p-validate ${successAnim ? 'success' : ''} ${isDebt ? 'debt' : ''}`}
+              className={`p-validate ${successAnim ? 'success' : ''} ${isCreditSale ? 'debt' : ''}`}
               disabled={cart.length === 0 || isProcessing}
               onClick={handleValidateSale}
             >
@@ -543,9 +591,11 @@ export default function POSPage() {
               ) : (
                 <>
                   <span style={{ flex: 1 }}>
-                    {isDebt
-                      ? <><ArrowUpRight size={16}/> {language === 'fr' ? 'Crédit' : 'Credit'}</>
-                      : <><CheckCircle size={16}/> {language === 'fr' ? 'Encaisser' : 'Collect'}</>
+                    {saleMode === 'deferred'
+                      ? <><ArrowUpRight size={16}/> {language === 'fr' ? 'Crédit total' : 'Full credit'}</>
+                      : saleMode === 'partial'
+                        ? <><ArrowUpRight size={16}/> {language === 'fr' ? 'Paiement partiel' : 'Partial payment'}</>
+                        : <><CheckCircle size={16}/> {language === 'fr' ? 'Encaisser' : 'Collect'}</>
                     }
                   </span>
                   {cart.length > 0 && <span className="p-validate-amount">{fmt(total)}</span>}
@@ -1191,6 +1241,34 @@ export default function POSPage() {
           font-size: 0.8rem; font-weight: 800; color: var(--color-error);
           cursor: pointer;
         }
+        .p-mode-tabs {
+          display: grid; grid-template-columns: repeat(3, 1fr);
+          gap: 0.35rem;
+        }
+        .p-mode-tab {
+          display: flex; align-items: center; justify-content: center;
+          padding: 0.5rem 0.3rem;
+          border-radius: 8px;
+          border: 1.5px solid rgba(244,63,94,0.25);
+          background: var(--surface-1);
+          color: var(--text-secondary);
+          font-size: 0.74rem; font-weight: 700;
+          cursor: pointer;
+          transition: all 150ms ease;
+          text-align: center;
+          user-select: none;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .p-mode-tab.active {
+          border-color: var(--color-error);
+          background: rgba(244,63,94,0.15);
+          color: var(--color-error);
+        }
+        .p-remaining-row {
+          display: flex; align-items: center; justify-content: space-between;
+          font-size: 0.78rem; color: var(--text-muted); font-weight: 600;
+        }
+        .p-remaining-row strong { color: var(--color-error); font-size: 0.9rem; }
         .p-debt-fields { display: flex; flex-direction: column; gap: 0.4rem; }
         .p-debt-input {
           background: var(--surface-1); border: 1.5px solid var(--border-default);

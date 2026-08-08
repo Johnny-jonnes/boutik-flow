@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Download, Eye, Printer, RotateCcw, Search, Calendar, CreditCard as CardIcon, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { Download, Eye, Printer, RotateCcw, Calendar, CreditCard as CardIcon, ArrowUp, ArrowDown, ArrowUpDown, Filter } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import type { Order } from '@/types';
@@ -10,7 +10,11 @@ import { Modal } from '@/components/ui/Modal';
 import { ReceiptModal } from '@/components/ui/ReceiptModal';
 import { useLanguage } from '@/context/LanguageContext';
 import { extractPaymentMethod } from '@/lib/saleNotes';
-import { useOrdersQuery, useClientsQuery, useProductsQuery, queryKeys } from '@/lib/queries';
+import { toDateInput, today } from '@/lib/period';
+import {
+  useSalesListQuery, useClientsQuery, useProductsQuery, useCategoriesQuery, useTeamQuery,
+  queryKeys, type SalesFilters,
+} from '@/lib/queries';
 
 function formatGNF(amount: number) {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' GNF';
@@ -23,21 +27,56 @@ function formatDate(isoString: string, language: string) {
   }).format(new Date(isoString));
 }
 
+type DatePreset = 'today' | 'yesterday' | 'week' | 'month' | 'year' | 'custom' | '';
+
+/** Calcule les bornes YYYY-MM-DD d'un preset calendaire en date LOCALE
+ *  (jamais toISOString(), qui décale d'un jour selon le fuseau — voir
+ *  lib/period.ts). Envoyées ensuite comme start_date/end_date explicites,
+ *  déjà supportés par resolve_period() côté serveur : aucun changement
+ *  backend nécessaire pour ces presets. */
+function presetToRange(preset: DatePreset): { from: string; to: string } | null {
+  const now = new Date();
+  const to = toDateInput(now);
+  switch (preset) {
+    case 'today':
+      return { from: to, to };
+    case 'yesterday': {
+      const y = new Date(now); y.setDate(y.getDate() - 1);
+      return { from: toDateInput(y), to: toDateInput(y) };
+    }
+    case 'week': {
+      const day = now.getDay() === 0 ? 7 : now.getDay(); // lundi = 1 .. dimanche = 7
+      const monday = new Date(now); monday.setDate(now.getDate() - (day - 1));
+      return { from: toDateInput(monday), to };
+    }
+    case 'month': {
+      const first = new Date(now.getFullYear(), now.getMonth(), 1);
+      return { from: toDateInput(first), to };
+    }
+    case 'year': {
+      const first = new Date(now.getFullYear(), 0, 1);
+      return { from: toDateInput(first), to };
+    }
+    default:
+      return null;
+  }
+}
+
 export default function SalesHistoryPage() {
   const { t, language } = useLanguage();
   const queryClient = useQueryClient();
-  // Cache partagé avec Dashboard, Vendre, Produits et Clients — la première
-  // de ces pages visitée charge les données, les suivantes les trouvent déjà
-  // en mémoire, ici comme partout ailleurs.
-  const { data: ordersData, isLoading } = useOrdersQuery();
+
+  // Données de référence pour les filtres et la résolution des noms —
+  // cache partagé avec Produits/Vendre/Clients/Équipe, comme partout
+  // ailleurs (voir lib/queries.ts).
   const { data: clientsData } = useClientsQuery();
   const { data: productsData } = useProductsQuery();
+  const { data: categoriesData } = useCategoriesQuery();
+  const { data: teamData } = useTeamQuery();
   const clients = clientsData?.items ?? [];
   const products = productsData?.items ?? [];
-  const sales = useMemo(
-    () => (ordersData?.items || []).filter(o => o.status === 'delivered'),
-    [ordersData]
-  );
+  const categories = categoriesData?.items ?? [];
+  const team = teamData ?? [];
 
   // Modals state
   const [selectedSale, setSelectedSale] = useState<Order | null>(null);
@@ -63,19 +102,83 @@ export default function SalesHistoryPage() {
       console.error(e);
     }
   }, []);
+
   const [returnOrder, setReturnOrder] = useState<Order | null>(null);
   const [returnItems, setReturnItems] = useState<{ product_id: string; quantity: number }[]>([]);
   const [returnReason, setReturnReason] = useState('');
   const [restockInventory, setRestockInventory] = useState(true);
   const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
-  // Filter States
+  // Filtres — tous combinables, envoyés au serveur (voir useSalesListQuery).
+  // Plus aucun chargement de tout l'historique en mémoire : reste rapide
+  // même à plusieurs milliers de ventes (demande 1).
+  const [datePreset, setDatePreset] = useState<DatePreset>('');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
+  const [filterClientId, setFilterClientId] = useState('');
+  const [filterProductId, setFilterProductId] = useState('');
+  const [filterCategoryId, setFilterCategoryId] = useState('');
+  const [filterSellerId, setFilterSellerId] = useState('');
   const [filterPayment, setFilterPayment] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [filterSaleType, setFilterSaleType] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(15);
+
+  const applyPreset = (preset: DatePreset) => {
+    setDatePreset(preset);
+    setCurrentPage(1);
+    const range = presetToRange(preset);
+    if (range) {
+      setFilterDateFrom(range.from);
+      setFilterDateTo(range.to);
+    } else if (preset !== 'custom') {
+      setFilterDateFrom('');
+      setFilterDateTo('');
+    }
+  };
+
+  type SortField = 'created_at' | 'total';
+  const [sortField, setSortField] = useState<SortField>('created_at');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  const toggleSort = (field: SortField) => {
+    setCurrentPage(1);
+    if (sortField === field) {
+      setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDir(field === 'created_at' ? 'desc' : 'asc');
+    }
+  };
+
+  const sortIcon = (field: SortField) => {
+    if (sortField !== field) return <ArrowUpDown size={12} className="sort-icon sort-icon--inactive" />;
+    return sortDir === 'asc' ? <ArrowUp size={12} className="sort-icon" /> : <ArrowDown size={12} className="sort-icon" />;
+  };
+
+  const filters: SalesFilters = useMemo(() => ({
+    clientId: filterClientId || undefined,
+    productId: filterProductId || undefined,
+    categoryId: filterCategoryId || undefined,
+    sellerId: filterSellerId || undefined,
+    paymentMethod: filterPayment !== 'all' ? filterPayment : undefined,
+    saleType: filterSaleType !== 'all' ? filterSaleType : undefined,
+    startDate: filterDateFrom || undefined,
+    endDate: filterDateTo || undefined,
+    sortBy: sortField,
+    sortDir,
+  }), [filterClientId, filterProductId, filterCategoryId, filterSellerId, filterPayment, filterSaleType, filterDateFrom, filterDateTo, sortField, sortDir]);
+
+  const { data: salesData, isLoading } = useSalesListQuery(filters, currentPage, perPage);
+  const sales = salesData?.items ?? [];
+  const totalFiltered = salesData?.total ?? 0;
+  const totalPages = salesData?.pages ?? 1;
+
+  // Changer un filtre invalide la page courante — sans ce reset, un
+  // filtre plus restrictif pouvait laisser l'utilisateur sur une page
+  // vide au lieu de revenir à la première.
+  useEffect(() => { setCurrentPage(1); }, [filterClientId, filterProductId, filterCategoryId, filterSellerId, filterPayment, filterSaleType, filterDateFrom, filterDateTo]);
 
   // Le backend résout désormais client_name/created_by_name/product_name
   // directement (voir OrderResponse) — le repli sur les listes clients/
@@ -102,24 +205,10 @@ export default function SalesHistoryPage() {
     return `${firstName} +${extra} ${language === 'fr' ? (extra > 1 ? 'autres' : 'autre') : (extra > 1 ? 'others' : 'other')}`;
   };
 
-  type SortField = 'created_at' | 'total' | 'client' | 'seller';
-  const [sortField, setSortField] = useState<SortField>('created_at');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-
-  const toggleSort = (field: SortField) => {
-    setCurrentPage(1);
-    if (sortField === field) {
-      setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortField(field);
-      setSortDir(field === 'created_at' ? 'desc' : 'asc');
-    }
-  };
-
-  const sortIcon = (field: SortField) => {
-    if (sortField !== field) return <ArrowUpDown size={12} className="sort-icon sort-icon--inactive" />;
-    return sortDir === 'asc' ? <ArrowUp size={12} className="sort-icon" /> : <ArrowDown size={12} className="sort-icon" />;
-  };
+  // payment_method (colonne structurée, Phase 4) prioritaire ; repli sur
+  // l'ancien texte libre dans notes pour les ventes antérieures à cette
+  // colonne (jamais rétro-deviné côté serveur, voir OrderResponse).
+  const getPaymentMethod = (order: Order) => order.payment_method || extractPaymentMethod(order.notes);
 
   const getPaymentLabel = (method: string) => {
     const labels: Record<string, string> = {
@@ -131,42 +220,60 @@ export default function SalesHistoryPage() {
     return labels[method] || method;
   };
 
-  // Export CSV
-  const handleExport = () => {
-    if (filteredSales.length === 0) {
-      toast.error(language === 'fr' ? 'Aucune vente à exporter' : 'No sales to export');
-      return;
+  const getSaleTypeBadge = (order: Order) => {
+    if (order.is_returned) return { label: language === 'fr' ? 'Retournée' : 'Returned', cls: 'returned' };
+    if (order.is_partially_returned) return { label: language === 'fr' ? 'Retour partiel' : 'Partial return', cls: 'partial-return' };
+    if (order.status === 'pending') return { label: language === 'fr' ? 'À crédit' : 'Credit', cls: 'credit' };
+    return null;
+  };
+
+  // Export CSV — refait une requête dédiée avec les mêmes filtres (jusqu'au
+  // plafond serveur de 500) plutôt que d'exporter seulement la page
+  // actuellement affichée : l'export doit couvrir tout ce qui correspond
+  // aux filtres, pas seulement ce qui est visible à l'écran.
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const res = await api.getOrdersFiltered({ ...filters, page: 1, perPage: 500 });
+      if (res.items.length === 0) {
+        toast.error(language === 'fr' ? 'Aucune vente à exporter' : 'No sales to export');
+        return;
+      }
+      const headers = [
+        language === 'fr' ? 'ID Vente' : 'Sale ID',
+        language === 'fr' ? 'Client' : 'Customer',
+        language === 'fr' ? 'Vendeur' : 'Seller',
+        language === 'fr' ? 'Produits' : 'Products',
+        language === 'fr' ? 'Montant' : 'Amount',
+        language === 'fr' ? 'Articles' : 'Items',
+        language === 'fr' ? 'Paiement' : 'Payment',
+        language === 'fr' ? 'Notes' : 'Notes',
+        'Date'
+      ];
+      const rows = res.items.map(o => [
+        `BF-${o.id.slice(0, 8).toUpperCase()}`,
+        getClientName(o),
+        getSellerName(o),
+        (o.items || []).map(i => `${i.quantity}x ${getProductName(i)}`).join(' + '),
+        String(o.total || 0),
+        String(o.items?.length || 0),
+        getPaymentLabel(getPaymentMethod(o)),
+        o.notes || '',
+        new Date(o.created_at).toLocaleDateString('fr-FR'),
+      ]);
+      const csv = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
+      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `ventes_caisse_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast.error(err.message || (language === 'fr' ? "Erreur lors de l'export" : 'Export error'));
+    } finally {
+      setIsExporting(false);
     }
-    const headers = [
-      language === 'fr' ? 'ID Vente' : 'Sale ID',
-      language === 'fr' ? 'Client' : 'Customer',
-      language === 'fr' ? 'Vendeur' : 'Seller',
-      language === 'fr' ? 'Produits' : 'Products',
-      language === 'fr' ? 'Montant' : 'Amount',
-      language === 'fr' ? 'Articles' : 'Items',
-      language === 'fr' ? 'Paiement' : 'Payment',
-      language === 'fr' ? 'Notes' : 'Notes',
-      'Date'
-    ];
-    const rows = sortedSales.map(o => [
-      `BF-${o.id.slice(0, 8).toUpperCase()}`,
-      getClientName(o),
-      getSellerName(o),
-      (o.items || []).map(i => `${i.quantity}x ${getProductName(i)}`).join(' + '),
-      String(o.total || 0),
-      String(o.items?.length || 0),
-      getPaymentLabel(extractPaymentMethod(o.notes)),
-      o.notes || '',
-      new Date(o.created_at).toLocaleDateString('fr-FR'),
-    ]);
-    const csv = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
-    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `ventes_caisse_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
   };
 
   // Return modal handler
@@ -191,10 +298,18 @@ export default function SalesHistoryPage() {
 
     setIsSubmittingReturn(true);
     try {
-      await api.returnOrderItems(returnOrder.id, itemsToReturn, returnReason, restockInventory);
-      toast.success(language === 'fr' ? 'Retour validé avec succès' : 'Return processed successfully');
+      const res = await api.returnOrderItems(returnOrder.id, itemsToReturn, returnReason, restockInventory);
+      const debtReduced = (res as any)?.debt_reduced_amount || 0;
+      toast.success(
+        debtReduced > 0
+          ? (language === 'fr' ? `Retour validé — dette réduite de ${formatGNF(debtReduced)}` : `Return processed — debt reduced by ${formatGNF(debtReduced)}`)
+          : (language === 'fr' ? 'Retour validé avec succès' : 'Return processed successfully')
+      );
       setReturnOrder(null);
+      queryClient.invalidateQueries({ queryKey: ['sales-list'] });
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['finance-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.products() });
       queryClient.invalidateQueries({ queryKey: ['product-stats'] });
     } catch (err: any) {
@@ -204,67 +319,16 @@ export default function SalesHistoryPage() {
     }
   };
 
-  // Filter Logic
-  const filteredSales = sales.filter(o => {
-    if (filterDateFrom) {
-      const fromMs = new Date(filterDateFrom + 'T00:00:00').getTime();
-      if (new Date(o.created_at).getTime() < fromMs) return false;
-    }
-    if (filterDateTo) {
-      const toMs = new Date(filterDateTo + 'T23:59:59.999').getTime();
-      if (new Date(o.created_at).getTime() > toMs) return false;
-    }
-    
-    if (filterPayment !== 'all') {
-      if (extractPaymentMethod(o.notes) !== filterPayment) return false;
-    }
-
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      const clientName = getClientName(o).toLowerCase();
-      const receiptNo = `bf-${o.id.slice(0, 8).toLowerCase()}`;
-      return receiptNo.includes(q) || clientName.includes(q) || o.id.toLowerCase().includes(q);
-    }
-    return true;
-  });
-
-  const sortedSales = useMemo(() => {
-    const arr = [...filteredSales];
-    arr.sort((a, b) => {
-      let cmp = 0;
-      switch (sortField) {
-        case 'total':
-          cmp = (Number(a.total) || 0) - (Number(b.total) || 0);
-          break;
-        case 'client':
-          cmp = getClientName(a).localeCompare(getClientName(b));
-          break;
-        case 'seller':
-          cmp = getSellerName(a).localeCompare(getSellerName(b));
-          break;
-        default:
-          cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-      }
-      return sortDir === 'asc' ? cmp : -cmp;
-    });
-    return arr;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredSales, sortField, sortDir, clients]);
-
-  const totalFiltered = sortedSales.length;
-  const totalPages = Math.ceil(totalFiltered / perPage);
-  const paginatedSales = sortedSales.slice((currentPage - 1) * perPage, currentPage * perPage);
-
   return (
     <div className="page fade-in">
       <div className="page-header">
         <div>
           <h1 className="page-title">{t('sales.title') || 'Historique des Ventes'}</h1>
-          <p className="page-subtitle">{t('sales.subtitle') || 'Consultez et gérez les ventes de votre caisse rapide.'}</p>
+          <p className="page-subtitle">{t('sales.subtitle') || 'Consultez et gérez les ventes de votre boutique.'}</p>
         </div>
         <div className="header-actions">
-          <button className="btn btn-ghost" onClick={handleExport}>
-            <Download size={16} /> {language === 'fr' ? 'Exporter CSV' : 'Export CSV'}
+          <button className="btn btn-ghost" onClick={handleExport} disabled={isExporting}>
+            <Download size={16} /> {isExporting ? (language === 'fr' ? 'Export...' : 'Exporting...') : (language === 'fr' ? 'Exporter CSV' : 'Export CSV')}
           </button>
         </div>
       </div>
@@ -274,28 +338,56 @@ export default function SalesHistoryPage() {
         <div className="filters-row">
           <div className="filter-group">
             <Calendar size={14} className="filter-icon" />
-            <input 
-              type="date" 
-              className="input" 
-              value={filterDateFrom} 
-              onChange={e => { setFilterDateFrom(e.target.value); setCurrentPage(1); }} 
-            />
-            <span className="filter-separator">{language === 'fr' ? 'à' : 'to'}</span>
-            <input 
-              type="date" 
-              className="input" 
-              value={filterDateTo} 
-              onChange={e => { setFilterDateTo(e.target.value); setCurrentPage(1); }} 
-            />
+            <select className="input" value={datePreset} onChange={e => applyPreset(e.target.value as DatePreset)}>
+              <option value="">{language === 'fr' ? 'Toute période' : 'All time'}</option>
+              <option value="today">{language === 'fr' ? "Aujourd'hui" : 'Today'}</option>
+              <option value="yesterday">{language === 'fr' ? 'Hier' : 'Yesterday'}</option>
+              <option value="week">{language === 'fr' ? 'Cette semaine' : 'This week'}</option>
+              <option value="month">{language === 'fr' ? 'Ce mois' : 'This month'}</option>
+              <option value="year">{language === 'fr' ? 'Cette année' : 'This year'}</option>
+              <option value="custom">{language === 'fr' ? 'Personnalisée' : 'Custom'}</option>
+            </select>
+          </div>
+
+          {datePreset === 'custom' && (
+            <div className="filter-group">
+              <input type="date" className="input" value={filterDateFrom} max={filterDateTo || today()} onChange={e => setFilterDateFrom(e.target.value)} />
+              <span className="filter-separator">{language === 'fr' ? 'à' : 'to'}</span>
+              <input type="date" className="input" value={filterDateTo} min={filterDateFrom} max={today()} onChange={e => setFilterDateTo(e.target.value)} />
+            </div>
+          )}
+
+          <div className="filter-group">
+            <select className="input" value={filterClientId} onChange={e => setFilterClientId(e.target.value)}>
+              <option value="">{language === 'fr' ? 'Tous les clients' : 'All clients'}</option>
+              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <select className="input" value={filterProductId} onChange={e => setFilterProductId(e.target.value)}>
+              <option value="">{language === 'fr' ? 'Tous les produits' : 'All products'}</option>
+              {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <select className="input" value={filterCategoryId} onChange={e => setFilterCategoryId(e.target.value)}>
+              <option value="">{language === 'fr' ? 'Toutes catégories' : 'All categories'}</option>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <select className="input" value={filterSellerId} onChange={e => setFilterSellerId(e.target.value)}>
+              <option value="">{language === 'fr' ? 'Tous les vendeurs' : 'All sellers'}</option>
+              {team.map((m: any) => <option key={m.id} value={m.id}>{m.full_name || m.email}</option>)}
+            </select>
           </div>
 
           <div className="filter-group">
             <CardIcon size={14} className="filter-icon" />
-            <select 
-              className="input" 
-              value={filterPayment} 
-              onChange={e => { setFilterPayment(e.target.value); setCurrentPage(1); }}
-            >
+            <select className="input" value={filterPayment} onChange={e => setFilterPayment(e.target.value)}>
               <option value="all">{language === 'fr' ? 'Tous les paiements' : 'All payments'}</option>
               <option value="cash">{language === 'fr' ? 'Espèces' : 'Cash'}</option>
               <option value="orange_money">Orange Money</option>
@@ -304,24 +396,24 @@ export default function SalesHistoryPage() {
             </select>
           </div>
 
-          <div className="search-group">
-            <Search size={16} className="search-icon" />
-            <input 
-              type="text" 
-              className="input" 
-              placeholder={t('sales.search') || 'Rechercher une vente...'} 
-              value={searchQuery} 
-              onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} 
-            />
+          <div className="filter-group">
+            <Filter size={14} className="filter-icon" />
+            <select className="input" value={filterSaleType} onChange={e => setFilterSaleType(e.target.value)}>
+              <option value="all">{language === 'fr' ? 'Tous types' : 'All types'}</option>
+              <option value="normal">{language === 'fr' ? 'Vente normale' : 'Normal sale'}</option>
+              <option value="credit">{language === 'fr' ? 'Vente à crédit' : 'Credit sale'}</option>
+              <option value="returned">{language === 'fr' ? 'Vente retournée' : 'Returned sale'}</option>
+              <option value="partial_return">{language === 'fr' ? 'Retour partiel' : 'Partial return'}</option>
+            </select>
           </div>
         </div>
       </div>
 
       {/* Sales List */}
       <div className="table-container card">
-        {isLoading ? (
+        {isLoading && sales.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3rem' }}><div className="spinner"></div></div>
-        ) : paginatedSales.length === 0 ? (
+        ) : sales.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
             {t('sales.no_sales') || 'Aucune vente trouvée.'}
           </div>
@@ -331,8 +423,8 @@ export default function SalesHistoryPage() {
               <thead>
                 <tr>
                   <th>{t('sales.receipt_no') || 'N° Reçu'}</th>
-                  <th className="sortable-th" onClick={() => toggleSort('client')}>Client {sortIcon('client')}</th>
-                  <th className="sortable-th" onClick={() => toggleSort('seller')}>{language === 'fr' ? 'Vendeur' : 'Seller'} {sortIcon('seller')}</th>
+                  <th>Client</th>
+                  <th>{language === 'fr' ? 'Vendeur' : 'Seller'}</th>
                   <th>{language === 'fr' ? 'Produits' : 'Products'}</th>
                   <th className="sortable-th" onClick={() => toggleSort('created_at')}>Date / Heure {sortIcon('created_at')}</th>
                   <th className="text-right sortable-th" onClick={() => toggleSort('total')}>Montant {sortIcon('total')}</th>
@@ -341,14 +433,16 @@ export default function SalesHistoryPage() {
                 </tr>
               </thead>
               <tbody>
-                {paginatedSales.map(order => {
-                  const paymentMethod = extractPaymentMethod(order.notes);
+                {sales.map(order => {
+                  const paymentMethod = getPaymentMethod(order);
+                  const badge = getSaleTypeBadge(order);
                   return (
                     <tr key={order.id}>
                       <td>
                         <span className="receipt-badge" onClick={() => setSelectedSale(order)}>
                           BF-{order.id.slice(0, 8).toUpperCase()}
                         </span>
+                        {badge && <span className={`type-badge ${badge.cls}`}>{badge.label}</span>}
                       </td>
                       <td>
                         <span className="client-name">{getClientName(order)}</span>
@@ -397,33 +491,32 @@ export default function SalesHistoryPage() {
               </tbody>
             </table>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="pagination-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderTop: '1px solid var(--border-subtle)', flexWrap: 'wrap', gap: '0.75rem' }}>
-                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                  {language === 'fr' ? `Affichage de ${(currentPage - 1) * perPage + 1} à ${Math.min(currentPage * perPage, totalFiltered)} sur ${totalFiltered} ventes` : `Showing ${(currentPage - 1) * perPage + 1} to ${Math.min(currentPage * perPage, totalFiltered)} of ${totalFiltered} sales`}
-                </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <select
-                    className="input"
-                    style={{ width: '80px' }}
-                    value={perPage}
-                    onChange={e => { setPerPage(Number(e.target.value)); setCurrentPage(1); }}
-                  >
-                    <option value={15}>15</option>
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                  </select>
-                  <button className="btn btn-ghost btn-sm" disabled={currentPage === 1} onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}>
-                    {language === 'fr' ? 'Précédent' : 'Previous'}
-                  </button>
-                  <button className="btn btn-ghost btn-sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}>
-                    {language === 'fr' ? 'Suivant' : 'Next'}
-                  </button>
-                </div>
+            {/* Pagination — pilotée par le serveur (total/pages), plus de
+                découpage d'un tableau déjà entièrement chargé en mémoire. */}
+            <div className="pagination-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderTop: '1px solid var(--border-subtle)', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                {language === 'fr' ? `Affichage de ${(currentPage - 1) * perPage + 1} à ${Math.min(currentPage * perPage, totalFiltered)} sur ${totalFiltered} ventes` : `Showing ${(currentPage - 1) * perPage + 1} to ${Math.min(currentPage * perPage, totalFiltered)} of ${totalFiltered} sales`}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <select
+                  className="input"
+                  style={{ width: '80px' }}
+                  value={perPage}
+                  onChange={e => { setPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                >
+                  <option value={15}>15</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <button className="btn btn-ghost btn-sm" disabled={currentPage === 1} onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}>
+                  {language === 'fr' ? 'Précédent' : 'Previous'}
+                </button>
+                <button className="btn btn-ghost btn-sm" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}>
+                  {language === 'fr' ? 'Suivant' : 'Next'}
+                </button>
               </div>
-            )}
+            </div>
           </>
         )}
       </div>
@@ -435,10 +528,13 @@ export default function SalesHistoryPage() {
             <div className="detail-row"><span className="detail-label">{language === 'fr' ? 'Article(s)' : 'Item(s)'}</span><span className="detail-value">{getItemsSummary(selectedSale)}</span></div>
             <div className="detail-row"><span className="detail-label">Client</span><span className="detail-value">{getClientName(selectedSale)}</span></div>
             <div className="detail-row"><span className="detail-label">{language === 'fr' ? 'Vendu par' : 'Sold by'}</span><span className="detail-value">{getSellerName(selectedSale)}</span></div>
-            <div className="detail-row"><span className="detail-label">{language === 'fr' ? 'Mode de Paiement' : 'Payment Method'}</span><span className="detail-value">{getPaymentLabel(extractPaymentMethod(selectedSale.notes))}</span></div>
+            <div className="detail-row"><span className="detail-label">{language === 'fr' ? 'Mode de Paiement' : 'Payment Method'}</span><span className="detail-value">{getPaymentLabel(getPaymentMethod(selectedSale))}</span></div>
             <div className="detail-row"><span className="detail-label">Total</span><span className="detail-value order-amount text-emerald">{formatGNF(Number(selectedSale.total) || 0)}</span></div>
+            {(selectedSale.returned_amount || 0) > 0 && (
+              <div className="detail-row"><span className="detail-label">{language === 'fr' ? 'Retourné' : 'Returned'}</span><span className="detail-value" style={{ color: '#ef4444' }}>{formatGNF(selectedSale.returned_amount || 0)}</span></div>
+            )}
             <div className="detail-row"><span className="detail-label">Date</span><span className="detail-value">{formatDate(selectedSale.created_at, language)}</span></div>
-            
+
             <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: '0.75rem', paddingTop: '0.75rem' }}>
               <div style={{ fontWeight: 700, marginBottom: '0.5rem' }}>{language === 'fr' ? 'Articles achetés' : 'Purchased items'}</div>
               {selectedSale.items?.map((item, i) => (
@@ -455,7 +551,7 @@ export default function SalesHistoryPage() {
                 <span className="detail-value">{selectedSale.notes}</span>
               </div>
             )}
-            
+
             <div className="modal-actions" style={{ marginTop: '1.5rem' }}>
               <button className="btn btn-ghost" onClick={() => setSelectedSale(null)}>{language === 'fr' ? 'Fermer' : 'Close'}</button>
               <button className="btn btn-primary" onClick={() => { const s = selectedSale; setSelectedSale(null); setReceiptOrder(s); }}>
@@ -484,6 +580,11 @@ export default function SalesHistoryPage() {
             <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.9rem' }}>
               {language === 'fr' ? 'Sélectionnez les articles à retourner et indiquez les quantités.' : 'Select the items to return and specify the quantities.'}
             </p>
+            {returnOrder.status === 'pending' && (
+              <p style={{ color: 'var(--color-brand-500)', marginBottom: '1rem', fontSize: '0.85rem' }}>
+                {language === 'fr' ? '⚠️ Vente à crédit : le retour réduira directement la dette liée plutôt que de rembourser en espèces.' : '⚠️ Credit sale: the return will reduce the linked debt directly instead of a cash refund.'}
+              </p>
+            )}
             {returnOrder.items?.map((item, idx) => {
               const prodName = getProductName(item);
               return (
@@ -550,20 +651,20 @@ export default function SalesHistoryPage() {
         .page-title { font-size: 1.75rem; font-weight: 700; color: var(--text-primary); margin: 0; }
         .page-subtitle { color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem; }
         .header-actions { display: flex; gap: 0.75rem; }
-        
+
         .filters-bar { padding: 1.25rem; }
-        .filters-row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
+        .filters-row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
         .filter-group { display: flex; align-items: center; gap: 0.5rem; background: var(--surface-0); border: 1px solid var(--border-subtle); padding: 0.25rem 0.75rem; border-radius: 8px; }
-        .filter-icon { color: var(--text-muted); }
+        .filter-icon { color: var(--text-muted); flex-shrink: 0; }
         .filter-separator { color: var(--text-muted); font-size: 0.85rem; }
-        .filter-group .input { border: none; padding: 0.25rem 0; background: transparent; color: var(--text-primary); outline: none; font-size: 0.9rem; }
-        
-        .search-group { display: flex; align-items: center; gap: 0.5rem; background: var(--surface-0); border: 1px solid var(--border-subtle); padding: 0.25rem 0.75rem; border-radius: 8px; flex: 1; min-width: 240px; }
-        .search-icon { color: var(--text-muted); }
-        .search-group .input { border: none; padding: 0.25rem 0; background: transparent; color: var(--text-primary); outline: none; width: 100%; font-size: 0.9rem; }
+        .filter-group .input { border: none; padding: 0.25rem 0; background: transparent; color: var(--text-primary); outline: none; font-size: 0.9rem; max-width: 180px; }
 
         .receipt-badge { background: rgba(59, 130, 246, 0.1); color: #3b82f6; font-family: monospace; font-weight: 700; padding: 0.25rem 0.5rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
         .receipt-badge:hover { background: rgba(59, 130, 246, 0.2); }
+        .type-badge { display: inline-block; margin-left: 0.4rem; font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.4rem; border-radius: 999px; vertical-align: middle; }
+        .type-badge.credit { background: rgba(168, 85, 247, 0.15); color: #a855f7; }
+        .type-badge.returned { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+        .type-badge.partial-return { background: rgba(249, 115, 22, 0.15); color: #f97316; }
 
         .sortable-th { cursor: pointer; user-select: none; white-space: nowrap; }
         .sortable-th:hover { color: var(--text-primary); }
@@ -574,15 +675,15 @@ export default function SalesHistoryPage() {
         .client-name { font-weight: 500; color: var(--text-primary); }
         .text-emerald { color: #10b981 !important; }
         .font-bold { font-weight: 700; }
-        
+
         .payment-pill { font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 999px; text-transform: uppercase; }
         .payment-pill.cash { background: rgba(16, 185, 129, 0.15); color: #10b981; }
         .payment-pill.orange_money { background: rgba(249, 115, 22, 0.15); color: #f97316; }
         .payment-pill.card { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
         .payment-pill.transfer { background: rgba(168, 85, 247, 0.15); color: #a855f7; }
-        
+
         .actions-flex { display: flex; justify-content: center; gap: 0.5rem; }
-        
+
         /* Modal details styling */
         .detail-grid { display: flex; flex-direction: column; gap: 0.75rem; }
         .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 0.35rem 0; border-bottom: 1px dashed var(--border-subtle); }

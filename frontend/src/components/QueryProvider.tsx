@@ -95,6 +95,10 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ['finance-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
+      // sales-list varie par combinaison de filtres (page Ventes) — même
+      // logique que finance-transactions ci-dessus : invalidation par
+      // préfixe, jamais un merge de delta précis.
+      queryClient.invalidateQueries({ queryKey: ['sales-list'] });
     };
     window.addEventListener('boutikflow:sync-complete', onSyncComplete);
     return () => window.removeEventListener('boutikflow:sync-complete', onSyncComplete);
@@ -111,6 +115,7 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
       queryClient.invalidateQueries({ queryKey: ['product-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-list'] });
     };
     window.addEventListener('boutikflow:order-created', onOrderCreated);
     return () => window.removeEventListener('boutikflow:order-created', onOrderCreated);

@@ -33,7 +33,29 @@ export const queryKeys = {
     page: number, perPage: number, type?: string, category?: string,
     period?: string, start?: string, end?: string,
   ) => ['finance-transactions', page, perPage, type, category, period, start, end] as const,
+  // Clé DÉLIBÉRÉMENT séparée de orders() ci-dessus : la page Ventes a
+  // besoin de filtres combinables et d'une pagination réellement serveur
+  // (des milliers de ventes ne doivent jamais être chargées en mémoire
+  // d'un coup) — un objet de filtres différent = une entrée de cache
+  // différente, TanStack s'en charge nativement. N'affecte jamais
+  // orders(), dont le Dashboard reste l'unique consommateur inchangé.
+  salesList: (filters: SalesFilters, page: number, perPage: number) =>
+    ['sales-list', filters, page, perPage] as const,
 };
+
+export interface SalesFilters {
+  clientId?: string;
+  productId?: string;
+  categoryId?: string;
+  sellerId?: string;
+  paymentMethod?: string;
+  saleType?: string; // normal | credit | returned | partial_return
+  period?: string;
+  startDate?: string;
+  endDate?: string;
+  sortBy?: string;
+  sortDir?: string;
+}
 
 export function useProductsQuery(page = 1, perPage = 500) {
   return useQuery({
@@ -121,5 +143,13 @@ export function useFinanceTransactionsQuery(
     queryKey: queryKeys.financeTransactions(page, perPage, type, category, period, startDate, endDate),
     queryFn: () => api.getFinanceTransactions(page, perPage, type, category, period, startDate, endDate),
     enabled,
+  });
+}
+
+// Ventes filtrées/paginées côté serveur — voir queryKeys.salesList.
+export function useSalesListQuery(filters: SalesFilters, page: number, perPage: number) {
+  return useQuery({
+    queryKey: queryKeys.salesList(filters, page, perPage),
+    queryFn: () => api.getOrdersFiltered({ ...filters, page, perPage }),
   });
 }
