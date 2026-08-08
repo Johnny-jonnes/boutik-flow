@@ -36,6 +36,7 @@ from app.modules.orders.schemas import (
 )
 from app.modules.finance.models import FinancialTransaction, TransactionTypeEnum, TransactionCategoryEnum
 from app.modules.crm.debt_models import ClientDebt, DebtStatusEnum
+from app.modules.crm.debt_router import create_client_debt
 from app.modules.audit.router import log_action
 
 logger = logging.getLogger(__name__)
@@ -532,6 +533,40 @@ def create_order(
     # Mise à jour du total
     order.total = net_amount
 
+    # Vente à crédit : ce qui est réellement encaissé à la vente peut être
+    # inférieur au total. Absent du payload = comportement inchangé (vente
+    # 100% encaissée immédiatement) pour tout appelant qui n'a pas encore
+    # été mis à jour (voir Phase 5, POS). Le CA n'est reconnu qu'à
+    # l'encaissement réel : la part non payée devient une dette, pas un
+    # revenu compté par anticipation.
+    if payload.amount_paid_now is None:
+        amount_paid_now = net_amount
+    else:
+        if payload.amount_paid_now > net_amount:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Le montant payé ne peut pas dépasser le total de la vente.",
+            )
+        amount_paid_now = payload.amount_paid_now
+    remaining_amount = net_amount - amount_paid_now
+    is_credit_sale = remaining_amount > 0
+
+    if is_credit_sale and payload.client_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Un client doit être sélectionné pour une vente à crédit.",
+        )
+
+    order.payment_method = payload.payment_method
+    order.amount_paid_now = amount_paid_now if is_credit_sale else None
+    if is_credit_sale:
+        # Reste due tant que la dette n'est pas soldée (voir
+        # crm.debt_router.record_payment, qui la fait passer à "delivered"
+        # une fois le solde à zéro) — prioritaire sur un statut explicite
+        # du payload, pour ne jamais dépendre d'un frontend qui oublierait
+        # de synchroniser les deux.
+        order.status = OrderStatusEnum.pending
+
     # Trace visible dans l'historique des ventes (fiche détail) — le
     # commerçant doit pouvoir repérer et régulariser un stock devenu négatif
     # suite au rejeu d'une vente hors-ligne, sans avoir à fouiller les logs.
@@ -558,22 +593,39 @@ def create_order(
     except Exception:
         pass
 
-    # Enregistrer automatiquement la transaction financière d'entrée d'argent (Vente)
+    # Enregistrer automatiquement la transaction financière d'entrée
+    # d'argent — uniquement pour la part réellement encaissée (amount_paid_now) ;
+    # pour une vente comptant classique (is_credit_sale=False), c'est le
+    # total en entier, comportement inchangé. Une vente 100% différée
+    # (amount_paid_now=0) ne crée aucune transaction : rien n'a été
+    # encaissé, il n'y a rien à enregistrer avant le premier remboursement
+    # de la dette (voir crm.debt_router.record_payment).
     try:
-        fin_trans = FinancialTransaction(
-            id=uuid.uuid4(),
-            tenant_id=current_user.tenant_id,
-            type=TransactionTypeEnum.income,
-            category=TransactionCategoryEnum.sale,
-            amount=net_amount,
-            description=f"Vente Magasin N°{str(order.id)[:8]} ({client.name})",
-            payment_method="cash",
-            reference=str(order.id),
-            user_id=current_user.user_id,
-        )
-        db.add(fin_trans)
+        if amount_paid_now > 0:
+            fin_trans = FinancialTransaction(
+                id=uuid.uuid4(),
+                tenant_id=current_user.tenant_id,
+                type=TransactionTypeEnum.income,
+                category=TransactionCategoryEnum.credit_sale if is_credit_sale else TransactionCategoryEnum.sale,
+                amount=amount_paid_now,
+                description=f"Vente Magasin N°{str(order.id)[:8]} ({client.name})",
+                payment_method=payload.payment_method or "cash",
+                reference=str(order.id),
+                user_id=current_user.user_id,
+            )
+            db.add(fin_trans)
     except Exception as e:
         logger.warning(f"Erreur d'enregistrement financier automatique : {e}")
+
+    # Le reste devient une dette, créée dans la MÊME transaction que la
+    # commande (jamais un second appel HTTP séparé comme auparavant côté
+    # POS) : un crash entre les deux ne peut plus laisser une vente à
+    # crédit sans sa dette, ou l'inverse.
+    if is_credit_sale:
+        create_client_debt(
+            db, current_user.tenant_id, target_client_id, order.id, remaining_amount,
+            description=f"Vente à crédit N°{str(order.id)[:8]}",
+        )
 
     # Logger l'action d'audit de la vente
     log_action(

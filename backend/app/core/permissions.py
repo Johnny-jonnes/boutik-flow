@@ -47,6 +47,15 @@ PERMISSIONS: dict[Module, dict[Action, set[str]]] = {
     "returns": {
         "create": {"owner", "manager", "stock_manager", "cashier"},
     },
+    # Reprend exactement les rôles déjà utilisés aujourd'hui via
+    # require_permission("orders", ...) dans debt_router.py — isolation
+    # propre du module Dettes Clients, aucun changement d'accès pour
+    # personne au moment de cette migration.
+    "debts": {
+        "view": {"owner", "manager", "stock_manager", "cashier", "staff"},
+        "create": {"owner", "manager", "cashier", "staff"},
+        "pay": {"owner", "manager", "cashier", "staff"},
+    },
     "clients": {
         "view": {"owner", "manager", "stock_manager", "cashier", "staff"},
         "create": {"owner", "manager", "stock_manager", "cashier", "staff"},

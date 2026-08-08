@@ -25,6 +25,13 @@ class OrderCreate(BaseModel):
         Decimal("0"), ge=0,
         description="Remise globale sur la vente, déduite du total et de la transaction financière automatique",
     )
+    payment_method: str | None = Field(None, max_length=50, description="cash | orange_money | card | transfer...")
+    # Vente à crédit uniquement : ce qui est réellement encaissé à la
+    # vente (absent ou égal au total net = vente comptant classique,
+    # comportement inchangé pour tout appelant qui ne l'envoie pas ; 0 =
+    # différé total ; entre les deux = paiement partiel). Le reste devient
+    # une dette créée dans la même transaction que la commande.
+    amount_paid_now: Decimal | None = Field(None, ge=0, description="Montant réellement encaissé à la vente (vente à crédit)")
     # Posé à True uniquement par le rejeu de la file de synchronisation
     # hors-ligne : une vente déjà annoncée au client (reçu imprimé,
     # paiement encaissé) pendant une coupure ne doit jamais être rejetée

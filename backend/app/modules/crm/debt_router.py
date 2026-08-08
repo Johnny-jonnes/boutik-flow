@@ -13,11 +13,41 @@ from app.core.idempotency import IdempotencyHeader, get_cached_response, store_r
 from app.core.permissions import require_permission
 from app.modules.crm.debt_models import ClientDebt, DebtPayment, DebtStatusEnum
 from app.modules.crm.models import Client
+from app.modules.products.models import Order, OrderStatusEnum
+from app.modules.finance.models import FinancialTransaction, TransactionTypeEnum, TransactionCategoryEnum
+from app.modules.audit.router import log_action
 from pydantic import BaseModel, Field
 from datetime import datetime
 from decimal import Decimal
 
 router = APIRouter(prefix="/crm/debts", tags=["Debts"])
+
+
+def create_client_debt(
+    db: Session,
+    tenant_id: uuid.UUID,
+    client_id: uuid.UUID,
+    order_id: Optional[uuid.UUID],
+    original_amount: Decimal,
+    description: Optional[str] = None,
+    due_date: Optional[datetime] = None,
+) -> ClientDebt:
+    """Construit (sans commit — l'appelant décide de la transaction) une
+    dette client. Partagée par create_debt ci-dessous (dette manuelle,
+    sans vente liée, depuis le CRM) et create_order (dette créée dans la
+    même transaction que la vente à crédit qui l'origine) — une seule
+    construction, jamais dupliquée."""
+    debt = ClientDebt(
+        tenant_id=tenant_id,
+        client_id=client_id,
+        order_id=order_id,
+        original_amount=original_amount,
+        remaining_amount=original_amount,
+        description=description,
+        due_date=due_date,
+    )
+    db.add(debt)
+    return debt
 
 
 class DebtCreateRequest(BaseModel):
@@ -56,10 +86,12 @@ class DebtResponse(BaseModel):
 def create_debt(
     payload: DebtCreateRequest,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_permission("orders", "create")),
+    current_user: CurrentUser = Depends(require_permission("debts", "create")),
     idempotency_key: IdempotencyHeader = None,
 ) -> dict:
-    """Créer une nouvelle dette pour un client."""
+    """Créer une nouvelle dette manuelle pour un client (sans vente liée —
+    pour une vente à crédit, voir create_order qui crée la dette
+    directement, dans la même transaction que la commande)."""
     cached = get_cached_response(db, current_user.tenant_id, "debts.create", idempotency_key)
     if cached:
         return cached[1]
@@ -72,16 +104,10 @@ def create_debt(
     if not client:
         raise HTTPException(status_code=404, detail="Client introuvable")
 
-    debt = ClientDebt(
-        tenant_id=current_user.tenant_id,
-        client_id=payload.client_id,
-        order_id=payload.order_id,
-        original_amount=payload.original_amount,
-        remaining_amount=payload.original_amount,
-        description=payload.description,
-        due_date=payload.due_date,
+    debt = create_client_debt(
+        db, current_user.tenant_id, payload.client_id, payload.order_id,
+        payload.original_amount, payload.description, payload.due_date,
     )
-    db.add(debt)
     db.commit()
     db.refresh(debt)
     result = {
@@ -98,7 +124,7 @@ def list_debts(
     client_id: Optional[uuid.UUID] = None,
     status_filter: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_permission("orders", "view")),
+    current_user: CurrentUser = Depends(require_permission("debts", "view")),
 ) -> list:
     """Lister les dettes de la boutique."""
     q = db.query(ClientDebt).filter(ClientDebt.tenant_id == current_user.tenant_id)
@@ -130,7 +156,7 @@ def record_payment(
     debt_id: uuid.UUID,
     payload: DebtPaymentRequest,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_permission("orders", "create")),
+    current_user: CurrentUser = Depends(require_permission("debts", "pay")),
     idempotency_key: IdempotencyHeader = None,
 ) -> dict:
     """Enregistrer un versement sur une dette."""
@@ -149,28 +175,79 @@ def record_payment(
     if payload.amount > debt.remaining_amount:
         raise HTTPException(status_code=400, detail=f"Le montant dépasse le solde restant ({float(debt.remaining_amount)} GNF)")
 
+    balance_before = Decimal(str(debt.remaining_amount))
+
     payment = DebtPayment(
         tenant_id=current_user.tenant_id,
         debt_id=debt.id,
         amount=payload.amount,
         payment_method=payload.payment_method,
         notes=payload.notes,
+        paid_by=current_user.user_id,
+        balance_before=balance_before,
     )
     db.add(payment)
 
     debt.paid_amount = Decimal(str(debt.paid_amount)) + payload.amount
-    debt.remaining_amount = Decimal(str(debt.remaining_amount)) - payload.amount
+    debt.remaining_amount = balance_before - payload.amount
     if debt.remaining_amount <= 0:
         debt.remaining_amount = Decimal('0')
         debt.status = DebtStatusEnum.paid
     else:
         debt.status = DebtStatusEnum.partial
+    payment.balance_after = debt.remaining_amount
+
+    # Le remboursement rejoint les Finances comme un mouvement distinct
+    # d'une vente comptant (demande 9) — jamais catégorie "sale", pour
+    # pouvoir toujours distinguer encaissement immédiat et recouvrement
+    # d'une créance plus tard dans le temps.
+    fin_trans = FinancialTransaction(
+        id=uuid.uuid4(),
+        tenant_id=current_user.tenant_id,
+        type=TransactionTypeEnum.income,
+        category=TransactionCategoryEnum.debt_repayment,
+        amount=payload.amount,
+        description=f"Remboursement dette {str(debt.id)[:8]}" + (f" — {payload.notes}" if payload.notes else ""),
+        payment_method=payload.payment_method,
+        reference=str(debt.id),
+        user_id=current_user.user_id,
+    )
+    db.add(fin_trans)
+
+    # Une dette liée à une vente reste "pending" tant qu'elle n'est pas
+    # soldée — invisible de l'historique des Ventes jusque-là (filtré sur
+    # "delivered"). Une fois le solde à zéro, la vente est enfin réalisée
+    # dans son intégralité : on la fait apparaître comme telle. Affectation
+    # directe (pas via update_order_status) : ne doit jamais redéclencher
+    # la logique d'annulation/réactivation de stock, sans rapport ici.
+    linked_order = None
+    if debt.order_id and debt.remaining_amount <= 0:
+        linked_order = db.query(Order).filter(
+            and_(Order.id == debt.order_id, Order.tenant_id == current_user.tenant_id)
+        ).first()
+        if linked_order and linked_order.status == OrderStatusEnum.pending:
+            linked_order.status = OrderStatusEnum.delivered
+
+    log_action(
+        db=db,
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.user_id,
+        user_email=current_user.email,
+        action="record_debt_payment",
+        target_entity="debt",
+        target_id=str(debt.id),
+        details=(
+            f"Versement de {payload.amount} GNF sur la dette {str(debt.id)[:8]} "
+            f"(solde {balance_before} -> {debt.remaining_amount} GNF, statut: {debt.status.value})"
+        ),
+    )
 
     db.commit()
     result = {
         "message": "Versement enregistré",
         "remaining_amount": float(debt.remaining_amount),
         "status": debt.status,
+        "order_marked_delivered": bool(linked_order and linked_order.status == OrderStatusEnum.delivered),
     }
     store_response(db, current_user.tenant_id, "debts.pay", idempotency_key, 200, result)
     return result
