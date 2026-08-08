@@ -88,6 +88,15 @@ PERMISSIONS: dict[Module, dict[Action, set[str]]] = {
 
 def has_permission(role: str | None, module: Module, action: Action) -> bool:
     role_key = (role or "").strip().lower()
+    # 'admin' = administrateur plateforme (RoleEnum.admin, "super-admin") —
+    # toujours autorisé, quel que soit le module/l'action. Le frontend
+    # applique déjà cette même règle (voir hasPermission, lib/permissions.ts)
+    # en la présentant comme un miroir de cette fonction ; elle manquait
+    # réellement ici, ce qui bloquait un compte admin sur tout endpoint
+    # gated par require_permission (ex: régler/créer une dette) alors que
+    # l'interface laissait croire que l'accès était accordé.
+    if role_key == "admin":
+        return True
     allowed = PERMISSIONS.get(module, {}).get(action, set())
     return role_key in allowed
 
