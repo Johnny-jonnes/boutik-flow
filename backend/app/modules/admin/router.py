@@ -77,8 +77,48 @@ def _get_tenant_owner(tenant: Tenant, db: Session) -> Optional[User]:
     ).first()
 
 
-def _build_tenant_list_item(tenant: Tenant, db: Session) -> TenantListItem:
-    owner = _get_tenant_owner(tenant, db)
+def _owners_by_tenant_id(tenants: list[Tenant], db: Session) -> dict[uuid.UUID, User]:
+    """Résout en une seule requête le propriétaire de chaque boutique d'un
+    lot — évite une requête User par boutique lors du listing admin (voir
+    la même remarque déjà appliquée à _user_names_for_orders dans
+    orders/router.py). Une boutique peut avoir plusieurs comptes 'owner'
+    historiques (transfert de propriété) : on garde le plus ancien, comme
+    le faisait déjà _get_tenant_owner via .first() sur un tri par défaut."""
+    tenant_ids = [t.id for t in tenants]
+    if not tenant_ids:
+        return {}
+    owners = db.query(User).filter(
+        and_(
+            User.tenant_id.in_(tenant_ids),
+            User.role == RoleEnum.owner,
+            User.deleted_at.is_(None),
+        )
+    ).order_by(User.created_at.asc()).all()
+    result: dict[uuid.UUID, User] = {}
+    for owner in owners:
+        result.setdefault(owner.tenant_id, owner)
+    return result
+
+
+def _last_activity_by_tenant_id(tenants: list[Tenant], db: Session) -> dict[uuid.UUID, "datetime"]:
+    """Résout en une seule requête groupée la dernière action journalisée
+    (audit_logs) de chaque boutique d'un lot — même précaution anti-N+1
+    que _owners_by_tenant_id ci-dessus, plutôt qu'une requête MAX() par
+    boutique affichée dans la liste admin."""
+    from app.modules.audit.models import AuditLog
+    tenant_ids = [t.id for t in tenants]
+    if not tenant_ids:
+        return {}
+    rows = (
+        db.query(AuditLog.tenant_id, func.max(AuditLog.created_at))
+        .filter(AuditLog.tenant_id.in_(tenant_ids))
+        .group_by(AuditLog.tenant_id)
+        .all()
+    )
+    return {tenant_id: last_at for tenant_id, last_at in rows}
+
+
+def _build_tenant_list_item(tenant: Tenant, owner: Optional[User], last_activity_at=None) -> TenantListItem:
     return TenantListItem(
         id=tenant.id,
         name=tenant.name,
@@ -89,6 +129,7 @@ def _build_tenant_list_item(tenant: Tenant, db: Session) -> TenantListItem:
         created_at=tenant.created_at,
         owner_email=owner.email if owner else None,
         owner_name=owner.full_name if owner else None,
+        last_activity_at=last_activity_at,
     )
 
 
@@ -148,6 +189,9 @@ def list_tenants(
     search: Optional[str] = Query(None, description="Recherche nom ou slug"),
     status_filter: Optional[str] = Query(None, alias="status", description="pending | active | blocked | rejected"),
     plan_filter: Optional[str] = Query(None, alias="plan", description="freemium | starter | pro"),
+    activity_period: Optional[str] = Query(None, description="24h, 7j, 30j, all, custom — filtre monitoring : boutiques ayant eu au moins une activité (audit_logs) sur la période"),
+    activity_start_date: Optional[str] = Query(None),
+    activity_end_date: Optional[str] = Query(None),
 ) -> PaginatedTenants:
     """Liste toutes les boutiques avec filtres et pagination."""
     query = db.query(Tenant).filter(Tenant.deleted_at.is_(None))
@@ -170,11 +214,24 @@ def list_tenants(
         except ValueError:
             pass
 
+    if activity_period or activity_start_date or activity_end_date:
+        from app.core.period import resolve_period
+        from app.modules.audit.models import AuditLog
+        act_start, act_end = resolve_period(activity_period, activity_start_date, activity_end_date)
+        activity_q = db.query(AuditLog.tenant_id)
+        if act_start:
+            activity_q = activity_q.filter(AuditLog.created_at >= act_start)
+        if act_end:
+            activity_q = activity_q.filter(AuditLog.created_at < act_end)
+        query = query.filter(Tenant.id.in_(activity_q))
+
     total = query.count()
     pages = math.ceil(total / per_page) if per_page > 0 else 0
     tenants = query.order_by(Tenant.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
 
-    items = [_build_tenant_list_item(t, db) for t in tenants]
+    owners_by_tenant = _owners_by_tenant_id(tenants, db)
+    activity_by_tenant = _last_activity_by_tenant_id(tenants, db)
+    items = [_build_tenant_list_item(t, owners_by_tenant.get(t.id), activity_by_tenant.get(t.id)) for t in tenants]
 
     return PaginatedTenants(
         items=items,
@@ -225,6 +282,110 @@ def get_tenant_detail(
         deleted_at=tenant.deleted_at,
         owner=owner_info,
     )
+
+
+# ─── GET /admin/tenants/{id}/activity ─────────────────────────────────────────
+# Module de monitoring Super Admin (demandes 18-25) : à quelle fréquence une
+# boutique utilise BoutikFlow, quand elle s'est connectée, quels modules elle
+# utilise, et son historique d'activité récent — réservé exclusivement au
+# rôle admin (AdminUser = require_admin), jamais visible ni accessible aux
+# comptes d'une boutique cliente.
+#
+# Construit uniquement à partir de ce qui est déjà réellement journalisé
+# (voir log_action dans orders/router.py, crm/debt_router.py,
+# finance/router.py, et désormais /auth/login) — jamais un module qui
+# n'existe plus ou n'a jamais pu écrire d'entrée d'audit n'apparaît ici.
+# Ne collecte aucune donnée de frappe/contenu privé (demande 24) : action,
+# horodatage, utilisateur, cible — rien de plus.
+
+_ACTION_TO_MODULE = {
+    "login": "Connexion",
+    "create_sale": "Ventes",
+    "return_order_items": "Ventes (retours)",
+    "record_debt_payment": "Dettes",
+    "create_financial_transaction": "Finances",
+}
+
+
+@router.get(
+    "/tenants/{tenant_id}/activity",
+    summary="Activité et monitoring d'une boutique (Super Admin uniquement)",
+)
+def get_tenant_activity(
+    tenant_id: uuid.UUID,
+    _: AdminUser,
+    db: DB,
+    period: Optional[str] = Query(None, description="24h, 7j, 30j, all, custom"),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+) -> dict:
+    """Vue d'activité d'une boutique : dernière connexion par utilisateur,
+    modules utilisés, historique d'événements récents — pour que l'équipe
+    BoutikFlow puisse répondre à "ce client utilise-t-il l'app, et
+    comment ?" sans avoir besoin d'accéder aux données métier de la
+    boutique elle-même."""
+    from app.core.period import resolve_period
+    from app.modules.audit.models import AuditLog
+
+    tenant = _get_tenant_or_404(tenant_id, db)
+
+    start, end = resolve_period(period, start_date, end_date)
+    q = db.query(AuditLog).filter(AuditLog.tenant_id == tenant_id)
+    if start:
+        q = q.filter(AuditLog.created_at >= start)
+    if end:
+        q = q.filter(AuditLog.created_at < end)
+    # Plafonné : une vue de monitoring, pas un export d'audit complet (voir
+    # /audit pour l'historique intégral déjà disponible côté boutique).
+    entries = q.order_by(AuditLog.created_at.desc()).limit(500).all()
+
+    users = db.query(User).filter(
+        and_(User.tenant_id == tenant_id, User.deleted_at.is_(None))
+    ).order_by(User.created_at.asc()).all()
+
+    module_counts: dict[str, int] = {}
+    for e in entries:
+        label = _ACTION_TO_MODULE.get(e.action, e.action)
+        module_counts[label] = module_counts.get(label, 0) + 1
+
+    active_days = len({e.created_at.date() for e in entries})
+    last_login = max((u.last_login_at for u in users if u.last_login_at), default=None)
+
+    return {
+        "tenant_id": str(tenant_id),
+        "tenant_name": tenant.name,
+        "period": {"period": period, "start_date": start_date, "end_date": end_date},
+        "last_login_at": last_login.isoformat() if last_login else None,
+        "total_events": len(entries),
+        "active_days": active_days,
+        "modules_used": [
+            {"module": k, "count": v}
+            for k, v in sorted(module_counts.items(), key=lambda kv: -kv[1])
+        ],
+        "users": [
+            {
+                "id": str(u.id),
+                "email": u.email,
+                "full_name": u.full_name,
+                "role": u.role.value if hasattr(u.role, "value") else u.role,
+                "last_login_at": u.last_login_at.isoformat() if u.last_login_at else None,
+                "is_active": u.is_active,
+            }
+            for u in users
+        ],
+        "recent_events": [
+            {
+                "id": str(e.id),
+                "action": e.action,
+                "module": _ACTION_TO_MODULE.get(e.action, e.action),
+                "user_email": e.user_email,
+                "target_entity": e.target_entity,
+                "details": e.details,
+                "created_at": e.created_at.isoformat(),
+            }
+            for e in entries[:50]
+        ],
+    }
 
 
 # ─── PATCH /admin/tenants/{id}/status ────────────────────────────────────────

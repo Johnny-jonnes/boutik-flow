@@ -27,6 +27,7 @@ from app.core.security import (
 )
 from app.core.deps import get_current_user, CurrentUser, require_owner_or_manager
 from app.modules.auth.models import Tenant, User, PlanEnum, RoleEnum, TenantStatusEnum, AdminNotification, AdminNotificationTypeEnum
+from app.modules.audit.router import log_action
 from app.modules.auth.schemas import (
     RegisterRequest,
     LoginRequest,
@@ -245,6 +246,21 @@ def login(
         )
 
     logger.info("Connexion réussie : %s (tenant=%s)", user.email, tenant.slug)
+
+    # Horodatage + trace d'audit de connexion — base du module de
+    # monitoring Super Admin (dernière connexion, fréquence d'usage par
+    # boutique). Purement additif : n'affecte jamais la réussite de la
+    # connexion elle-même (log_action avale déjà ses propres erreurs).
+    user.last_login_at = datetime.now(timezone.utc)
+    log_action(
+        db=db,
+        tenant_id=tenant.id,
+        user_id=user.id,
+        user_email=user.email,
+        action="login",
+        target_entity="auth",
+    )
+    db.commit()
 
     return _build_token_response(user)
 

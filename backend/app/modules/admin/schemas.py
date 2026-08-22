@@ -46,6 +46,10 @@ class TenantListItem(BaseModel):
     created_at: datetime
     owner_email: Optional[str] = None
     owner_name: Optional[str] = None
+    # Dernière action journalisée (voir audit_logs) toutes boutiques
+    # confondues — None si la boutique n'a encore aucune activité tracée.
+    # Base du module de monitoring Super Admin (colonne "Dernière activité").
+    last_activity_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 

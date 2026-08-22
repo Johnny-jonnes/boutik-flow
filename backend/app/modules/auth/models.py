@@ -80,6 +80,11 @@ class User(Base):
     role = Column(Enum(RoleEnum), default=RoleEnum.owner, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
+    # Renseigné à chaque connexion réussie (voir /auth/login) — base du
+    # module de monitoring Super Admin (dernière connexion par boutique).
+    # NULL pour tout compte n'ayant jamais été utilisé pour se connecter
+    # depuis l'ajout de cette colonne (jamais rétro-deviné).
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
