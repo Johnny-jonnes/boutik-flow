@@ -93,7 +93,7 @@ export default function DettesPage() {
 
   useEffect(() => { setCurrentPage(1); }, [statusFilter, sellerId, dateFrom, dateTo]);
 
-  const { data, isLoading } = useDebtsQuery(filters, currentPage, perPage);
+  const { data, isLoading, isError, refetch } = useDebtsQuery(filters, currentPage, perPage);
   const debts = data?.items ?? [];
   const total = data?.total ?? 0;
   const totalPages = data?.pages ?? 1;
@@ -165,6 +165,11 @@ export default function DettesPage() {
       <div className="card" style={{ padding: '1rem' }}>
         {isLoading && debts.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3rem' }}><div className="spinner" /></div>
+        ) : isError && debts.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+            <p style={{ marginBottom: '1rem' }}>{language === 'fr' ? 'Impossible de charger les dettes.' : 'Unable to load debts.'}</p>
+            <button className="btn btn-ghost" onClick={() => refetch()}>{language === 'fr' ? 'Réessayer' : 'Retry'}</button>
+          </div>
         ) : debts.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
             {language === 'fr' ? 'Aucune dette trouvée.' : 'No debts found.'}

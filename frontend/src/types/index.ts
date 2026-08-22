@@ -389,6 +389,41 @@ export interface AdminTenantListItem {
   created_at: string;
   owner_email: string | null;
   owner_name: string | null;
+  // Dernière action journalisée (audit_logs), toutes boutiques confondues —
+  // null si la boutique n'a encore aucune activité tracée. Module de
+  // monitoring Super Admin.
+  last_activity_at?: string | null;
+}
+
+export interface TenantActivityUser {
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: string;
+  last_login_at: string | null;
+  is_active: boolean;
+}
+
+export interface TenantActivityEvent {
+  id: string;
+  action: string;
+  module: string;
+  user_email: string | null;
+  target_entity: string | null;
+  details: string | null;
+  created_at: string;
+}
+
+export interface TenantActivity {
+  tenant_id: string;
+  tenant_name: string;
+  period: { period: string | null; start_date: string | null; end_date: string | null };
+  last_login_at: string | null;
+  total_events: number;
+  active_days: number;
+  modules_used: { module: string; count: number }[];
+  users: TenantActivityUser[];
+  recent_events: TenantActivityEvent[];
 }
 
 export interface AdminTenantDetail {

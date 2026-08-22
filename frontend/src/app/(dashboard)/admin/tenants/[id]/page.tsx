@@ -6,10 +6,10 @@ import { useRouter } from 'next/navigation';
 import {
   Store, Clock, CheckCircle, AlertCircle, XCircle, ChevronLeft,
   User, Mail, Phone, Calendar, Shield, Trash2, Edit3, Settings,
-  AlertTriangle, CheckCheck, PauseCircle, Star, BadgeAlert
+  AlertTriangle, CheckCheck, PauseCircle, Star, BadgeAlert, Activity as ActivityIcon,
 } from 'lucide-react';
 import { api } from '@/lib/api/client';
-import type { AdminTenantDetail, TenantStatus, TenantPlan } from '@/types';
+import type { AdminTenantDetail, TenantStatus, TenantPlan, TenantActivity } from '@/types';
 import { toast } from 'sonner';
 
 const STATUS_CONFIG: Record<TenantStatus, { label: string; cls: string; icon: React.FC<{ size?: number }> }> = {
@@ -33,6 +33,11 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [statusNote, setStatusNote] = useState('');
+
+  // Module de monitoring Super Admin (demandes 21-23)
+  const [activity, setActivity] = useState<TenantActivity | null>(null);
+  const [isActivityLoading, setIsActivityLoading] = useState(true);
+  const [activityPeriod, setActivityPeriod] = useState<'24h' | '7j' | '30j' | 'all'>('7j');
   
   // Modals status
   const [showStatusModal, setShowStatusModal] = useState<TenantStatus | null>(null);
@@ -55,6 +60,23 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
     };
     loadTenant();
   }, [id, router]);
+
+  useEffect(() => {
+    const loadActivity = async () => {
+      setIsActivityLoading(true);
+      try {
+        const data = await api.getTenantActivity(id, activityPeriod);
+        setActivity(data);
+      } catch {
+        // Non bloquant : la fiche boutique reste utilisable même si le
+        // monitoring échoue à charger (ex: aucune donnée d'audit encore).
+        setActivity(null);
+      } finally {
+        setIsActivityLoading(false);
+      }
+    };
+    loadActivity();
+  }, [id, activityPeriod]);
 
   const handleUpdateStatus = async (status: TenantStatus) => {
     setActionLoading(true);
@@ -215,6 +237,116 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
                 <span className="td-info-value">{formatDate(tenant.updated_at)}</span>
               </div>
             </div>
+          </div>
+
+          {/* Activité & Monitoring (Super Admin uniquement) */}
+          <div className="card td-card">
+            <div className="td-card-header" style={{ justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <ActivityIcon size={16} />
+                <h2>Activité &amp; Monitoring</h2>
+              </div>
+              <div className="activity-period-tabs">
+                {(['24h', '7j', '30j', 'all'] as const).map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    className={`activity-period-btn ${activityPeriod === p ? 'active' : ''}`}
+                    onClick={() => setActivityPeriod(p)}
+                  >
+                    {p === 'all' ? 'Tout' : p}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {isActivityLoading ? (
+              <div style={{ padding: '1.5rem', textAlign: 'center' }}><div className="spinner" /></div>
+            ) : !activity ? (
+              <p className="text-muted" style={{ fontSize: '0.82rem' }}>Aucune activité disponible pour le moment.</p>
+            ) : (
+              <>
+                <div className="activity-kpis">
+                  <div className="activity-kpi">
+                    <span className="activity-kpi-label">Dernière connexion</span>
+                    <span className="activity-kpi-value">
+                      {activity.last_login_at ? new Date(activity.last_login_at).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Jamais'}
+                    </span>
+                  </div>
+                  <div className="activity-kpi">
+                    <span className="activity-kpi-label">Événements ({activityPeriod})</span>
+                    <span className="activity-kpi-value">{activity.total_events}</span>
+                  </div>
+                  <div className="activity-kpi">
+                    <span className="activity-kpi-label">Jours actifs</span>
+                    <span className="activity-kpi-value">{activity.active_days}</span>
+                  </div>
+                </div>
+
+                {/* Modules utilisés */}
+                <div className="activity-section">
+                  <h3 className="activity-section-title">Modules utilisés</h3>
+                  {activity.modules_used.length === 0 ? (
+                    <p className="text-muted" style={{ fontSize: '0.8rem' }}>Aucun module utilisé sur cette période.</p>
+                  ) : (
+                    <div className="module-bars">
+                      {activity.modules_used.map(m => {
+                        const max = activity.modules_used[0]?.count || 1;
+                        return (
+                          <div key={m.module} className="module-bar-row">
+                            <span className="module-bar-label">{m.module}</span>
+                            <div className="module-bar-track">
+                              <div className="module-bar-fill" style={{ width: `${Math.max(6, (m.count / max) * 100)}%` }} />
+                            </div>
+                            <span className="module-bar-count">{m.count}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Utilisateurs */}
+                <div className="activity-section">
+                  <h3 className="activity-section-title">Utilisateurs ({activity.users.length})</h3>
+                  <div className="activity-users-list">
+                    {activity.users.map(u => (
+                      <div key={u.id} className="activity-user-row">
+                        <div>
+                          <span className="activity-user-email">{u.email}</span>
+                          <span className="activity-user-role">{u.role}</span>
+                        </div>
+                        <span className="activity-user-login">
+                          {u.last_login_at ? new Date(u.last_login_at).toLocaleDateString('fr-FR') : 'Jamais connecté'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Historique récent */}
+                <div className="activity-section">
+                  <h3 className="activity-section-title">Historique récent</h3>
+                  {activity.recent_events.length === 0 ? (
+                    <p className="text-muted" style={{ fontSize: '0.8rem' }}>Aucun événement sur cette période.</p>
+                  ) : (
+                    <div className="activity-timeline">
+                      {activity.recent_events.map(e => (
+                        <div key={e.id} className="activity-timeline-row">
+                          <span className="activity-timeline-dot" />
+                          <div className="activity-timeline-body">
+                            <span className="activity-timeline-module">{e.module}</span>
+                            <span className="activity-timeline-meta">
+                              {e.user_email || 'Système'} · {new Date(e.created_at).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
           {/* Fiche Propriétaire */}
@@ -551,6 +683,55 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
         }
         .text-error { color: #f87171 !important; }
         .text-error h2 { color: #f87171 !important; }
+
+        /* Activité & Monitoring */
+        .activity-period-tabs { display: flex; gap: 0.25rem; }
+        .activity-period-btn {
+          font-size: 0.7rem; font-weight: 600; padding: 0.2rem 0.5rem;
+          border-radius: 6px; border: 1px solid var(--overlay-border);
+          background: transparent; color: var(--text-muted); cursor: pointer;
+          transition: all 0.15s;
+        }
+        .activity-period-btn.active {
+          background: var(--brand-alpha-10); border-color: var(--color-brand-500);
+          color: var(--color-brand-400);
+        }
+        .activity-kpis {
+          display: grid; grid-template-columns: repeat(3, 1fr);
+          gap: 0.75rem; margin-bottom: 1.25rem;
+        }
+        .activity-kpi {
+          display: flex; flex-direction: column; gap: 0.2rem;
+          background: var(--overlay-subtle); border-radius: 8px; padding: 0.6rem 0.75rem;
+        }
+        .activity-kpi-label { font-size: 0.68rem; color: var(--text-muted); }
+        .activity-kpi-value { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); }
+        .activity-section { margin-top: 1.1rem; }
+        .activity-section-title {
+          font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+          letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 0.6rem;
+        }
+        .module-bars { display: flex; flex-direction: column; gap: 0.4rem; }
+        .module-bar-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.78rem; }
+        .module-bar-label { width: 110px; flex-shrink: 0; color: var(--text-secondary); }
+        .module-bar-track { flex: 1; height: 6px; background: var(--overlay-medium); border-radius: 3px; overflow: hidden; }
+        .module-bar-fill { height: 100%; background: var(--color-brand-500); border-radius: 3px; }
+        .module-bar-count { width: 24px; text-align: right; color: var(--text-muted); font-weight: 600; flex-shrink: 0; }
+        .activity-users-list { display: flex; flex-direction: column; gap: 0.5rem; }
+        .activity-user-row {
+          display: flex; justify-content: space-between; align-items: center;
+          font-size: 0.8rem; padding: 0.35rem 0; border-bottom: 1px dashed var(--border-subtle);
+        }
+        .activity-user-row:last-child { border-bottom: none; }
+        .activity-user-email { color: var(--text-primary); font-weight: 500; margin-right: 0.4rem; }
+        .activity-user-role { font-size: 0.68rem; color: var(--text-muted); text-transform: capitalize; }
+        .activity-user-login { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
+        .activity-timeline { display: flex; flex-direction: column; gap: 0.55rem; max-height: 260px; overflow-y: auto; }
+        .activity-timeline-row { display: flex; align-items: flex-start; gap: 0.5rem; }
+        .activity-timeline-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-brand-500); margin-top: 0.4rem; flex-shrink: 0; }
+        .activity-timeline-body { display: flex; flex-direction: column; gap: 0.1rem; }
+        .activity-timeline-module { font-size: 0.8rem; font-weight: 600; color: var(--text-primary); }
+        .activity-timeline-meta { font-size: 0.7rem; color: var(--text-muted); }
 
         /* Info List */
         .td-info-list { display: flex; flex-direction: column; gap: 0.875rem; }

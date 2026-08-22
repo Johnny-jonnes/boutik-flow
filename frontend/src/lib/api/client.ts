@@ -36,6 +36,7 @@ import type {
   AdminTenantDetail,
   AdminNotification,
   PaginatedAdminTenants,
+  TenantActivity,
   TenantStatus,
   TenantPlan,
   Supplier,
@@ -392,7 +393,23 @@ export async function syncOfflineQueue(): Promise<{ succeeded: number; failed: n
 
         if (op.localId) {
           const created = await res.clone().json().catch(() => null);
-          if (created?.id) await OfflineQueue.replaceMatching(op.localId, String(created.id));
+          if (created?.id) {
+            await OfflineQueue.replaceMatching(op.localId, String(created.id));
+            // Le cache local des commandes (store 'orders') est désormais
+            // fusionné (mergeOrders), jamais remplacé en entier, sur chaque
+            // GET /orders réussi (voir plus haut) — ce qui corrige la perte
+            // de données sur un fetch paginé/filtré, mais signifie aussi que
+            // plus rien ne "lave" automatiquement l'ancienne ligne à id
+            // local une fois la vraie commande serveur connue : sans ce
+            // retrait explicite, la même vente apparaîtrait deux fois dans
+            // Ventes après synchronisation (une fois sous son id local,
+            // une fois sous son id serveur, ramenée juste après par la
+            // synchronisation incrémentale ci-dessous). Même précaution déjà
+            // appliquée à la dette liée (OfflineDB.removeDebt) juste après.
+            if (op.path.startsWith('/orders')) {
+              await OfflineDB.removeOrder(op.localId);
+            }
+          }
           // Une vente à crédit hors-ligne a créé sa dette en miroir local
           // AVANT synchronisation (id local, voir handleOfflineRequest,
           // POST /orders) — si un paiement de cette dette a déjà été
@@ -1340,25 +1357,33 @@ async function request<T>(
         if (bodyClone) {
           const items = Array.isArray(bodyClone) ? bodyClone : bodyClone.items;
           if (method === 'GET' && items) {
-            // /products/categories commence par /products : doit être
-            // vérifié EN PREMIER, sinon la réponse (des catégories) est
-            // absorbée par le cache produits et écrase tout le catalogue
-            // local avec des catégories — un stock-in ou une vente hors
-            // ligne suivante ne retrouve alors plus aucun vrai produit.
-            if (path.startsWith('/products/categories')) await OfflineDB.saveCategories(items);
-            else if (path.startsWith('/products')) await OfflineDB.saveProducts(items);
-            else if (path.startsWith('/clients')) await OfflineDB.saveClients(items);
-            else if (path.startsWith('/finance')) await OfflineDB.saveTransactions(items);
-            else if (path.startsWith('/categories')) await OfflineDB.saveCategories(items);
-            else if (path.startsWith('/suppliers')) await OfflineDB.saveSuppliers(items);
-            else if (path.startsWith('/crm/debts')) await OfflineDB.saveDebts(items);
-            else if (path.startsWith('/orders')) {
-              // Important après une synchronisation réussie : remplace les
-              // commandes à identifiant local fabriqué par les vraies
-              // commandes serveur, pour qu'une future coupure de connexion
-              // reparte d'un cache exact plutôt que de doublons obsolètes.
-              await OfflineDB.saveOrders(items);
-            }
+            // FUSION, jamais un remplacement complet : /orders, /crm/debts,
+            // /finance et /suppliers acceptent désormais des appels PAGINÉS/
+            // FILTRÉS (getOrdersFiltered pour Ventes, getDebtsFiltered pour
+            // Dettes, getFinanceTransactions, getSuppliers avec recherche) —
+            // et orders/page.tsx / whatsapp/page.tsx appellent déjà
+            // getClients(1, 100)/getProducts(1, 100), une page PARTIELLE du
+            // catalogue. Un remplaceAll() ici sur la réponse d'un SEUL de ces
+            // appels effaçait tout le reste du cache local déjà connu (ex:
+            // 500 clients ramenés à 100, ou l'historique complet des ventes
+            // réduit à une seule page filtrée) — la donnée "disparaissait"
+            // en changeant simplement de page/filtre/tri, y compris hors
+            // connexion ensuite puisque c'est ce cache tronqué qui est alors
+            // lu. mergeBatch() met à jour/ajoute chaque ligne reçue sans
+            // jamais toucher aux lignes absentes de CETTE réponse précise —
+            // une suppression réelle continue de se propager normalement dès
+            // qu'un deleted_at apparaît dans la ligne reçue (mêmes garanties
+            // que la synchronisation incrémentale, qui utilise déjà ce même
+            // mergeBatch). /products/categories doit être vérifié AVANT
+            // /products (préfixe commun), comme avant.
+            if (path.startsWith('/products/categories')) await OfflineDB.mergeCategories(items);
+            else if (path.startsWith('/products')) await OfflineDB.mergeProducts(items);
+            else if (path.startsWith('/clients')) await OfflineDB.mergeClients(items);
+            else if (path.startsWith('/finance')) await OfflineDB.mergeTransactions(items);
+            else if (path.startsWith('/categories')) await OfflineDB.mergeCategories(items);
+            else if (path.startsWith('/suppliers')) await OfflineDB.mergeSuppliers(items);
+            else if (path.startsWith('/crm/debts')) await OfflineDB.mergeDebts(items);
+            else if (path.startsWith('/orders')) await OfflineDB.mergeOrders(items);
           }
 
           // Écriture produit réussie EN LIGNE : répercutée immédiatement
@@ -1858,14 +1883,26 @@ export const api = {
     search?: string,
     status?: TenantStatus,
     plan?: TenantPlan,
+    activityPeriod?: string,
+    activityStartDate?: string,
+    activityEndDate?: string,
   ): Promise<PaginatedAdminTenants> {
     return request(
-      `/admin/tenants${buildQuery({ page, per_page: perPage, search, status, plan })}`
+      `/admin/tenants${buildQuery({
+        page, per_page: perPage, search, status, plan,
+        activity_period: activityPeriod, activity_start_date: activityStartDate, activity_end_date: activityEndDate,
+      })}`
     );
   },
 
   getAdminTenant(id: string): Promise<AdminTenantDetail> {
     return request(`/admin/tenants/${id}`);
+  },
+
+  // Module de monitoring Super Admin — activité, dernière connexion,
+  // modules utilisés d'une boutique (voir GET /admin/tenants/{id}/activity).
+  getTenantActivity(id: string, period?: string, startDate?: string, endDate?: string): Promise<TenantActivity> {
+    return request(`/admin/tenants/${id}/activity${buildQuery({ period, start_date: startDate, end_date: endDate })}`);
   },
 
   updateTenantStatus(

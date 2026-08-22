@@ -11,6 +11,7 @@ import {
 import { api } from '@/lib/api/client';
 import type { AdminTenantListItem, TenantStatus, TenantPlan } from '@/types';
 import { toast } from 'sonner';
+import { today } from '@/lib/period';
 
 // ─── Configuration Statuts ────────────────────────────────────────────────────
 
@@ -78,6 +79,13 @@ function AdminTenantsContent() {
   const [planFilter, setPlanFilter] = useState<TenantPlan | ''>(
     (searchParams.get('plan') as TenantPlan) || ''
   );
+  // Filtre monitoring (demande 20) : boutiques ayant eu une activité
+  // (audit_logs) sur la période — distinct du statut/plan ci-dessus.
+  // "Aujourd'hui" est calendaire (comme les presets de Ventes/Dettes,
+  // voir sales/page.tsx) — jamais confondu avec period=24h (fenêtre
+  // glissante de 24h), qui reste ce que 7j/30j utilisent déjà partout
+  // ailleurs (Dashboard, Finance).
+  const [activityPreset, setActivityPreset] = useState<'' | 'today' | '7j' | '30j'>('');
   const [page, setPage] = useState(Number(searchParams.get('page') || 1));
 
   const [confirmAction, setConfirmAction] = useState<{
@@ -90,12 +98,16 @@ function AdminTenantsContent() {
   const fetchTenants = useCallback(async () => {
     setIsLoading(true);
     try {
+      const todayStr = today();
       const data = await api.getAdminTenants(
         page,
         PER_PAGE,
         search || undefined,
         statusFilter || undefined,
         planFilter || undefined,
+        activityPreset === '7j' || activityPreset === '30j' ? activityPreset : undefined,
+        activityPreset === 'today' ? todayStr : undefined,
+        activityPreset === 'today' ? todayStr : undefined,
       );
       setTenants(data.items);
       setTotal(data.total);
@@ -105,7 +117,7 @@ function AdminTenantsContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, search, statusFilter, planFilter]);
+  }, [page, search, statusFilter, planFilter, activityPreset]);
 
   useEffect(() => { fetchTenants(); }, [fetchTenants]);
 
@@ -148,6 +160,19 @@ function AdminTenantsContent() {
   const formatDate = (d: string) => new Date(d).toLocaleDateString('fr-FR', {
     day: '2-digit', month: 'short', year: 'numeric'
   });
+
+  const formatActivity = (d: string | null | undefined) => {
+    if (!d) return 'Aucune';
+    const diffMs = Date.now() - new Date(d).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return "À l'instant";
+    if (mins < 60) return `Il y a ${mins} min`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `Il y a ${hours} h`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `Il y a ${days} j`;
+    return formatDate(d);
+  };
 
   return (
     <div className="at-page">
@@ -216,6 +241,27 @@ function AdminTenantsContent() {
               </button>
             ))}
           </div>
+
+          <div className="at-filter-sep" />
+
+          {/* Activité (monitoring) */}
+          <div className="at-filter-group">
+            {([
+              { v: '', label: 'Toute activité' },
+              { v: 'today', label: "Aujourd'hui" },
+              { v: '7j', label: '7 jours' },
+              { v: '30j', label: '30 jours' },
+            ] as const).map(({ v, label }) => (
+              <button
+                key={v || 'all'}
+                id={`filter-activity-${v || 'all'}`}
+                className={`at-filter-btn ${activityPreset === v ? 'at-filter-btn--active' : ''}`}
+                onClick={() => { setActivityPreset(v); setPage(1); }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -238,6 +284,7 @@ function AdminTenantsContent() {
                   <th>Plan</th>
                   <th>Statut</th>
                   <th>Créée le</th>
+                  <th>Dernière activité</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -279,6 +326,11 @@ function AdminTenantsContent() {
                       </td>
                       <td>
                         <span className="at-date">{formatDate(tenant.created_at)}</span>
+                      </td>
+                      <td>
+                        <span className={`at-date ${!tenant.last_activity_at ? 'at-date--muted' : ''}`}>
+                          {formatActivity(tenant.last_activity_at)}
+                        </span>
                       </td>
                       <td>
                         <div className="at-actions">
@@ -574,6 +626,7 @@ function AdminTenantsContent() {
 
         /* Date */
         .at-date { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; }
+        .at-date--muted { opacity: 0.55; font-style: italic; }
 
         /* Status badges */
         .at-status-badge {

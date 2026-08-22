@@ -210,6 +210,7 @@ export const OfflineDB = {
 
   getCategories: () => getAll<any>('categories'),
   saveCategories: (items: any[]) => replaceAll('categories', items),
+  mergeCategories: (items: any[]) => mergeBatch('categories', items),
   upsertCategory: (item: any) => upsert('categories', item),
   removeCategory: (id: string) => remove('categories', id),
 
@@ -217,6 +218,7 @@ export const OfflineDB = {
   saveOrders: (items: any[]) => replaceAll('orders', items),
   mergeOrders: (items: any[]) => mergeBatch('orders', items),
   upsertOrder: (item: any) => upsert('orders', item),
+  removeOrder: (id: string) => remove('orders', id),
 
   getDebts: () => getAll<any>('debts'),
   saveDebts: (items: any[]) => replaceAll('debts', items),
@@ -231,6 +233,7 @@ export const OfflineDB = {
 
   getSuppliers: () => getAll<any>('suppliers'),
   saveSuppliers: (items: any[]) => replaceAll('suppliers', items),
+  mergeSuppliers: (items: any[]) => mergeBatch('suppliers', items),
   upsertSupplier: (item: any) => upsert('suppliers', item),
   removeSupplier: (id: string) => remove('suppliers', id),
 

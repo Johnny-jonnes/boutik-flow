@@ -170,7 +170,7 @@ export default function SalesHistoryPage() {
     sortDir,
   }), [filterClientId, filterProductId, filterCategoryId, filterSellerId, filterPayment, filterSaleType, filterDateFrom, filterDateTo, sortField, sortDir]);
 
-  const { data: salesData, isLoading } = useSalesListQuery(filters, currentPage, perPage);
+  const { data: salesData, isLoading, isError, refetch } = useSalesListQuery(filters, currentPage, perPage);
   const sales = salesData?.items ?? [];
   const totalFiltered = salesData?.total ?? 0;
   const totalPages = salesData?.pages ?? 1;
@@ -413,6 +413,14 @@ export default function SalesHistoryPage() {
       <div className="table-container card">
         {isLoading && sales.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3rem' }}><div className="spinner"></div></div>
+        ) : isError && sales.length === 0 ? (
+          // Jamais un spinner infini : une requête en échec (réseau
+          // instable) se distingue clairement du "aucune vente" — avec un
+          // vrai bouton pour réessayer, sans recharger toute la page.
+          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+            <p style={{ marginBottom: '1rem' }}>{language === 'fr' ? 'Impossible de charger les ventes.' : 'Unable to load sales.'}</p>
+            <button className="btn btn-ghost" onClick={() => refetch()}>{language === 'fr' ? 'Réessayer' : 'Retry'}</button>
+          </div>
         ) : sales.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
             {t('sales.no_sales') || 'Aucune vente trouvée.'}

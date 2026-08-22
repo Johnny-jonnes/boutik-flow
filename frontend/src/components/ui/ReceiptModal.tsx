@@ -15,7 +15,14 @@ interface ReceiptModalProps {
     id: string;
     total: number;
     notes: string | null;
-    items: { product_id: string; quantity: number; unit_price: number; product?: { name: string } }[];
+    // product_name (plat) est le champ réellement renvoyé par l'API pour
+    // une commande existante (voir OrderItemResponse.product_name côté
+    // backend) — product.name (imbriqué) n'est jamais peuplé que par le
+    // POS, qui construit lui-même l'objet localement au moment de la
+    // vente. Sans repli sur product_name, un reçu rouvert depuis
+    // l'historique des Ventes affichait "Art. 1/2/3..." au lieu du vrai
+    // nom de chaque article.
+    items: { product_id: string; quantity: number; unit_price: number; product_name?: string | null; product?: { name: string } }[];
     client?: { name: string; phone: string } | null;
     created_at: string;
     status: string;
@@ -284,7 +291,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                 {order.items?.map((item, index) => (
                   <div key={index} className="thermal-item">
                     <div className="thermal-item-name">
-                      {item.product?.name || `Art. ${index + 1}`}
+                      {item.product?.name || item.product_name || `Art. ${index + 1}`}
                     </div>
                     <div className="thermal-item-detail">
                       <span>{item.quantity} × {formatGNF(item.unit_price || 0, true)}</span>
@@ -308,7 +315,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                   <tbody>
                     {order.items?.map((item, index) => (
                       <tr key={index}>
-                        <td className="col-desc">{item.product?.name || `Art. ${index + 1}`}</td>
+                        <td className="col-desc">{item.product?.name || item.product_name || `Art. ${index + 1}`}</td>
                         <td className="col-qty">{item.quantity}</td>
                         <td className="col-price">{formatNumber(item.unit_price || 0)}</td>
                         <td className="col-total">{formatNumber((item.unit_price || 0) * item.quantity)}</td>

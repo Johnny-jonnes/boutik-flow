@@ -49,6 +49,14 @@
   border-radius: 8px;
   display: flex;
   justify-content: center;
+  /* align-items par défaut d'un flex row est "stretch" : sans
+     flex-start explicite, .receipt-paper était étiré à la hauteur de ce
+     conteneur (max-height ci-dessous) au lieu de garder sa hauteur de
+     contenu naturelle — combiné à overflow:hidden sur .receipt-paper,
+     une vente avec beaucoup de produits voyait le bas du reçu (derniers
+     articles, totaux, pied de page) purement et simplement invisible,
+     sans même une barre de défilement pour y accéder. */
+  align-items: flex-start;
   max-height: 62vh;
   overflow-y: auto;
   overflow-x: hidden;
@@ -62,7 +70,14 @@
   box-sizing: border-box;
   word-break: break-word;
   overflow-wrap: break-word;
-  overflow: hidden;
+  /* Jamais hidden : .receipt-paper doit pouvoir grandir jusqu'à sa
+     hauteur de contenu réelle, quel que soit le nombre d'articles —
+     c'est .receipt-preview-container qui défile (overflow-y:auto
+     ci-dessus), jamais ce conteneur lui-même qui doit couper son
+     contenu. Voir la remarque ci-dessus : la combinaison des deux était
+     la cause du bug "articles manquants sur reçu multi-produits". */
+  overflow: visible;
+  flex-shrink: 0;
 }
 
 /* ─── FORMAT THERMIQUE ─── */
