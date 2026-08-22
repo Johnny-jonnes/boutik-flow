@@ -219,6 +219,60 @@ export default function DashboardPage() {
     [filteredOrders, orderPage, ordersPerPage]
   );
 
+  // Période "Personnalisée" choisie mais les deux dates pas encore
+  // renseignées : la requête reste volontairement désactivée (voir
+  // hasValidRange ci-dessus, aucune requête "sans contrainte" envoyée à
+  // la place). Sans cette branche dédiée, `!kpis` restait vrai pour
+  // toujours (une requête désactivée ne se termine jamais) et tombait
+  // dans le même squelette de chargement que pour une vraie requête en
+  // cours — indiscernable d'un chargement bloqué pour l'utilisateur, qui
+  // ne voit jamais qu'il lui suffit de choisir la date de fin.
+  if (periodFilter === 'custom' && !hasValidRange) {
+    return (
+      <div className="page">
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">{greeting}</h1>
+            <p className="page-subtitle">
+              {language === 'fr' ? "Voici l'activité globale et les statistiques de votre boutique" : "Here is your overall shop activity and performance"}
+            </p>
+          </div>
+          <div className="header-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <select
+              className="input"
+              value={periodFilter}
+              onChange={(e) => setPeriodFilter(e.target.value as PeriodKey)}
+              aria-label={language === 'fr' ? 'Période analysée' : 'Analysed period'}
+              style={{ width: 'auto', fontSize: '0.875rem', padding: '0.5rem 0.75rem' }}
+            >
+              {(['7j', '30j', '90j', 'all', 'custom'] as PeriodKey[]).map(p => (
+                <option key={p} value={p}>{periodLabel(p, language)}</option>
+              ))}
+            </select>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <input
+                type="date" className="input" style={{ padding: '0.4rem 0.6rem', fontSize: '0.85rem' }}
+                value={customStartDate} max={customEndDate || undefined}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                aria-label={language === 'fr' ? 'Date de début' : 'Start date'}
+              />
+              <span style={{ color: 'var(--text-muted)' }}>{language === 'fr' ? 'à' : 'to'}</span>
+              <input
+                type="date" className="input" style={{ padding: '0.4rem 0.6rem', fontSize: '0.85rem' }}
+                value={customEndDate} min={customStartDate || undefined}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                aria-label={language === 'fr' ? 'Date de fin' : 'End date'}
+              />
+            </div>
+          </div>
+        </div>
+        <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-muted)' }}>
+          {language === 'fr' ? 'Choisissez une date de début et une date de fin pour afficher les statistiques de cette période.' : 'Pick a start date and an end date to display statistics for that period.'}
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading || !kpis) {
     return (
       <div className="page" style={{ opacity: 0.7 }}>
