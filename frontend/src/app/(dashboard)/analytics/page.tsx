@@ -1,24 +1,19 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { useTheme } from 'next-themes';
 import { BarChart3, TrendingUp, Users, ShoppingBag, ArrowUpRight, ArrowDownRight, DollarSign, Target } from 'lucide-react';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  PieChart,
-  Pie,
-  Cell
-} from 'recharts';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAnalyticsQuery } from '@/lib/queries';
+
+// Recharts (+ D3 en dépendance) sorti du bundle initial de cette page,
+// chargé seulement une fois montée côté client — voir le composant pour
+// le détail. ssr:false car Recharts mesure le DOM (ResponsiveContainer).
+const AnalyticsCharts = dynamic(() => import('@/components/charts/AnalyticsCharts'), {
+  ssr: false,
+  loading: () => <div style={{ minHeight: 300, background: 'var(--surface-2)', borderRadius: '12px', animation: 'shimmer 1.5s infinite linear' }} />,
+});
 
 function formatGNF(amount: number) {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' GNF';
@@ -145,125 +140,15 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Charts Row */}
-      <div className="analytics-charts">
-        <div className="card analytics-chart-card">
-          <h3 className="chart-title">Revenus ({period})</h3>
-          <div className="chart-container">
-            {revenue_data.length === 0 ? (
-              <div style={{ display: 'flex', height: '300px', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                Aucune donnée de vente pour cette période.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={revenue_data}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
-                  <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `${val.toLocaleString('fr-GN')}`} />
-                  <Tooltip 
-                    contentStyle={{ background: 'var(--surface-1)', border: '1px solid var(--border-subtle)', borderRadius: '8px' }}
-                    formatter={(value: any) => [`${Number(value).toLocaleString('fr-GN')} GNF`, 'Revenus']}
-                  />
-                  <Bar dataKey="value" fill="url(#barGradient)" radius={[6, 6, 0, 0]} />
-                  <defs>
-                    <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={chartColors.barFill0} />
-                      <stop offset="100%" stopColor={chartColors.barFill1} />
-                    </linearGradient>
-                  </defs>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-
-        <div className="card analytics-chart-card">
-          <h3 className="chart-title">{t('ana.orders_chart')}</h3>
-          <div className="chart-container">
-            {orders_data.length === 0 ? (
-              <div style={{ display: 'flex', height: '300px', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                Aucune commande pour cette période.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={orders_data}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
-                  <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip 
-                    contentStyle={{ background: 'var(--surface-1)', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: 'var(--text-primary)' }}
-                  />
-                  <Area type="monotone" dataKey="commandes" stroke={chartColors.areaOrders} fill={chartColors.areaOrdersFill} strokeWidth={2} />
-                  <Area type="monotone" dataKey="livrees" stroke={chartColors.areaDelivered} fill={chartColors.areaDeliveredFill} strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-          {orders_data.length > 0 && (
-            <div className="chart-legend">
-              <span className="legend-item"><span className="legend-dot" style={{ background: chartColors.areaOrders }} /> {t('ana.orders')}</span>
-              <span className="legend-item"><span className="legend-dot" style={{ background: chartColors.areaDelivered }} /> {t('ana.delivered')}</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Bottom Row */}
-      <div className="analytics-bottom">
-        <div className="card analytics-chart-card">
-          <h3 className="chart-title">{t('ana.top_products')}</h3>
-          <div className="top-products">
-            {top_products.length === 0 ? (
-              <div style={{ padding: '2rem 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                Aucun produit vendu sur cette période.
-              </div>
-            ) : (
-              top_products.map((product, i) => (
-                <div key={i} className="top-product-row">
-                  <div className="top-product-rank">#{i + 1}</div>
-                  <div className="top-product-info">
-                    <span className="top-product-name">{product.name}</span>
-                    <span className="top-product-sales">{product.ventes} {t('ana.sales')}</span>
-                  </div>
-                  <div className="top-product-revenue">{Number(product.revenue).toLocaleString('fr-GN')} GNF</div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="card analytics-chart-card">
-          <h3 className="chart-title">{t('ana.client_segments')}</h3>
-          <div className="chart-container">
-            {client_segments.every(s => s.value === 0) ? (
-              <div style={{ display: 'flex', height: '200px', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                Aucun client dans la base de données.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie data={client_segments} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={4} dataKey="value">
-                    {client_segments.map((entry, index) => (
-                      <Cell key={index} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ background: 'var(--surface-1)', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: 'var(--text-primary)' }}
-                    formatter={(value: any) => [`${value}%`, 'Part']}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-          {!client_segments.every(s => s.value === 0) && (
-            <div className="chart-legend chart-legend--wrap">
-              {client_segments.map((s, i) => (
-                <span key={i} className="legend-item"><span className="legend-dot" style={{ background: s.color }} /> {s.name} ({s.value}%)</span>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      <AnalyticsCharts
+        period={period}
+        revenueData={revenue_data}
+        ordersData={orders_data}
+        topProducts={top_products}
+        clientSegments={client_segments}
+        chartColors={chartColors}
+        t={t}
+      />
 
       <style jsx>{`
         .analytics-kpis {

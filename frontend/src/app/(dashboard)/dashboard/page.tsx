@@ -1,11 +1,20 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { CircleDollarSign, ShoppingBag, Users, Clock, Crown, CheckCircle, BarChart3, MessageCircle, ArrowDownRight, Wallet, Package, TrendingUp } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { buildPeriodParams, isWithinPeriod, periodLabel, type PeriodKey } from '@/lib/period';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useProductsQuery, useClientsQuery, useOrdersQuery, useDashboardKpisQuery, useAnalyticsQuery } from '@/lib/queries';
+
+// Recharts (+ D3 en dépendance) sorti du bundle initial du Dashboard — la
+// toute première page vue après connexion — chargé seulement une fois le
+// composant monté côté client, avec un squelette de chargement léger
+// pendant l'import. ssr:false car Recharts mesure le DOM (ResponsiveContainer).
+const RevenueTrendChart = dynamic(() => import('@/components/charts/RevenueTrendChart'), {
+  ssr: false,
+  loading: () => <div className="chart-container" style={{ height: 240, background: 'var(--surface-2)', borderRadius: '12px', animation: 'shimmer 1.5s infinite linear' }} />,
+});
 
 const STATUS_CONFIG = {
   pending: { label_fr: 'En attente', label_en: 'Pending', cls: 'badge-warning' },
@@ -464,52 +473,7 @@ export default function DashboardPage() {
             </h2>
           </div>
           <div className="chart-container">
-            <ResponsiveContainer width="100%" height={240}>
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-brand-400)" stopOpacity={0.25}/>
-                    <stop offset="95%" stopColor="var(--color-brand-400)" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
-                <XAxis
-                  dataKey="name"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(val) => `${val / 1000}k`}
-                  tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
-                />
-                <Tooltip
-                  formatter={(value: any) => [`${new Intl.NumberFormat('fr-FR').format(value)} GNF`, language === 'fr' ? 'Chiffre d\'affaires' : 'Revenue']}
-                  contentStyle={{
-                    background: 'var(--surface-2)',
-                    border: '1px solid var(--border-default)',
-                    borderRadius: '12px',
-                    color: 'var(--text-primary)',
-                    boxShadow: 'var(--shadow-lg)',
-                    fontSize: '0.85rem',
-                  }}
-                  cursor={{ stroke: 'var(--color-brand-400)', strokeWidth: 1, strokeDasharray: '4 4' }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="var(--color-brand-400)"
-                  strokeWidth={2.5}
-                  fillOpacity={1}
-                  fill="url(#colorRevenue)"
-                  dot={false}
-                  activeDot={{ r: 5, fill: 'var(--color-brand-300)', stroke: 'var(--color-brand-500)', strokeWidth: 2 }}
-                  animationDuration={1200}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            <RevenueTrendChart chartData={chartData} language={language} />
           </div>
         </div>
       )}

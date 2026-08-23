@@ -14,7 +14,6 @@ import { BulkStockInModal } from '@/components/ui/BulkStockInModal';
 import { useLanguage } from '@/context/LanguageContext';
 import { compressImage } from '@/lib/utils/imageCompressor';
 import { useSearchParams, useRouter } from 'next/navigation';
-import QRCode from 'qrcode';
 import { useProductsQuery, useCategoriesQuery, useProductStatsQuery, queryKeys } from '@/lib/queries';
 import { usePermission } from '@/lib/permissions';
 
@@ -255,6 +254,10 @@ function ProductsContent() {
   // aucun QR code ne pouvait plus être ni téléchargé ni imprimé).
   const downloadQRCode = async (sku: string, productName: string) => {
     try {
+      // Import dynamique : la lib qrcode ne sert que dans ces deux
+      // handlers, rarement invoqués — inutile de l'expédier dans le
+      // bundle initial de la page pour tout le monde.
+      const { default: QRCode } = await import('qrcode');
       const dataUrl = await QRCode.toDataURL(sku, { width: 300, margin: 1 });
       const a = document.createElement('a');
       a.href = dataUrl;
@@ -275,7 +278,10 @@ function ProductsContent() {
     if (!printWindow) return;
     printWindow.document.write(`<html><body style="font-family:sans-serif;text-align:center;padding:2rem;">${language === 'fr' ? 'Génération du QR code…' : 'Generating QR code…'}</body></html>`);
 
-    QRCode.toDataURL(sku, { width: 250, margin: 1 }).then((dataUrl) => {
+    // Import dynamique enchaîné après l'ouverture synchrone de la popup
+    // ci-dessus (voir le commentaire) — reporter le .then() ne change rien
+    // à ce point critique, seul le premier appel doit rester synchrone.
+    import('qrcode').then(({ default: QRCode }) => QRCode.toDataURL(sku, { width: 250, margin: 1 })).then((dataUrl) => {
       printWindow.document.open();
       printWindow.document.write(`
         <html>
