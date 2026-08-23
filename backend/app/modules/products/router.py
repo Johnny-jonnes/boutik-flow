@@ -612,13 +612,18 @@ def bulk_stock_in(
     for index, item in enumerate(payload.items):
         savepoint = db.begin_nested()
         try:
+            # with_for_update() : deux réceptions fournisseur concurrentes
+            # sur le même produit liraient sinon chacune l'ancien stock et
+            # écriraient une valeur absolue en Python — la dernière à
+            # valider écraserait l'incrément de l'autre (même défaut que
+            # create_order, voir son commentaire détaillé).
             product = db.query(Product).filter(
                 and_(
                     Product.id == item.product_id,
                     Product.tenant_id == current_user.tenant_id,
                     Product.deleted_at.is_(None),
                 )
-            ).first()
+            ).with_for_update().first()
             if not product:
                 raise ValueError("Produit introuvable.")
 

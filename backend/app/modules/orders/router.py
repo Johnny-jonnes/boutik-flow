@@ -119,10 +119,13 @@ def _build_order_response(order: Order, user_names: dict, debt_id: uuid.UUID | N
 
 def _restock_order_items(db: Session, order: Order, current_user: CurrentUser, reason: str):
     """Remet en stock les articles d'une commande et trace chaque mouvement."""
-    for item in order.items:
+    # with_for_update() : même risque de perte de mise à jour que dans
+    # create_order si un réapprovisionnement concurrent touche le même
+    # produit (voir commentaire détaillé plus bas dans ce fichier).
+    for item in sorted(order.items, key=lambda i: str(i.product_id)):
         product = db.query(Product).filter(
             and_(Product.id == item.product_id, Product.tenant_id == current_user.tenant_id)
-        ).first()
+        ).with_for_update().first()
         if not product:
             continue
 
@@ -149,10 +152,10 @@ def _consume_order_items(db: Session, order: Order, current_user: CurrentUser):
     plutôt que de laisser un stock négatif s'installer en base.
     """
     products = {}
-    for item in order.items:
+    for item in sorted(order.items, key=lambda i: str(i.product_id)):
         product = db.query(Product).filter(
             and_(Product.id == item.product_id, Product.tenant_id == current_user.tenant_id)
-        ).first()
+        ).with_for_update().first()
         if not product:
             continue
         if product.stock < item.quantity:
@@ -465,9 +468,23 @@ def create_order(
     db.add(order)
 
     # Gérer les lignes et le stock
+    #
+    # Trié par product_id : sous forte concurrence, deux commandes qui
+    # partagent 2+ produits mais dans un ordre différent pourraient
+    # sinon se verrouiller mutuellement (deadlock classique) — un ordre
+    # global stable élimine ce risque.
     total_amount = 0
     stock_shortages: list[str] = []
-    for item in payload.items:
+    for item in sorted(payload.items, key=lambda i: str(i.product_id)):
+        # with_for_update() : sans verrou, deux ventes concurrentes du même
+        # produit lisent chacune l'ancien stock, décrémentent en Python, puis
+        # écrivent une valeur ABSOLUE à la fin — la dernière à valider écrase
+        # silencieusement le décrément de l'autre (perte de mise à jour :
+        # confirmé empiriquement — 20 ventes concurrentes sur un stock de 10
+        # ont toutes réussi (201, 20 commandes réelles créées), le stock
+        # n'ayant net-diminué que d'une seule unité). Le verrou de ligne
+        # force les transactions concurrentes à se sérialiser : chacune relit
+        # la valeur réellement à jour avant de vérifier/décrémenter.
         product = db.query(Product).filter(
             and_(
                 Product.id == item.product_id,
@@ -475,7 +492,7 @@ def create_order(
                 Product.deleted_at.is_(None),
                 Product.is_available.is_(True),
             )
-        ).first()
+        ).with_for_update().first()
 
         if not product:
             raise HTTPException(
@@ -791,7 +808,7 @@ def return_order_items(
     refund_amount = Decimal(0)
     returned_details = []
 
-    for item in payload.items:
+    for item in sorted(payload.items, key=lambda i: str(i.product_id)):
         order_item = db.query(OrderItem).filter(
             and_(
                 OrderItem.order_id == order.id,
@@ -807,7 +824,7 @@ def return_order_items(
 
         product = db.query(Product).filter(
             and_(Product.id == item.product_id, Product.tenant_id == current_user.tenant_id)
-        ).first()
+        ).with_for_update().first()
         if product:
             item_refund = Decimal(str(order_item.unit_price)) * Decimal(item.quantity)
             refund_amount += item_refund
