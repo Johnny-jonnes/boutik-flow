@@ -15,12 +15,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import and_
+from sqlalchemy.exc import IntegrityError
 
 from fastapi.encoders import jsonable_encoder
 
 from app.core.database import get_db
 from app.core.deps import CurrentUser
-from app.core.idempotency import IdempotencyHeader, get_cached_response, store_response
+from app.core.idempotency import IdempotencyHeader, get_cached_response, store_response, store_response_atomic
 from app.core.permissions import require_permission, has_permission
 from app.core.period import resolve_period
 from app.modules.products.models import Order, OrderItem, OrderLog, OrderStatusEnum, Product, InventoryLog
@@ -646,15 +647,33 @@ def create_order(
         details=f"Vente validée N°{str(order.id)[:8]} ({client.name}) pour {net_amount} GNF",
     )
 
-    db.commit()
-    db.refresh(order)
+    # flush() (jamais commit()+refresh()) : peuple created_at/updated_at
+    # via RETURNING SANS clore la transaction — permet de construire la
+    # réponse et d'y attacher la ligne d'idempotence AVANT le commit final,
+    # pour que les deux soient validées ENSEMBLE (voir store_response_atomic
+    # ci-dessous et son commentaire pour la fenêtre de course que ça corrige).
+    db.flush()
 
     logger.info("Commande créée : %s (Total=%s)", order.id, order.total)
     response = _build_order_response(order, _user_names_for_orders(db, [order]), debt_id=debt.id if debt else None)
-    store_response(
+    store_response_atomic(
         db, current_user.tenant_id, "orders.create", idempotency_key,
         status.HTTP_201_CREATED, jsonable_encoder(response),
     )
+    try:
+        db.commit()
+    except IntegrityError:
+        # Une requête concurrente portant la MÊME clé d'idempotence a gagné
+        # la course (voir store_response_atomic) : toute cette transaction
+        # — commande/dette/transaction financière incluses — est annulée
+        # d'un bloc, jamais seulement la ligne d'idempotence. La réponse
+        # déjà enregistrée par la gagnante est réutilisée, comme pour un
+        # retry classique.
+        db.rollback()
+        cached = get_cached_response(db, current_user.tenant_id, "orders.create", idempotency_key)
+        if cached:
+            return cached[1]
+        raise
     return response
 
 

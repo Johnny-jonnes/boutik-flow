@@ -6,10 +6,11 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import and_
+from sqlalchemy.exc import IntegrityError
 
 from app.core.database import get_db
 from app.core.deps import CurrentUser
-from app.core.idempotency import IdempotencyHeader, get_cached_response, store_response
+from app.core.idempotency import IdempotencyHeader, get_cached_response, store_response, store_response_atomic
 from app.core.permissions import require_permission
 from app.core.period import resolve_period
 from app.modules.crm.debt_models import ClientDebt, DebtPayment, DebtStatusEnum
@@ -327,12 +328,24 @@ def record_payment(
         ),
     )
 
-    db.commit()
     result = {
         "message": "Versement enregistré",
         "remaining_amount": float(debt.remaining_amount),
         "status": debt.status,
         "order_marked_delivered": bool(linked_order and linked_order.status == OrderStatusEnum.delivered),
     }
-    store_response(db, current_user.tenant_id, "debts.pay", idempotency_key, 200, result)
+    # store_response_atomic (jamais store_response) : ajoute la ligne
+    # d'idempotence à CETTE MÊME transaction, validée par le commit juste
+    # en dessous — voir son commentaire pour la fenêtre de course entre
+    # deux requêtes concurrentes portant la même clé que ça élimine
+    # (double versement sur la même dette sinon possible).
+    store_response_atomic(db, current_user.tenant_id, "debts.pay", idempotency_key, 200, result)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        cached = get_cached_response(db, current_user.tenant_id, "debts.pay", idempotency_key)
+        if cached:
+            return cached[1]
+        raise
     return result
