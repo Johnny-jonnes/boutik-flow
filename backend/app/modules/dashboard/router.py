@@ -78,23 +78,35 @@ def get_kpis(
     sales = sales_metrics(db, tenant_id, start, end)
     margin = product_margin(db, tenant_id, start, end)
 
-    base_client_query = db.query(Client).filter(
-        and_(
-            Client.tenant_id == tenant_id,
-            Client.deleted_at.is_(None),
-        )
-    )
-
-    total_clients = base_client_query.count()
-    active_clients = base_client_query.filter(Client.status == ClientStatusEnum.actif).count()
-    vip_clients = base_client_query.filter(Client.status == ClientStatusEnum.vip).count()
-
-    new_clients_query = base_client_query
+    # Un seul aller-retour DB pour les 4 compteurs (COUNT(*) FILTER (WHERE
+    # ...), agrégation conditionnelle Postgres) au lieu de 4 requêtes
+    # séparées sur la même table — chacune re-scannait tenant_id+deleted_at
+    # depuis le début. new_clients garde exactement le même filtre de date
+    # que l'ancienne new_clients_query (aucun filtre = tous les clients,
+    # quand period="all").
+    new_client_conditions = []
     if start is not None:
-        new_clients_query = new_clients_query.filter(Client.created_at >= start)
+        new_client_conditions.append(Client.created_at >= start)
     if end is not None:
-        new_clients_query = new_clients_query.filter(Client.created_at < end)
-    new_clients = new_clients_query.count()
+        new_client_conditions.append(Client.created_at < end)
+    new_clients_count = func.count(Client.id)
+    if new_client_conditions:
+        new_clients_count = new_clients_count.filter(and_(*new_client_conditions))
+
+    client_counts = db.query(
+        func.count(Client.id).label("total"),
+        func.count(Client.id).filter(Client.status == ClientStatusEnum.actif).label("active"),
+        func.count(Client.id).filter(Client.status == ClientStatusEnum.vip).label("vip"),
+        new_clients_count.label("new"),
+    ).filter(
+        Client.tenant_id == tenant_id,
+        Client.deleted_at.is_(None),
+    ).one()
+
+    total_clients = client_counts.total
+    active_clients = client_counts.active
+    vip_clients = client_counts.vip
+    new_clients = client_counts.new
 
     return DashboardKPIs(
         total_revenue=money.total_income,
@@ -305,20 +317,24 @@ def get_analytics(
     ]
 
     # ── Répartition du fichier client (état courant, non borné à la période) ──
-    clients = db.query(Client.status).filter(
-        and_(
+    # GROUP BY côté DB au lieu de rapatrier une ligne par client pour
+    # compter en Python — un tenant avec un fichier client volumineux
+    # transférait autant de lignes que de clients pour calculer 4 %.
+    status_counts = dict(
+        db.query(Client.status, func.count(Client.id))
+        .filter(
             Client.tenant_id == tenant_id,
             Client.deleted_at.is_(None),
         )
-    ).all()
-
-    total_c = len(clients)
-    statuses = [row[0] for row in clients]
+        .group_by(Client.status)
+        .all()
+    )
+    total_c = sum(status_counts.values())
 
     def pct(status) -> float:
         if not total_c:
             return 0.0
-        return round(sum(1 for s in statuses if s == status) / total_c * 100, 1)
+        return round(status_counts.get(status, 0) / total_c * 100, 1)
 
     client_segments = [
         ClientSegmentPoint(name="VIP", value=pct(ClientStatusEnum.vip), color="#10b981"),
