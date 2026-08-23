@@ -1,18 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Download, FileText, Eye, Plus, Minus, ArrowRight, Trash2, Printer, RotateCcw,
   Clock, CheckCircle2, Truck, Ban, Undo2, AlertTriangle, ScanLine, Camera, Search,
 } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
-import type { Order, Client, Product, OrderStatus } from '@/types';
+import type { Order, OrderStatus } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { BarcodeScannerModal } from '@/components/ui/BarcodeScannerModal';
 import { ReceiptModal } from '@/components/ui/ReceiptModal';
 import { useLanguage } from '@/context/LanguageContext';
 import { isWithinPeriod } from '@/lib/period';
+import { useClientsQuery, useProductsQuery } from '@/lib/queries';
 
 // Les 3 étapes normales d'une commande. "cancelled" est un état à part —
 // une annulation n'est pas une "étape" du parcours, elle en sort.
@@ -92,9 +93,19 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Data
-  const [clients, setClients] = useState<Client[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  // Data — cache partagé avec Dashboard/Vendre/Produits/Clients (voir
+  // products/page.tsx) au lieu d'un fetch séparé plafonné à 100 lignes :
+  // cette page avait sa propre copie tronquée des clients/produits,
+  // divergente du cache à 500 lignes utilisé partout ailleurs.
+  const { data: clientsData } = useClientsQuery();
+  const { data: productsData } = useProductsQuery();
+  const clients = clientsData?.items ?? [];
+  const products = productsData?.items ?? [];
+  // Lookup O(1) au lieu d'un .find() par commande — voir getClientName et
+  // filteredOrders plus bas, qui l'appellent potentiellement des centaines
+  // de fois par rendu (une fois par commande visible, une fois par
+  // commande filtrée avec une recherche active).
+  const clientsById = useMemo(() => new Map(clients.map(c => [c.id, c])), [clients]);
 
   // Create modal
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -190,11 +201,6 @@ export default function OrdersPage() {
 
   useEffect(() => {
     fetchOrders();
-  }, []);
-
-  useEffect(() => {
-    api.getClients(1, 100).then(res => setClients(res.items)).catch(() => {});
-    api.getProducts(1, 100).then(res => setProducts(res.items)).catch(() => {});
   }, []);
 
   // Une commande créée hors connexion n'existe nulle part côté serveur tant
@@ -430,12 +436,18 @@ export default function OrdersPage() {
     URL.revokeObjectURL(url);
   };
 
-  const getClientName = (clientId: string) => clients.find(c => c.id === clientId)?.name || 'Client';
+  const getClientName = (clientId: string) => clientsById.get(clientId)?.name || 'Client';
   const getProductName = (productId: string) => products.find(p => p.id === productId)?.name || 'Produit';
 
   const dateRange = { period: 'custom' as const, start_date: filterDateFrom || undefined, end_date: filterDateTo || undefined };
 
-  const filteredOrders = orders.filter(o => {
+  // useMemo — sans lui, ce filtre+tri (potentiellement des milliers de
+  // commandes, voir fetchOrders qui charge tout l'historique) recalculait
+  // à CHAQUE rendu, y compris pour l'ouverture d'une modale ou une frappe
+  // dans un champ sans rapport. clientsById (pas getClientName, recréée
+  // chaque rendu) comme dépendance : seule sa propre identité mémoïsée
+  // compte pour invalider correctement le cache.
+  const filteredOrders = useMemo(() => orders.filter(o => {
     if (filterStatus === 'active') {
       if (o.status === 'delivered' || o.status === 'cancelled') return false;
     } else if (filterStatus !== 'all' && o.status !== filterStatus) {
@@ -444,15 +456,19 @@ export default function OrdersPage() {
     if (!isWithinPeriod(o.created_at, dateRange)) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      const clientName = getClientName(o.client_id).toLowerCase();
+      const clientName = (clientsById.get(o.client_id)?.name || 'Client').toLowerCase();
       if (!o.id.toLowerCase().includes(q) && !clientName.includes(q)) return false;
     }
     return true;
-  }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+  [orders, filterStatus, filterDateFrom, filterDateTo, searchQuery, clientsById]);
 
   const totalFiltered = filteredOrders.length;
   const totalPages = Math.max(1, Math.ceil(totalFiltered / perPage));
-  const paginatedOrders = filteredOrders.slice((currentPage - 1) * perPage, currentPage * perPage);
+  const paginatedOrders = useMemo(
+    () => filteredOrders.slice((currentPage - 1) * perPage, currentPage * perPage),
+    [filteredOrders, currentPage, perPage]
+  );
 
   const trackerLabels = {
     cancelled: t('ord.cancelled'),
