@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useTheme } from 'next-themes';
 import { BarChart3, TrendingUp, Users, ShoppingBag, ArrowUpRight, ArrowDownRight, DollarSign, Target } from 'lucide-react';
 import {
@@ -17,10 +17,8 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import { api } from '@/lib/api/client';
-import { toast } from 'sonner';
-import type { AnalyticsData } from '@/types';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAnalyticsQuery } from '@/lib/queries';
 
 function formatGNF(amount: number) {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' GNF';
@@ -30,8 +28,12 @@ export default function AnalyticsPage() {
   const { t } = useLanguage();
   const { theme } = useTheme();
   const [period, setPeriod] = useState('7j');
-  const [data, setData] = useState<AnalyticsData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // useAnalyticsQuery (déjà utilisé par le Dashboard, voir lib/queries.ts)
+  // au lieu d'un fetch manuel séparé : cette page rechargeait ses propres
+  // données à chaque fois plutôt que de réutiliser le cache déjà chaud
+  // (60s de staleTime) quand l'utilisateur venait de Dashboard, doublant
+  // la charge serveur pour une navigation Dashboard <-> Analytics.
+  const { data, isLoading } = useAnalyticsQuery(period);
 
   // Couleurs des graphiques adaptées au thème actif
   const chartColors = useMemo(() => ({
@@ -50,21 +52,6 @@ export default function AnalyticsPage() {
     activeTab: theme === 'light' ? '#128C7E'               : '#10b981',
     activeTabBg: theme === 'light' ? 'rgba(37,211,102,0.12)' : 'rgba(16,185,129,0.15)',
   }), [theme]);
-
-  useEffect(() => {
-    const fetchAnalytics = async () => {
-      setIsLoading(true);
-      try {
-        const res = await api.getAnalyticsData(period);
-        setData(res);
-      } catch (err) {
-        toast.error('Erreur lors du chargement des analyses');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchAnalytics();
-  }, [period]);
 
   if (isLoading || !data) {
     return (

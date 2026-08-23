@@ -175,6 +175,13 @@ export default function DashboardPage() {
   const { data: ordersData } = useOrdersQuery();
   const clients = clientsData?.items ?? [];
   const products = productsData?.items ?? [];
+  // Map construite une seule fois par changement de données, réutilisée
+  // par chaque ligne de "Commandes récentes" — sans ça, un .find() par
+  // ligne balayait jusqu'à 500 clients/produits (tout le cache partagé,
+  // voir useClientsQuery/useProductsQuery) À CHAQUE rendu, y compris pour
+  // un changement d'état sans rapport (page de pagination, etc.).
+  const clientsById = useMemo(() => new Map(clients.map(c => [c.id, c])), [clients]);
+  const productsById = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
   const [greeting, setGreeting] = useState('Bonjour');
   const { t, language } = useLanguage();
 
@@ -531,10 +538,10 @@ export default function DashboardPage() {
                     </div>
                     <div className="order-info">
                       <span className="order-client-name">
-                        {clients.find(c => c.id === order.client_id)?.name || `Client ${order.client_id?.slice(0, 5) || 'Comptoir'}`}
+                        {clientsById.get(order.client_id)?.name || `Client ${order.client_id?.slice(0, 5) || 'Comptoir'}`}
                       </span>
                       <span className="order-product">
-                        {products.find(p => p.id === order.items?.[0]?.product_id)?.name || (language === 'fr' ? 'Produit / Vente' : 'Product / Sale')}
+                        {productsById.get(order.items?.[0]?.product_id)?.name || (language === 'fr' ? 'Produit / Vente' : 'Product / Sale')}
                       </span>
                     </div>
                   </div>

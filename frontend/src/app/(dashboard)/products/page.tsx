@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useMemo, useState, Suspense } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Search, ImageIcon, Pencil, Trash2, Eye, Plus, Download, Printer, Camera, Layers, Wallet, Package, PackagePlus } from 'lucide-react';
 import type { Product } from '@/types';
@@ -305,18 +305,26 @@ function ProductsContent() {
     });
   };
 
-  const filteredProducts = products.filter(p => {
+  // useMemo — sans lui, ce filtrage (jusqu'à 500 produits en mémoire, voir
+  // useProductsQuery) recalculait à CHAQUE rendu, y compris en ouvrant/
+  // fermant une modale ou en tapant dans un champ de formulaire sans
+  // rapport (addForm/editForm), aucun de ces changements d'état ne
+  // devant re-filtrer le catalogue.
+  const filteredProducts = useMemo(() => products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (p.barcode && p.barcode.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesCategory = !categoryIdFromUrl || p.category_id === categoryIdFromUrl;
     return matchesSearch && matchesCategory;
-  });
+  }), [products, searchQuery, categoryIdFromUrl]);
 
   // Un catalogue important rendu d'un coup dans le tableau ralentissait la
   // page (et rejoue le même problème déjà rencontré sur la grille Vendre).
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / perPage));
-  const paginatedProducts = filteredProducts.slice((currentPage - 1) * perPage, currentPage * perPage);
+  const paginatedProducts = useMemo(
+    () => filteredProducts.slice((currentPage - 1) * perPage, currentPage * perPage),
+    [filteredProducts, currentPage, perPage]
+  );
 
   useEffect(() => { setCurrentPage(1); }, [searchQuery, categoryIdFromUrl, perPage]);
 
