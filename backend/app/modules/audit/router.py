@@ -3,6 +3,7 @@ Routeur FastAPI — Module Audit
 Réservé aux propriétaires / gérants de la boutique.
 """
 from typing import Annotated
+import logging
 import uuid
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
@@ -13,6 +14,7 @@ from app.core.deps import require_owner_or_manager, CurrentUser
 from app.modules.audit.models import AuditLog
 from app.modules.audit.schemas import AuditLogResponse, AuditLogListResponse, AuditLogCreate
 
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/audit", tags=["Audit & Traçabilité"])
 
@@ -42,7 +44,14 @@ def log_action(
         db.add(entry)
         db.flush()
     except Exception as e:
-        print(f"Erreur d'enregistrement d'audit : {e}")
+        # Un print() ici part sur stdout sans passer par logging — invisible
+        # dans l'agrégation de logs Render tant que personne ne lit le flux
+        # brut en direct. Contexte tenant/action inclus pour pouvoir
+        # retrouver l'incident après coup.
+        logger.error(
+            "Échec d'enregistrement d'audit (tenant=%s, action=%s, target=%s/%s): %s",
+            tenant_id, action, target_entity, target_id, e,
+        )
 
 
 @router.get(

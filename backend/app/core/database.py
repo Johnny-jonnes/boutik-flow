@@ -11,11 +11,19 @@ from app.core.config import settings
 # (cherchent un tenant AVANT qu'un contexte n'existe) et le panneau admin
 # (accès cross-tenant légitime). Ne JAMAIS l'utiliser pour une route
 # tenant-scopée normale une fois APP_DATABASE_URL configurée.
+## Répartition du pool — voir l'audit de montée en charge : engine/
+## app_engine avaient chacun le même calibrage (10+20=30 connexions max)
+## alors qu'engine ne sert que 3 routes d'auth publiques + le panneau
+## admin (trafic faible) tandis qu'app_engine sert TOUTES les routes
+## tenant-scopées (tout le trafic réel de l'application). Le plafond total
+## (60) reste inchangé — c'est une réallocation, pas une augmentation,
+## pour ne jamais risquer de dépasser la limite de connexions réelle de
+## l'instance Postgres/Supabase configurée en production.
 engine = create_engine(
     settings.DATABASE_URL,
     pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
+    pool_size=3,
+    max_overflow=7,
     echo=settings.DEBUG,
 )
 BypassSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -28,8 +36,8 @@ BypassSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine
 app_engine = create_engine(
     settings.APP_DATABASE_URL or settings.DATABASE_URL,
     pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
+    pool_size=15,
+    max_overflow=35,
     echo=settings.DEBUG,
 )
 AppSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=app_engine)

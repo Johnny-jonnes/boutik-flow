@@ -1,12 +1,18 @@
 """
 Point d'entrée principal — FastAPI BoutikFlow
 """
-from fastapi import FastAPI
+import logging
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
 from app.core.config import settings
 from app.middleware.tenant import TenantMiddleware
+
+logger = logging.getLogger(__name__)
 
 # Import des routers
 from app.modules.auth.router import router as auth_router
@@ -47,6 +53,35 @@ app.add_middleware(
 app.add_middleware(TenantMiddleware)
 
 
+# ─── Gestion globale des erreurs ────────────────────────────────────────────
+#
+# Sans ce handler, une exception non interceptée dans une route atteint le
+# ServerErrorMiddleware par défaut de Starlette : réponse 500 en texte brut
+# (pas le format JSON {"detail": ...} utilisé partout ailleurs par l'API),
+# et surtout AUCUNE trace exploitable dans les logs — juste une réponse
+# cassée côté client, invisible côté serveur tant que personne ne regarde
+# le flux stdout brut de Render en direct. Le detail générique côté client
+# évite de renvoyer le texte interne de l'exception (which peut contenir
+# des détails d'implémentation) ; le detail complet part dans les logs.
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    tenant_id = None
+    try:
+        from app.middleware.tenant import get_current_tenant_id
+        tenant_id = get_current_tenant_id()
+    except Exception:
+        pass
+    logger.error(
+        "Erreur non gérée sur %s %s (tenant=%s): %s",
+        request.method, request.url.path, tenant_id, exc,
+        exc_info=True,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Une erreur interne est survenue. Réessayez dans quelques instants."},
+    )
+
+
 # ─── Routes ─────────────────────────────────────────────────────────────────
 
 API_PREFIX = "/api/v1"
@@ -70,14 +105,37 @@ app.include_router(debt_router, prefix=API_PREFIX)
 # ─── Health Check ───────────────────────────────────────────────────────────
 
 @app.get("/health", tags=["Health"])
-async def health_check():
-    """Endpoint de santé pour monitoring."""
-    return {
-        "status": "healthy",
+async def health_check() -> JSONResponse:
+    """Endpoint de santé pour monitoring.
+
+    Vérifie réellement la connexion DB (SELECT 1) — l'ancienne version
+    renvoyait un 200 statique sans jamais toucher la base : une instance
+    dont le pool de connexions était mort continuait d'être considérée
+    "healthy" et de recevoir du trafic. 503 (pas 200 avec un champ
+    "degraded" dans le corps) pour qu'un contrôle de santé qui ne regarde
+    que le code HTTP détecte réellement le problème.
+    """
+    db_ok = True
+    db_error: str | None = None
+    try:
+        from app.core.database import engine
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception as e:
+        db_ok = False
+        db_error = str(e)
+        logger.error("Health check : base de données injoignable : %s", e)
+
+    body = {
+        "status": "healthy" if db_ok else "unhealthy",
+        "database": "ok" if db_ok else "unreachable",
         "app": settings.APP_NAME,
         "version": settings.APP_VERSION,
         "environment": settings.ENVIRONMENT,
     }
+    if not db_ok and settings.DEBUG:
+        body["database_error"] = db_error
+    return JSONResponse(status_code=200 if db_ok else 503, content=body)
 
 
 @app.get("/version", tags=["Health"])

@@ -592,8 +592,12 @@ def create_order(
     try:
         if hasattr(client, "last_activity_at"):
             client.last_activity_at = datetime.now(timezone.utc)
-    except Exception:
-        pass
+    except Exception as e:
+        # Ne doit jamais faire échouer la vente pour un simple horodatage
+        # (comportement inchangé), mais un échec silencieux ici était
+        # invisible dans les logs Render — aucune trace pour comprendre
+        # pourquoi last_activity_at reste figé sur un client donné.
+        logger.warning("Échec mise à jour last_activity_at (client=%s): %s", client.id, e)
 
     # Enregistrer automatiquement la transaction financière d'entrée
     # d'argent — uniquement pour la part réellement encaissée (amount_paid_now) ;
