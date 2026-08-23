@@ -8,8 +8,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.core.config import settings
+from app.core.rate_limit import limiter
 from app.middleware.tenant import TenantMiddleware
 
 logger = logging.getLogger(__name__)
@@ -38,6 +42,11 @@ app = FastAPI(
     redoc_url="/redoc" if settings.DEBUG else None,
 )
 
+# Limitation de débit (voir app/core/rate_limit.py) — utilisée par
+# /auth/login et /auth/register via @limiter.limit(...).
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # ─── Middlewares ────────────────────────────────────────────────────────────
 
 # CORS
@@ -51,6 +60,11 @@ app.add_middleware(
 
 # Multi-tenant isolation
 app.add_middleware(TenantMiddleware)
+
+# Limitation de débit — doit être ajoutée après TenantMiddleware pour
+# s'exécuter avant elle dans la pile Starlette (dernier ajouté = premier
+# exécuté), afin de rejeter les requêtes en excès avant tout traitement.
+app.add_middleware(SlowAPIMiddleware)
 
 
 # ─── Gestion globale des erreurs ────────────────────────────────────────────

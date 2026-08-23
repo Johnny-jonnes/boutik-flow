@@ -11,12 +11,13 @@ import logging
 from typing import Annotated
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Request, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
 from app.core.config import settings
 from app.core.database import get_db, get_bypass_db
+from app.core.rate_limit import limiter
 from app.core.mailer import send_admin_new_registration_notification
 from app.core.security import (
     hash_password,
@@ -76,7 +77,9 @@ def _build_token_response(user: User) -> TokenResponse:
     status_code=status.HTTP_201_CREATED,
     summary="Demander la création d'une boutique (validation admin requise)",
 )
+@limiter.limit("5/minute")
 def register(
+    request: Request,
     payload: RegisterRequest,
     db: Annotated[Session, Depends(get_bypass_db)],
     background_tasks: BackgroundTasks,
@@ -188,7 +191,9 @@ def register(
     response_model=TokenResponse,
     summary="Se connecter à une boutique",
 )
+@limiter.limit("10/minute")
 def login(
+    request: Request,
     payload: LoginRequest,
     db: Annotated[Session, Depends(get_bypass_db)],
 ) -> TokenResponse:
