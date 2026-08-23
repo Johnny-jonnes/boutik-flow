@@ -1,6 +1,7 @@
 from typing import Annotated
 from fastapi import APIRouter, HTTPException, Depends, Request
 from typing import List
+from starlette.concurrency import run_in_threadpool
 from .schemas import WhatsAppChat, WhatsAppSendRequest
 from app.core.config import settings
 from app.core.deps import get_current_user, CurrentUser
@@ -34,17 +35,22 @@ async def send_message(req: WhatsAppSendRequest, current_user: Annotated[Current
         
     try:
         client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
-        
+
         # Twilio WhatsApp numbers must be prefixed with 'whatsapp:'
         to_number = req.to if req.to.startswith("whatsapp:") else f"whatsapp:{req.to}"
         from_number = settings.TWILIO_WHATSAPP_NUMBER
         if not from_number.startswith("whatsapp:"):
             from_number = f"whatsapp:{from_number}"
-            
-        message = client.messages.create(
+
+        # client.messages.create() est un appel HTTP synchrone (librairie
+        # Twilio non-async) : exécuté tel quel dans une route async, il
+        # bloque la boucle d'événements et donc TOUTES les requêtes en
+        # cours sur ce worker pendant l'aller-retour réseau vers Twilio.
+        message = await run_in_threadpool(
+            client.messages.create,
             from_=from_number,
             body=req.message,
-            to=to_number
+            to=to_number,
         )
         return {"status": "success", "message_id": message.sid}
     except Exception as e:
