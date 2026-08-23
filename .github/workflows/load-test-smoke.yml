@@ -1,0 +1,61 @@
+name: Load test (smoke, manuel uniquement)
+
+# Déclenchement manuel STRICTEMENT — jamais sur push/PR, et jamais contre la
+# production sans validation explicite (voir load-tests/README.md, section
+# CI/CD). base_url n'a pas de valeur par défaut : il faut la fournir
+# explicitement à chaque lancement, pour ne jamais taper accidentellement
+# sur la production.
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "URL de base de l'API à tester (ex: https://staging.example.com/api/v1) — PAS la production sans validation explicite"
+        required: true
+      scenario:
+        description: "Scénario à exécuter"
+        required: false
+        default: "a_consultation"
+      target_vus:
+        description: "Nombre de VUs (test léger uniquement — pas de montée massive en CI)"
+        required: false
+        default: "10"
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+
+      - name: Vérifier la présence des données synthétiques
+        working-directory: load-tests
+        run: |
+          if [ ! -f data/tenants.json ]; then
+            echo "::error::data/tenants.json est absent. Ce workflow ne génère pas de données lui-même (nécessiterait un accès DATABASE_URL en secret CI, non configuré). Générez-le localement contre l'environnement ciblé (scripts/generate-data.sh) et commitez un fixture dédié au staging, ou adaptez ce job pour appeler generate_synthetic_data.py avec un secret DATABASE_URL de staging."
+            exit 1
+          fi
+
+      - name: Exécuter le scénario (charge légère)
+        working-directory: load-tests
+        env:
+          BASE_URL: ${{ github.event.inputs.base_url }}
+          TARGET_VUS: ${{ github.event.inputs.target_vus }}
+          RAMP_UP: "10s"
+          STEADY: "20s"
+          RAMP_DOWN: "5s"
+        run: |
+          k6 run "scenarios/${{ github.event.inputs.scenario }}.js"
+
+      - name: Publier les rapports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-reports
+          path: load-tests/reports/

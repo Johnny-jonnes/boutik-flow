@@ -14,6 +14,9 @@ share/
 # Unignore Next.js app lib folder
 !frontend/src/lib/
 
+# Unignore load-tests shared k6 lib folder
+!load-tests/lib/
+
 # Next.js build output
 .next/
 out/

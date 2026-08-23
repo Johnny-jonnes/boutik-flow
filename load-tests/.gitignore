@@ -1,0 +1,7 @@
+# Données synthétiques générées (contiennent des JWT, même factices — pas
+# commitées par hygiène) et rapports d'exécution (résultats locaux, pas du
+# code) — voir data/generate_synthetic_data.py et scripts/run-progressive.*
+data/tenants.json
+data/last_run_id.txt
+reports/*.json
+!reports/.gitkeep
