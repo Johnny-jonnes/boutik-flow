@@ -11,12 +11,18 @@ from sqlalchemy import text
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+import sentry_sdk
 
 from app.core.config import settings
 from app.core.rate_limit import limiter
+from app.core.sentry import init_sentry
 from app.middleware.tenant import TenantMiddleware
 
 logger = logging.getLogger(__name__)
+
+# Inerte tant que SENTRY_DSN n'est pas configuré (voir app/core/sentry.py) :
+# sentry_sdk.capture_exception(...) plus bas ne fait alors rien.
+init_sentry()
 
 # Import des routers
 from app.modules.auth.router import router as auth_router
@@ -90,6 +96,12 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
         request.method, request.url.path, tenant_id, exc,
         exc_info=True,
     )
+    # Ce handler intercepte l'exception avant que l'intégration Starlette de
+    # Sentry ne puisse la voir elle-même (elle observerait normalement une
+    # exception non gérée se propager, ce qui n'arrive plus ici) — sans cet
+    # appel explicite, aucune erreur backend ne remonterait jamais à Sentry.
+    # No-op si SENTRY_DSN n'est pas configuré (voir app/core/sentry.py).
+    sentry_sdk.capture_exception(exc)
     return JSONResponse(
         status_code=500,
         content={"detail": "Une erreur interne est survenue. Réessayez dans quelques instants."},

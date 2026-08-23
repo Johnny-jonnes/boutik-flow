@@ -61,6 +61,10 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379"
 
+    # Sentry (monitoring d'erreurs) — inactif tant que SENTRY_DSN est vide
+    SENTRY_DSN: str = ""
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.0
+
     # Orange Money
     ORANGE_MONEY_API_URL: str = ""
     ORANGE_MONEY_MERCHANT_KEY: str = ""

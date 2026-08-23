@@ -19,3 +19,4 @@ celery==5.4.0
 twilio==9.10.9
 Pillow==11.0.0
 slowapi==0.1.10
+sentry-sdk[fastapi]==2.68.0
