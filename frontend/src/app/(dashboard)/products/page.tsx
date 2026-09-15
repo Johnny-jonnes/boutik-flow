@@ -332,6 +332,13 @@ function ProductsContent() {
     [filteredProducts, currentPage, perPage]
   );
 
+  // La liste peut rétrécir suite à une action (suppression du dernier
+  // produit de la page) et non un changement de filtre — sans ce recalage,
+  // on reste coincé sur une page devenue vide.
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
   useEffect(() => { setCurrentPage(1); }, [searchQuery, categoryIdFromUrl, perPage]);
 
   // Indicateurs de catalogue — calculés côté serveur sur TOUT le catalogue

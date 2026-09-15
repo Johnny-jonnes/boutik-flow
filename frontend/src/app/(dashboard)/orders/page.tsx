@@ -470,6 +470,14 @@ export default function OrdersPage() {
     [filteredOrders, currentPage, perPage]
   );
 
+  // La liste peut rétrécir suite à une action (changement de statut qui
+  // sort une commande du filtre actif) et non un changement de filtre —
+  // sans ce recalage, on reste coincé sur une page devenue vide alors que
+  // des commandes existent toujours sur les pages précédentes.
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
   const trackerLabels = {
     cancelled: t('ord.cancelled'),
     steps: [t('ord.step_pending'), t('ord.step_confirmed'), t('ord.step_delivered')],
