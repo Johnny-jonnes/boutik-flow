@@ -57,7 +57,7 @@ function ProductsContent() {
   const [isBulkStockInOpen, setIsBulkStockInOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addForm, setAddForm] = useState({
-    name: '', price: '', cost_price: '', stock: '', category_id: '', description: '', is_available: true, is_public: false, sku: '', barcode: '',
+    name: '', price: '', cost_price: '', stock: '', category_id: '', description: '', is_available: true, is_public: true, sku: '', barcode: '',
   });
 
   // View modal
@@ -127,7 +127,7 @@ function ProductsContent() {
       });
       toast.success('Produit ajouté avec succès');
       setIsAddOpen(false);
-      setAddForm({ name: '', price: '', cost_price: '', stock: '', category_id: '', description: '', is_available: true, is_public: false, sku: '', barcode: '' });
+      setAddForm({ name: '', price: '', cost_price: '', stock: '', category_id: '', description: '', is_available: true, is_public: true, sku: '', barcode: '' });
       setAddImagePreview(null);
       // Mise à jour locale immédiate du cache partagé — pas de rechargement
       // complet, le nouveau produit apparaît instantanément dans la liste

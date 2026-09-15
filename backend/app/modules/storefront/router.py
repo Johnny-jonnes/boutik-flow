@@ -75,7 +75,32 @@ def get_public_store(
     db: Annotated[Session, Depends(get_bypass_db)],
 ) -> PublicStoreResponse:
     tenant = _resolve_public_tenant(db, tenant_slug)
-    return PublicStoreResponse(name=tenant.name, slug=tenant.slug)
+    return PublicStoreResponse(
+        name=tenant.name,
+        slug=tenant.slug,
+        description=tenant.description,
+        theme_color=tenant.theme_color,
+        has_logo=bool(tenant.logo),
+        public_whatsapp=tenant.public_whatsapp,
+    )
+
+
+@router.get(
+    "/{tenant_slug}/logo",
+    summary="Logo d'une boutique (servi comme une vraie ressource HTTP)",
+)
+@limiter.limit("120/minute")
+def get_public_store_logo(
+    tenant_slug: str,
+    request: Request,
+    db: Annotated[Session, Depends(get_bypass_db)],
+):
+    tenant = _resolve_public_tenant(db, tenant_slug)
+    decoded = decode_data_uri(tenant.logo)
+    if not decoded:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Logo introuvable")
+    raw_bytes, content_type = decoded
+    return Response(content=raw_bytes, media_type=content_type)
 
 
 @router.get(
@@ -90,6 +115,7 @@ def list_public_products(
     db: Annotated[Session, Depends(get_bypass_db)],
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
+    q: str | None = Query(None, max_length=100, description="Recherche par nom de produit"),
 ) -> PublicProductListResponse:
     tenant = _resolve_public_tenant(db, tenant_slug)
 
@@ -101,6 +127,8 @@ def list_public_products(
             Product.deleted_at.is_(None),
         )
     )
+    if q and q.strip():
+        query = query.filter(Product.name.ilike(f"%{q.strip()}%"))
     total = query.count()
     items = (
         query.order_by(Product.created_at.desc())

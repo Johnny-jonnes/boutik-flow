@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { ArrowLeft } from 'lucide-react';
 import { publicApi, PublicApiError } from '@/lib/api/publicClient';
 import { ShareButtons } from '@/components/storefront/ShareButtons';
+import { WhatsAppButton } from '@/components/storefront/WhatsAppButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,7 +34,7 @@ export async function generateMetadata({
   const { store, product } = data;
   const priceLabel = `${Number(product.price).toLocaleString('fr-GN')} GNF`;
   const description = product.description || `${product.name} — ${priceLabel} — ${store.name}`;
-  const images = product.has_image ? [publicApi.imageUrl(slug, product.id)] : [];
+  const images = product.has_image ? [publicApi.imageUrl(slug, product.id)] : (store.has_logo ? [publicApi.logoUrl(slug)] : []);
   return {
     title: `${product.name} — ${priceLabel} · ${store.name}`,
     description,
@@ -57,12 +58,13 @@ export default async function StorefrontProductPage({
   const data = await getData(slug, productId);
   if (!data) notFound();
   const { store, product } = data;
+  const accent = store.theme_color || '#10b981';
 
   return (
     <div className="storefront">
       <header className="storefront-header">
         <div className="storefront-header-inner">
-          <Link href={`/boutique/${slug}`} className="back-link">
+          <Link href={`/boutique/${slug}`} className="back-link" style={{ color: accent }}>
             <ArrowLeft size={16} />
             <span>{store.name}</span>
           </Link>
@@ -80,11 +82,22 @@ export default async function StorefrontProductPage({
         </div>
 
         <div className="product-detail-info">
-          {product.category_name && <span className="product-category">{product.category_name}</span>}
+          {product.category_name && <span className="product-category" style={{ color: accent }}>{product.category_name}</span>}
           <h1 className="product-detail-name">{product.name}</h1>
-          <span className="product-detail-price">{Number(product.price).toLocaleString('fr-GN')} GNF</span>
+          <span className="product-detail-price" style={{ color: accent }}>{Number(product.price).toLocaleString('fr-GN')} GNF</span>
           {!product.is_available && <span className="badge-unavailable-inline">Rupture de stock</span>}
           {product.description && <p className="product-detail-description">{product.description}</p>}
+
+          {store.public_whatsapp && (
+            <a
+              href={`https://wa.me/${store.public_whatsapp.replace(/[^\d]/g, '')}?text=${encodeURIComponent(`Bonjour, je suis intéressé(e) par "${product.name}" (${Number(product.price).toLocaleString('fr-GN')} GNF) sur ${store.name}.`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="wa-inline-btn"
+            >
+              Discuter sur WhatsApp
+            </a>
+          )}
 
           <ShareButtons
             url={`${SITE_URL}/boutique/${slug}/produit/${productId}`}
@@ -97,6 +110,13 @@ export default async function StorefrontProductPage({
       <footer className="storefront-footer">
         <p>Propulsé par BoutikFlow</p>
       </footer>
+
+      {store.public_whatsapp && (
+        <WhatsAppButton
+          phone={store.public_whatsapp}
+          message={`Bonjour, je suis intéressé(e) par "${product.name}" (${Number(product.price).toLocaleString('fr-GN')} GNF) sur ${store.name}.`}
+        />
+      )}
 
       <style>{`
         .storefront {
@@ -122,12 +142,11 @@ export default async function StorefrontProductPage({
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          color: #10b981;
           text-decoration: none;
           font-size: 0.9rem;
           font-weight: 600;
         }
-        .back-link:hover { color: #34d399; }
+        .back-link:hover { opacity: 0.8; }
         .product-detail {
           max-width: 700px;
           margin: 0 auto;
@@ -143,6 +162,11 @@ export default async function StorefrontProductPage({
           border-radius: 16px;
           overflow: hidden;
           background: #1f2937;
+          animation: pd-fade-in 0.4s ease;
+        }
+        @keyframes pd-fade-in {
+          from { opacity: 0; transform: scale(0.98); }
+          to { opacity: 1; transform: scale(1); }
         }
         .product-detail-image {
           width: 100%;
@@ -159,11 +183,15 @@ export default async function StorefrontProductPage({
           display: flex;
           flex-direction: column;
           gap: 0.6rem;
+          animation: pd-slide-in 0.45s ease 0.1s backwards;
+        }
+        @keyframes pd-slide-in {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
         }
         .product-category {
           font-size: 0.75rem;
           font-weight: 700;
-          color: #34d399;
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
@@ -176,7 +204,6 @@ export default async function StorefrontProductPage({
         .product-detail-price {
           font-size: 1.3rem;
           font-weight: 700;
-          color: #34d399;
         }
         .badge-unavailable-inline {
           display: inline-block;
@@ -194,6 +221,22 @@ export default async function StorefrontProductPage({
           line-height: 1.7;
           white-space: pre-wrap;
         }
+        .wa-inline-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          width: fit-content;
+          background: #25d366;
+          color: white;
+          font-weight: 700;
+          font-size: 0.9rem;
+          padding: 0.7rem 1.3rem;
+          border-radius: 10px;
+          text-decoration: none;
+          transition: filter 0.15s ease;
+        }
+        .wa-inline-btn:hover { filter: brightness(1.08); }
         .storefront-footer {
           text-align: center;
           padding: 2rem 1rem;

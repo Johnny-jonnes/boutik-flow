@@ -44,6 +44,10 @@ async function publicRequest<T>(path: string): Promise<T> {
 export interface PublicStore {
   name: string;
   slug: string;
+  description: string | null;
+  theme_color: string | null;
+  has_logo: boolean;
+  public_whatsapp: string | null;
 }
 
 export interface PublicProduct {
@@ -67,13 +71,17 @@ export const publicApi = {
   getStore(slug: string): Promise<PublicStore> {
     return publicRequest(`/storefront/${encodeURIComponent(slug)}`);
   },
-  listProducts(slug: string, page = 1, perPage = 20): Promise<PublicProductList> {
-    return publicRequest(`/storefront/${encodeURIComponent(slug)}/products?page=${page}&per_page=${perPage}`);
+  listProducts(slug: string, page = 1, perPage = 20, q?: string): Promise<PublicProductList> {
+    const query = q && q.trim() ? `&q=${encodeURIComponent(q.trim())}` : '';
+    return publicRequest(`/storefront/${encodeURIComponent(slug)}/products?page=${page}&per_page=${perPage}${query}`);
   },
   getProduct(slug: string, productId: string): Promise<PublicProduct> {
     return publicRequest(`/storefront/${encodeURIComponent(slug)}/products/${encodeURIComponent(productId)}`);
   },
   imageUrl(slug: string, productId: string): string {
     return `${API_BASE_URL}/storefront/${encodeURIComponent(slug)}/products/${encodeURIComponent(productId)}/image`;
+  },
+  logoUrl(slug: string): string {
+    return `${API_BASE_URL}/storefront/${encodeURIComponent(slug)}/logo`;
   },
 };

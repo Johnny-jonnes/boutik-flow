@@ -454,6 +454,10 @@ def update_tenant(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Boutique introuvable")
 
     tenant.name = payload.name
+    tenant.description = payload.description
+    tenant.theme_color = payload.theme_color
+    tenant.logo = payload.logo
+    tenant.public_whatsapp = payload.public_whatsapp
     db.commit()
     db.refresh(tenant)
     logger.info("Boutique renommée : %s (tenant=%s)", tenant.name, tenant.id)

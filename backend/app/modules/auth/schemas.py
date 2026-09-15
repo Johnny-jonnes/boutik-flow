@@ -98,6 +98,13 @@ class TenantResponse(BaseModel):
     # module Finance) sont masqués — voir app.core.visibility et
     # PUT /auth/tenant/financial-visibility.
     hidden_financial_roles: list[str] = []
+    # Personnalisation vitrine publique — voir UpdateTenantRequest ci-dessous.
+    # logo en data-URI base64 (comme Product.images côté interne authentifié,
+    # jamais un souci de taille ici : un seul logo par boutique, pas une liste).
+    logo: str | None = None
+    description: str | None = None
+    theme_color: str | None = None
+    public_whatsapp: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -166,8 +173,34 @@ class ChangeMyPasswordRequest(BaseModel):
 
 
 class UpdateTenantRequest(BaseModel):
-    """Modification des informations de la boutique (propriétaire uniquement)."""
+    """Modification des informations de la boutique (propriétaire uniquement).
+    Formulaire "état complet" (comme le reste des Réglages) : le frontend
+    renvoie toujours l'état courant de chaque champ, jamais de mise à jour
+    partielle — description/theme_color/logo à None effacent explicitement
+    la valeur en base plutôt que de la laisser inchangée par erreur."""
     name: str = Field(..., min_length=2, max_length=255)
+    description: str | None = Field(None, max_length=300)
+    theme_color: str | None = Field(None, description="Couleur d'accent hex, ex: #10b981")
+    logo: str | None = Field(None, description="Logo en data-URI base64, None pour retirer")
+    public_whatsapp: str | None = Field(None, max_length=20, description="Numéro WhatsApp affiché aux visiteurs, format E.164")
+
+    @field_validator("theme_color")
+    @classmethod
+    def validate_theme_color(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        if not re.fullmatch(r"#[0-9A-Fa-f]{6}", v):
+            raise ValueError("Couleur invalide, format attendu: #RRGGBB")
+        return v
+
+    @field_validator("public_whatsapp")
+    @classmethod
+    def validate_public_whatsapp(cls, v: str | None) -> str | None:
+        if v is None or v == "":
+            return None
+        if not re.fullmatch(r"\+[1-9]\d{7,14}", v):
+            raise ValueError("Numéro invalide, format attendu: +224620000000 (E.164)")
+        return v
 
 
 class UpdateFinancialVisibilityRequest(BaseModel):

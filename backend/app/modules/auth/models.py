@@ -5,7 +5,7 @@ Tenants (boutiques) et Utilisateurs
 import uuid
 import enum
 from datetime import datetime
-from sqlalchemy import Column, String, Boolean, Enum, ForeignKey, DateTime, func
+from sqlalchemy import Column, String, Boolean, Enum, ForeignKey, DateTime, Text, func
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import relationship
 
@@ -69,6 +69,21 @@ class Tenant(Base):
     # changement de comportement tant que rien n'est activé. owner/admin ne
     # peuvent jamais être masqués, même ajoutés ici par erreur.
     hidden_financial_roles = Column(ARRAY(String), default=[], nullable=False)
+    # Personnalisation de la vitrine publique (chantier vitrine, Phase
+    # "prérequis Facebook" — jamais exposés à un rôle non-owner en écriture,
+    # voir UpdateTenantRequest/update_tenant). logo en data-URI base64,
+    # même schéma de stockage que Product.images (voir app.core.thumbnails) —
+    # servi comme vraie ressource HTTP via GET /storefront/{slug}/logo pour
+    # rester récupérable par un crawler Open Graph/WhatsApp/Facebook.
+    logo = Column(Text, nullable=True)
+    description = Column(String(300), nullable=True)
+    theme_color = Column(String(7), nullable=True)
+    # Numéro WhatsApp affiché aux visiteurs de la vitrine (bouton "Discuter
+    # sur WhatsApp") — volontairement distinct de whatsapp_phone_id/
+    # whatsapp_token_encrypted ci-dessus (identifiants API Twilio WhatsApp
+    # Business, jamais un numéro composable dans un lien wa.me/). Stocké tel
+    # que saisi (E.164 attendu, ex: +224620000000), jamais reformaté en base.
+    public_whatsapp = Column(String(20), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)

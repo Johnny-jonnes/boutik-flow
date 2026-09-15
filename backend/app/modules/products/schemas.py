@@ -54,8 +54,11 @@ class ProductCreate(BaseModel):
     category_id: uuid.UUID | None = None
     images: list[str] = Field(default_factory=list, description="URLs des images")
     is_available: bool = True
-    # Visibilité vitrine publique — jamais activée par défaut à la création.
-    is_public: bool = False
+    # Visibilité vitrine publique — activée par défaut à la création (choix
+    # explicite du propriétaire, voir chantier vitrine) : le boutiquier
+    # décoche au cas par cas plutôt que de devoir penser à cocher à chaque
+    # produit. Ne rétro-active jamais les produits déjà existants.
+    is_public: bool = True
     sku: str | None = Field(None, max_length=100, description="Code SKU unique")
     barcode: str | None = Field(None, max_length=100, description="Code-barres optionnel")
 

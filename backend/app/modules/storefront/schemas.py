@@ -17,6 +17,15 @@ class PublicStoreResponse(BaseModel):
     """Informations boutique visibles sur la vitrine publique."""
     name: str
     slug: str
+    description: str | None = None
+    theme_color: str | None = None
+    # Signal simple, même logique que has_image sur PublicProductResponse —
+    # le frontend construit l'URL absolue via GET /storefront/{slug}/logo.
+    has_logo: bool = False
+    # Numéro E.164 pour le bouton "Discuter sur WhatsApp" — jamais
+    # whatsapp_phone_id/whatsapp_token_encrypted (identifiants API internes,
+    # voir Tenant.public_whatsapp pour la distinction).
+    public_whatsapp: str | None = None
 
 
 class PublicProductResponse(BaseModel):

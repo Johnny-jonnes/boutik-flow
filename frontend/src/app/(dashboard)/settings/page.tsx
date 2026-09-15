@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Store, User, KeyRound, Eye, EyeOff, Save, Landmark, Copy, ExternalLink, Download, Printer } from 'lucide-react';
+import { Store, User, KeyRound, Eye, EyeOff, Save, Landmark, Copy, ExternalLink, Download, Printer, ImagePlus, X, MessageCircle } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
+import { compressImage } from '@/lib/utils/imageCompressor';
 
 interface Me {
   id: string;
@@ -20,6 +21,10 @@ interface TenantInfo {
   slug: string;
   plan: string;
   hidden_financial_roles?: string[];
+  logo?: string | null;
+  description?: string | null;
+  theme_color?: string | null;
+  public_whatsapp?: string | null;
 }
 
 const MASKABLE_ROLES = ['manager', 'cashier', 'stock_manager', 'seller_stock_manager', 'staff'] as const;
@@ -42,6 +47,10 @@ export default function SettingsPage() {
 
   // Boutique (owner uniquement)
   const [shopName, setShopName] = useState('');
+  const [shopDescription, setShopDescription] = useState('');
+  const [shopThemeColor, setShopThemeColor] = useState('#10b981');
+  const [shopWhatsapp, setShopWhatsapp] = useState('');
+  const [shopLogo, setShopLogo] = useState<string | null>(null);
   const [isSavingShop, setIsSavingShop] = useState(false);
 
   // Masquage des chiffres financiers par rôle (owner uniquement)
@@ -70,6 +79,10 @@ export default function SettingsPage() {
           phone: meRes.phone || '',
         });
         setShopName(tenantRes.name || '');
+        setShopDescription(tenantRes.description || '');
+        setShopThemeColor(tenantRes.theme_color || '#10b981');
+        setShopWhatsapp(tenantRes.public_whatsapp || '');
+        setShopLogo(tenantRes.logo || null);
         setHiddenFinancialRoles(tenantRes.hidden_financial_roles || []);
       } catch {
         toast.error(fr ? 'Erreur lors du chargement des informations' : 'Error loading information');
@@ -89,9 +102,20 @@ export default function SettingsPage() {
       toast.error(fr ? 'Le nom de la boutique est requis' : 'Shop name is required');
       return;
     }
+    const whatsapp = shopWhatsapp.trim();
+    if (whatsapp && !/^\+[1-9]\d{7,14}$/.test(whatsapp)) {
+      toast.error(fr ? 'Numéro WhatsApp invalide — format attendu : +224620000000' : 'Invalid WhatsApp number — expected format: +224620000000');
+      return;
+    }
     setIsSavingShop(true);
     try {
-      const updated = await api.updateTenant({ name: shopName.trim() });
+      const updated = await api.updateTenant({
+        name: shopName.trim(),
+        description: shopDescription.trim() || null,
+        theme_color: shopThemeColor || null,
+        public_whatsapp: whatsapp || null,
+        logo: shopLogo,
+      });
       setTenant(updated);
       toast.success(fr ? 'Boutique mise à jour' : 'Shop updated');
     } catch (err: any) {
@@ -99,6 +123,18 @@ export default function SettingsPage() {
     } finally {
       setIsSavingShop(false);
     }
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64String = reader.result as string;
+      const compressed = await compressImage(base64String, 300, 300, 0.85);
+      setShopLogo(compressed);
+    };
+    reader.readAsDataURL(file);
   };
 
   // Lien public de la boutique — même domaine que le partage produit
@@ -256,11 +292,73 @@ export default function SettingsPage() {
             <Store size={18} />
             <h2>{fr ? 'Boutique' : 'Shop'}</h2>
           </div>
+          <p className="settings-hint">
+            {fr
+              ? 'Ces informations personnalisent votre page vitrine publique (logo, couleur, description) — visibles par tous vos clients.'
+              : 'These settings personalize your public storefront page (logo, color, description) — visible to all your customers.'}
+          </p>
           <form onSubmit={handleSaveShop} className="settings-form">
             <div className="input-group">
               <label className="form-label">{fr ? 'Nom de la boutique' : 'Shop name'}</label>
               <input className="input" value={shopName} onChange={e => setShopName(e.target.value)} required minLength={2} />
             </div>
+
+            <div className="input-group">
+              <label className="form-label">{fr ? 'Logo de la boutique' : 'Shop logo'}</label>
+              <div className="logo-upload-row">
+                <div className="logo-preview">
+                  {shopLogo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={shopLogo} alt="Logo" />
+                  ) : (
+                    <Store size={22} />
+                  )}
+                </div>
+                <label className="btn btn-secondary btn-sm logo-upload-btn">
+                  <ImagePlus size={14} /> {fr ? 'Choisir une image' : 'Choose image'}
+                  <input type="file" accept="image/*" onChange={handleLogoUpload} hidden />
+                </label>
+                {shopLogo && (
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShopLogo(null)}>
+                    <X size={14} /> {fr ? 'Retirer' : 'Remove'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="input-group">
+              <label className="form-label">{fr ? 'Description / slogan' : 'Description / tagline'}</label>
+              <textarea
+                className="input"
+                rows={2}
+                maxLength={300}
+                value={shopDescription}
+                onChange={e => setShopDescription(e.target.value)}
+                placeholder={fr ? 'Ex : Les meilleurs prix pour vos produits électroniques' : 'Ex: Best prices for your electronics'}
+              />
+            </div>
+
+            <div className="input-group">
+              <label className="form-label">{fr ? 'Couleur d\'accent' : 'Accent color'}</label>
+              <div className="color-picker-row">
+                <input type="color" className="color-input" value={shopThemeColor} onChange={e => setShopThemeColor(e.target.value)} />
+                <span className="color-value">{shopThemeColor}</span>
+              </div>
+            </div>
+
+            <div className="input-group">
+              <label className="form-label">{fr ? 'Numéro WhatsApp pour vos clients' : 'WhatsApp number for customers'}</label>
+              <input
+                className="input"
+                value={shopWhatsapp}
+                onChange={e => setShopWhatsapp(e.target.value)}
+                placeholder="+224620000000"
+              />
+              <span className="settings-field-hint">
+                <MessageCircle size={12} /> {fr ? 'Format international, ex : +224620000000. Laissez vide pour masquer le bouton WhatsApp sur la vitrine.' : 'International format, e.g. +224620000000. Leave empty to hide the WhatsApp button on the storefront.'}
+              </span>
+            </div>
+
             <button type="submit" className="btn btn-primary" disabled={isSavingShop}>
               <Save size={16} /> {isSavingShop ? (fr ? 'Enregistrement…' : 'Saving…') : (fr ? 'Enregistrer' : 'Save')}
             </button>
@@ -439,6 +537,28 @@ export default function SettingsPage() {
         .store-link-preview:hover { text-decoration: underline; }
         .store-qr-actions { display: flex; gap: 0.6rem; }
         .store-qr-actions .btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.4rem; }
+        .logo-upload-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+        .logo-preview {
+          width: 52px; height: 52px; border-radius: 12px;
+          background: var(--bg-secondary, rgba(255,255,255,0.05));
+          border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+          display: flex; align-items: center; justify-content: center;
+          overflow: hidden; flex-shrink: 0; color: var(--text-muted);
+        }
+        .logo-preview img { width: 100%; height: 100%; object-fit: cover; }
+        .logo-upload-btn { display: flex; align-items: center; gap: 0.4rem; cursor: pointer; }
+        .color-picker-row { display: flex; align-items: center; gap: 0.7rem; }
+        .color-input {
+          width: 44px; height: 36px; padding: 2px; border-radius: 8px;
+          border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+          background: none; cursor: pointer;
+        }
+        .color-value { font-size: 0.85rem; color: var(--text-muted); font-family: monospace; }
+        .settings-field-hint {
+          display: flex; align-items: center; gap: 0.35rem;
+          font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem;
+        }
+        textarea.input { resize: vertical; font-family: inherit; }
         .pw-field { position: relative; display: flex; align-items: center; }
         .pw-toggle {
           position: absolute; right: 0.6rem; background: none; border: none;

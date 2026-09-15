@@ -3,16 +3,37 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { Store } from 'lucide-react';
 import { publicApi, PublicApiError } from '@/lib/api/publicClient';
+import { ProductGrid } from '@/components/storefront/ProductGrid';
+import { WhatsAppButton } from '@/components/storefront/WhatsAppButton';
 
 // Server Component : pas de JS client nécessaire pour afficher le
 // catalogue, rendu direct côté serveur — rapide sur mobile/connexion
 // lente, et permet un vrai SEO (generateMetadata ci-dessous) plutôt
 // qu'une page vide indexée par les moteurs de recherche/crawlers sociaux.
+// La recherche/pagination "voir plus" sont déléguées à ProductGrid (client
+// component), seule partie de la page qui a besoin d'interactivité.
 export const dynamic = 'force-dynamic';
 
-async function getStore(slug: string) {
+const PER_PAGE = 24;
+
+// Convertit #RRGGBB en rgba(...) pour les fonds/halos dérivés de la couleur
+// d'accent choisie par le boutiquier — calculé côté serveur (Server
+// Component), pas de JS client nécessaire pour ça.
+function hexToRgba(hex: string, alpha: number): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return `rgba(16, 185, 129, ${alpha})`;
+  const int = parseInt(m[1], 16);
+  const r = (int >> 16) & 255, g = (int >> 8) & 255, b = int & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+async function getData(slug: string) {
   try {
-    return await publicApi.getStore(slug);
+    const [store, products] = await Promise.all([
+      publicApi.getStore(slug),
+      publicApi.listProducts(slug, 1, PER_PAGE),
+    ]);
+    return { store, products };
   } catch (e) {
     if (e instanceof PublicApiError && e.status === 404) return null;
     throw e;
@@ -21,27 +42,33 @@ async function getStore(slug: string) {
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const store = await getStore(slug);
-  if (!store) return { title: 'Boutique introuvable · BoutikFlow' };
+  const data = await getData(slug);
+  if (!data) return { title: 'Boutique introuvable · BoutikFlow' };
+  const { store } = data;
+  const description = store.description || `Découvrez les produits de ${store.name} sur BoutikFlow.`;
   return {
     title: `${store.name} · BoutikFlow`,
-    description: `Découvrez les produits de ${store.name} sur BoutikFlow.`,
+    description,
     alternates: { canonical: `/boutique/${slug}` },
     openGraph: {
       title: store.name,
-      description: `Découvrez les produits de ${store.name} sur BoutikFlow.`,
+      description,
       type: 'website',
       url: `/boutique/${slug}`,
+      images: store.has_logo ? [publicApi.logoUrl(slug)] : [],
     },
   };
 }
 
 export default async function StorefrontPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const store = await getStore(slug);
-  if (!store) notFound();
+  const data = await getData(slug);
+  if (!data) notFound();
+  const { store, products } = data;
 
-  const products = await publicApi.listProducts(slug, 1, 40);
+  const accent = store.theme_color || '#10b981';
+  const accentSoft = hexToRgba(accent, 0.12);
+  const accentGlow = hexToRgba(accent, 0.35);
 
   return (
     <div className="storefront">
@@ -56,40 +83,32 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
 
       <main className="storefront-content">
         <div className="store-banner">
-          <div className="store-icon"><Store size={28} /></div>
+          <div className="store-glow" style={{ background: accentGlow }} />
+          <div className="store-icon" style={{ background: accentSoft, color: accent, borderColor: hexToRgba(accent, 0.3) }}>
+            {store.has_logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={publicApi.logoUrl(slug)} alt={store.name} className="store-logo-img" />
+            ) : (
+              <Store size={28} />
+            )}
+          </div>
           <h1 className="store-name">{store.name}</h1>
+          {store.description && <p className="store-description">{store.description}</p>}
         </div>
 
-        {products.items.length === 0 ? (
-          <div className="empty-state">
-            <p>Cette boutique n&apos;a pas encore de produits publiés.</p>
-          </div>
-        ) : (
-          <div className="product-grid">
-            {products.items.map((p) => (
-              <Link key={p.id} href={`/boutique/${slug}/produit/${p.id}`} className="product-card">
-                <div className="product-image-wrap">
-                  {p.has_image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={publicApi.imageUrl(slug, p.id)} alt={p.name} className="product-image" loading="lazy" />
-                  ) : (
-                    <div className="product-image-placeholder" />
-                  )}
-                  {!p.is_available && <span className="badge-unavailable">Rupture</span>}
-                </div>
-                <div className="product-info">
-                  <span className="product-name">{p.name}</span>
-                  <span className="product-price">{Number(p.price).toLocaleString('fr-GN')} GNF</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
+        <ProductGrid slug={slug} initialData={products} perPage={PER_PAGE} accent={accent} />
       </main>
 
       <footer className="storefront-footer">
         <p>Propulsé par BoutikFlow</p>
       </footer>
+
+      {store.public_whatsapp && (
+        <WhatsAppButton
+          phone={store.public_whatsapp}
+          message={`Bonjour ${store.name}, je suis intéressé(e) par vos produits.`}
+        />
+      )}
 
       <style>{`
         .storefront {
@@ -108,7 +127,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
           padding: 1rem 1.5rem;
         }
         .storefront-header-inner {
-          max-width: 1000px;
+          max-width: 1100px;
           margin: 0 auto;
         }
         .logo-brand {
@@ -136,104 +155,66 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
           color: white;
         }
         .storefront-content {
-          max-width: 1000px;
+          max-width: 1100px;
           margin: 0 auto;
           padding: 1.5rem;
         }
         .store-banner {
+          position: relative;
           display: flex;
           flex-direction: column;
           align-items: center;
           text-align: center;
-          gap: 0.75rem;
-          padding: 2rem 1rem;
+          gap: 0.6rem;
+          padding: 2.5rem 1rem 2rem;
+          overflow: hidden;
+        }
+        .store-glow {
+          position: absolute;
+          top: -60px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 320px;
+          height: 200px;
+          filter: blur(60px);
+          border-radius: 50%;
+          pointer-events: none;
+          z-index: 0;
         }
         .store-icon {
-          width: 56px;
-          height: 56px;
-          border-radius: 16px;
-          background: rgba(16, 185, 129, 0.12);
-          color: #34d399;
+          position: relative;
+          z-index: 1;
+          width: 64px;
+          height: 64px;
+          border-radius: 18px;
+          border: 1px solid;
           display: flex;
           align-items: center;
           justify-content: center;
+          overflow: hidden;
+          animation: store-icon-in 0.5s ease;
         }
+        @keyframes store-icon-in {
+          from { opacity: 0; transform: scale(0.85) translateY(-6px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .store-logo-img { width: 100%; height: 100%; object-fit: cover; }
         .store-name {
-          font-size: 1.6rem;
+          position: relative;
+          z-index: 1;
+          font-size: 1.7rem;
           font-weight: 800;
           color: white;
           margin: 0;
         }
-        .empty-state {
-          text-align: center;
-          padding: 3rem 1rem;
-          color: #9ca3af;
-        }
-        .product-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-          gap: 1rem;
-          margin-top: 1rem;
-        }
-        .product-card {
-          display: flex;
-          flex-direction: column;
-          background: #111827;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 14px;
-          overflow: hidden;
-          text-decoration: none;
-          transition: border-color 0.15s ease;
-        }
-        .product-card:hover {
-          border-color: rgba(16, 185, 129, 0.4);
-        }
-        .product-image-wrap {
+        .store-description {
           position: relative;
-          width: 100%;
-          aspect-ratio: 1;
-          background: #1f2937;
-        }
-        .product-image {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          display: block;
-        }
-        .product-image-placeholder {
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(135deg, #1f2937, #111827);
-        }
-        .badge-unavailable {
-          position: absolute;
-          top: 0.5rem;
-          right: 0.5rem;
-          background: rgba(244, 63, 94, 0.9);
-          color: white;
-          font-size: 0.7rem;
-          font-weight: 700;
-          padding: 0.2rem 0.5rem;
-          border-radius: 6px;
-        }
-        .product-info {
-          padding: 0.75rem;
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
-        .product-name {
-          font-size: 0.9rem;
-          font-weight: 600;
-          color: #f3f4f6;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-        .product-price {
-          font-size: 0.85rem;
-          font-weight: 700;
-          color: #34d399;
+          z-index: 1;
+          max-width: 480px;
+          color: #9ca3af;
+          font-size: 0.95rem;
+          line-height: 1.6;
+          margin: 0;
         }
         .storefront-footer {
           text-align: center;

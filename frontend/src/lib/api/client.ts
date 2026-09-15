@@ -1496,6 +1496,10 @@ interface TenantInfo {
   is_active: boolean;
   created_at: string;
   hidden_financial_roles?: string[];
+  logo?: string | null;
+  description?: string | null;
+  theme_color?: string | null;
+  public_whatsapp?: string | null;
 }
 
 interface SubscriptionInfo {
@@ -1581,7 +1585,7 @@ export const api = {
     return request('/auth/me/password', { method: 'PUT', body: JSON.stringify(data) });
   },
 
-  updateTenant(data: { name: string }): Promise<TenantInfo> {
+  updateTenant(data: { name: string; description?: string | null; theme_color?: string | null; logo?: string | null; public_whatsapp?: string | null }): Promise<TenantInfo> {
     return request('/auth/tenant', { method: 'PUT', body: JSON.stringify(data) });
   },
 
