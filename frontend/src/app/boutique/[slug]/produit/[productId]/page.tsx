@@ -34,10 +34,12 @@ export async function generateMetadata({
   return {
     title: `${product.name} — ${priceLabel} · ${store.name}`,
     description,
+    alternates: { canonical: `/boutique/${slug}/produit/${productId}` },
     openGraph: {
       title: product.name,
       description,
       type: 'website',
+      url: `/boutique/${slug}/produit/${productId}`,
       images,
     },
   };

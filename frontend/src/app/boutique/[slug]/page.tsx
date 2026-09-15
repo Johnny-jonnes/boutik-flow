@@ -26,10 +26,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: `${store.name} · BoutikFlow`,
     description: `Découvrez les produits de ${store.name} sur BoutikFlow.`,
+    alternates: { canonical: `/boutique/${slug}` },
     openGraph: {
       title: store.name,
       description: `Découvrez les produits de ${store.name} sur BoutikFlow.`,
       type: 'website',
+      url: `/boutique/${slug}`,
     },
   };
 }

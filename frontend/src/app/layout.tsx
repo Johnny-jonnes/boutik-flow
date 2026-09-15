@@ -6,7 +6,15 @@ import { PWARegister } from "@/components/PWARegister";
 import { QueryProvider } from "@/components/QueryProvider";
 import "./globals.css";
 
+// Base pour résoudre les URLs relatives (canonical, og:image) sur toutes
+// les pages, y compris la vitrine publique — variable d'env avec repli sur
+// le domaine Vercel actuel, pour rester compatible sans refonte le jour où
+// un domaine personnalisé (boutikflow.com) est configuré (voir cahier des
+// charges chantier vitrine, section 27).
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://boutik-flow.vercel.app";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "BoutikFlow — Vendre, gérer, suivre votre boutique",
   description:
     "BoutikFlow : vendez, gérez vos produits, clients et finances. 100% offline. Conçu pour les commerçants africains.",
