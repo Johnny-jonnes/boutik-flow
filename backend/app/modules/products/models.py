@@ -51,6 +51,11 @@ class Product(Base):
     # injoignable (dizaines de Mo, la page ne chargeait plus du tout).
     thumbnail = Column(Text, nullable=True)
     is_available = Column(Boolean, default=True, nullable=False)
+    # Visibilité sur la vitrine publique (/boutique/{slug}) — opt-in
+    # explicite, jamais activé par défaut. Distinct de is_available (qui
+    # gère la vente en caisse/interne) : un produit peut être en vente en
+    # interne sans jamais apparaître publiquement, et inversement.
+    is_public = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)

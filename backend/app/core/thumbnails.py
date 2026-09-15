@@ -23,6 +23,28 @@ THUMBNAIL_MAX_SIZE = (150, 150)
 THUMBNAIL_QUALITY = 60
 
 
+def decode_data_uri(data_uri: str | None) -> tuple[bytes, str] | None:
+    """Décode un data-URI image en (octets bruts, type MIME) — utilisé par
+    l'endpoint qui sert une image produit comme une vraie ressource HTTP
+    (voir storefront/router.py), puisque rien ne peut fetcher un data-URI
+    embarqué (ni un crawler Open Graph, ni une balise <img src> simple sans
+    gonfler le HTML). Retourne None si l'entrée est vide ou non décodable."""
+    if not data_uri:
+        return None
+    try:
+        header, _, encoded = data_uri.partition(",")
+        if not encoded:
+            return None
+        content_type = "image/jpeg"
+        if header.startswith("data:") and ";base64" in header:
+            content_type = header[len("data:"):].split(";", 1)[0] or content_type
+        raw = base64.b64decode(encoded)
+        return raw, content_type
+    except Exception as e:
+        logger.warning("Échec de décodage d'image : %s", e)
+        return None
+
+
 def generate_thumbnail(data_uri: str | None) -> str | None:
     """Dérive une miniature JPEG compressée d'un data-URI image.
 

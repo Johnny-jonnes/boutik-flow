@@ -54,6 +54,8 @@ class ProductCreate(BaseModel):
     category_id: uuid.UUID | None = None
     images: list[str] = Field(default_factory=list, description="URLs des images")
     is_available: bool = True
+    # Visibilité vitrine publique — jamais activée par défaut à la création.
+    is_public: bool = False
     sku: str | None = Field(None, max_length=100, description="Code SKU unique")
     barcode: str | None = Field(None, max_length=100, description="Code-barres optionnel")
 
@@ -68,6 +70,7 @@ class ProductUpdate(BaseModel):
     category_id: uuid.UUID | None = None
     images: list[str] | None = None
     is_available: bool | None = None
+    is_public: bool | None = None
     sku: str | None = Field(None, max_length=100)
     barcode: str | None = Field(None, max_length=100)
 
@@ -90,6 +93,7 @@ class ProductResponse(BaseModel):
     # produit existant avec photo n'a pas encore été rétro-rempli.
     thumbnail: str | None = None
     is_available: bool
+    is_public: bool = False
     sku: str | None
     barcode: str | None
     created_at: datetime

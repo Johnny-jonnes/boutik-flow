@@ -142,6 +142,8 @@ export interface Product {
   /** Miniature compressée (~5-10 Ko), présente en liste ET en détail. */
   thumbnail?: string | null;
   is_available: boolean;
+  /** Visible sur la vitrine publique (/boutique/{slug}) — jamais activé par défaut. */
+  is_public: boolean;
   sku: string | null;
   barcode: string | null;
   created_at: string;
@@ -158,6 +160,7 @@ export interface ProductCreate {
   category_id?: string;
   images?: string[];
   is_available?: boolean;
+  is_public?: boolean;
   sku?: string;
   barcode?: string;
 }

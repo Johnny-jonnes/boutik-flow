@@ -39,6 +39,7 @@ from app.modules.suppliers.router import router as suppliers_router
 from app.modules.audit.router import router as audit_router
 from app.modules.finance.router import router as finance_router
 from app.modules.crm.debt_router import router as debt_router
+from app.modules.storefront.router import router as storefront_router
 
 app = FastAPI(
     title="BoutikFlow API",
@@ -126,6 +127,7 @@ app.include_router(suppliers_router, prefix=API_PREFIX)
 app.include_router(audit_router, prefix=API_PREFIX)
 app.include_router(finance_router, prefix=API_PREFIX)
 app.include_router(debt_router, prefix=API_PREFIX)
+app.include_router(storefront_router, prefix=API_PREFIX)
 
 
 # ─── Health Check ───────────────────────────────────────────────────────────

@@ -224,6 +224,7 @@ def _product_to_list_response(p: Product, hide_cost_price: bool = False) -> Prod
         images=[],
         thumbnail=p.thumbnail,
         is_available=p.is_available,
+        is_public=p.is_public,
         sku=p.sku,
         barcode=p.barcode,
         created_at=p.created_at,

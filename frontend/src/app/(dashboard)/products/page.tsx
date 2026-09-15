@@ -56,7 +56,7 @@ function ProductsContent() {
   const [isBulkStockInOpen, setIsBulkStockInOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addForm, setAddForm] = useState({
-    name: '', price: '', cost_price: '', stock: '', category_id: '', description: '', is_available: true, sku: '', barcode: '',
+    name: '', price: '', cost_price: '', stock: '', category_id: '', description: '', is_available: true, is_public: false, sku: '', barcode: '',
   });
 
   // View modal
@@ -66,7 +66,7 @@ function ProductsContent() {
   // Edit modal
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [editForm, setEditForm] = useState({
-    name: '', price: '', cost_price: '', stock: '', category_id: '', description: '', is_available: true, sku: '', barcode: '',
+    name: '', price: '', cost_price: '', stock: '', category_id: '', description: '', is_available: true, is_public: false, sku: '', barcode: '',
   });
   const [isEditing, setIsEditing] = useState(false);
 
@@ -119,13 +119,14 @@ function ProductsContent() {
         category_id: addForm.category_id || undefined,
         description: addForm.description || undefined,
         is_available: addForm.is_available,
+        is_public: addForm.is_public,
         sku: finalSku,
         barcode: addForm.barcode || undefined,
         images: addImagePreview ? [addImagePreview] : [],
       });
       toast.success('Produit ajouté avec succès');
       setIsAddOpen(false);
-      setAddForm({ name: '', price: '', cost_price: '', stock: '', category_id: '', description: '', is_available: true, sku: '', barcode: '' });
+      setAddForm({ name: '', price: '', cost_price: '', stock: '', category_id: '', description: '', is_available: true, is_public: false, sku: '', barcode: '' });
       setAddImagePreview(null);
       // Mise à jour locale immédiate du cache partagé — pas de rechargement
       // complet, le nouveau produit apparaît instantanément dans la liste
@@ -167,6 +168,7 @@ function ProductsContent() {
       category_id: full.category_id || '',
       description: full.description || '',
       is_available: full.is_available,
+      is_public: full.is_public,
       sku: full.sku || '',
       barcode: full.barcode || '',
     });
@@ -190,6 +192,7 @@ function ProductsContent() {
         category_id: editForm.category_id || undefined,
         description: editForm.description || undefined,
         is_available: editForm.is_available,
+        is_public: editForm.is_public,
         sku: finalSku,
         barcode: editForm.barcode || undefined,
         // Omis si l'image n'a pas changé (voir editImageChanged) : la
@@ -495,6 +498,12 @@ function ProductsContent() {
           Disponible à la vente
         </label>
 
+        <label className="checkbox-label">
+          <input type="checkbox" checked={form.is_public}
+            onChange={e => setForm({ ...form, is_public: e.target.checked })} />
+          Visible sur la vitrine publique
+        </label>
+
         <div className="modal-actions">
           <button type="button" className="btn btn-ghost" onClick={onCancel}>Annuler</button>
           <button type="submit" className="btn btn-primary" disabled={loading}>{loading ? 'Chargement...' : submitLabel}</button>
@@ -760,6 +769,7 @@ function ProductsContent() {
             <div className="detail-row"><span className="detail-label">Catégorie</span><span className="detail-value">{viewProduct.category_rel?.name || '—'}</span></div>
             <div className="detail-row"><span className="detail-label">Description</span><span className="detail-value">{viewProduct.description || '—'}</span></div>
             <div className="detail-row"><span className="detail-label">Disponible</span><span className="detail-value">{viewProduct.is_available ? 'Oui' : 'Non'}</span></div>
+            <div className="detail-row"><span className="detail-label">Vitrine publique</span><span className="detail-value">{viewProduct.is_public ? 'Visible' : 'Masqué'}</span></div>
             <div className="detail-row"><span className="detail-label">Créé le</span><span className="detail-value">{new Date(viewProduct.created_at).toLocaleDateString('fr-FR')}</span></div>
 
             {viewProduct.sku && (
