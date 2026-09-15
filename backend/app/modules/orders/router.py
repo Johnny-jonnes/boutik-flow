@@ -919,7 +919,7 @@ def return_order_items(
         details=f"Retour sur commande {str(order.id)[:8]}: {', '.join(returned_details)}. Motif: {payload.reason}. Remboursé: {refund_amount} GNF.{debt_adjustment_note}",
     )
 
-    db.commit()
+    db.flush()
 
     response = {
         "message": "Retour enregistré avec succès",
@@ -930,5 +930,21 @@ def return_order_items(
         "restocked": payload.restock_inventory,
         "details": ", ".join(returned_details),
     }
-    store_response(db, current_user.tenant_id, "orders.return", idempotency_key, status.HTTP_200_OK, response)
+    # store_response_atomic (jamais store_response) : ajoute la ligne
+    # d'idempotence à CETTE MÊME transaction, validée par le commit juste
+    # en dessous — même fenêtre de course que orders.create/debts.pay
+    # (Phase 4 de l'audit de performance), jamais corrigée ici jusqu'à
+    # présent : deux requêtes concurrentes avec la même clé passaient
+    # toutes deux get_cached_response() avant qu'aucune n'ait rien
+    # enregistré, produisant un double remboursement + double réassort de
+    # stock pour un seul retour physique.
+    store_response_atomic(db, current_user.tenant_id, "orders.return", idempotency_key, status.HTTP_200_OK, response)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        cached = get_cached_response(db, current_user.tenant_id, "orders.return", idempotency_key)
+        if cached:
+            return cached[1]
+        raise
     return response
