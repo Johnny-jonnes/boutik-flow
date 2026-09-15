@@ -435,15 +435,36 @@ def create_order(
         ).first()
 
         if not counter_client:
-            counter_client = Client(
-                id=uuid.uuid4(),
-                tenant_id=current_user.tenant_id,
-                name="Passant",
-                phone="+22400000000",
-                notes="Client automatique pour les ventes anonymes de caisse",
-            )
-            db.add(counter_client)
-            db.flush()
+            # Savepoint : sur une boutique qui n'a encore jamais eu de vente
+            # anonyme, plusieurs ventes "passant" concurrentes peuvent
+            # chacune arriver ici sans avoir rien trouvé — un index unique
+            # partiel (migration 2027fabd500c) garantit qu'une seule
+            # création réussit réellement ; les autres rattrapent l'erreur
+            # et relisent la ligne du "gagnant" au lieu de planter ou de
+            # dupliquer le client comptoir.
+            savepoint = db.begin_nested()
+            try:
+                counter_client = Client(
+                    id=uuid.uuid4(),
+                    tenant_id=current_user.tenant_id,
+                    name="Passant",
+                    phone="+22400000000",
+                    notes="Client automatique pour les ventes anonymes de caisse",
+                )
+                db.add(counter_client)
+                db.flush()
+                savepoint.commit()
+            except IntegrityError:
+                savepoint.rollback()
+                counter_client = db.query(Client).filter(
+                    and_(
+                        Client.tenant_id == current_user.tenant_id,
+                        Client.phone == "+22400000000",
+                        Client.deleted_at.is_(None),
+                    )
+                ).first()
+                if not counter_client:
+                    raise
 
         client = counter_client
         target_client_id = counter_client.id
