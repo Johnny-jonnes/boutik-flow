@@ -504,17 +504,7 @@ function ProductsContent() {
           <p className="page-subtitle">{t('prod.subtitle')}</p>
         </div>
         <div className="header-actions" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <button 
-            className="btn btn-secondary" 
-            onClick={() => window.print()}
-            title={t('common.print')}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-          >
-            <Printer size={16} />
-            <span>{t('common.print')}</span>
-          </button>
-
-          <button 
+          <button
             className="btn btn-secondary" 
             onClick={() => {
               const headers = ['Nom', 'Catégorie', 'Prix (GNF)', 'Stock', 'SKU', 'Code-barres', 'Statut'];
