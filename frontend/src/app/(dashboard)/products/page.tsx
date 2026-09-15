@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, Suspense } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Search, ImageIcon, Pencil, Trash2, Eye, Plus, Download, Printer, Camera, Layers, Wallet, Package, PackagePlus } from 'lucide-react';
+import { Search, ImageIcon, Pencil, Trash2, Eye, Plus, Download, Printer, Camera, Layers, Wallet, Package, PackagePlus, Share2, MessageCircle, Globe, Link as LinkIcon } from 'lucide-react';
 import type { Product } from '@/types';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
@@ -14,7 +14,7 @@ import { BulkStockInModal } from '@/components/ui/BulkStockInModal';
 import { useLanguage } from '@/context/LanguageContext';
 import { compressImage } from '@/lib/utils/imageCompressor';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useProductsQuery, useCategoriesQuery, useProductStatsQuery, queryKeys } from '@/lib/queries';
+import { useProductsQuery, useCategoriesQuery, useProductStatsQuery, useTenantQuery, queryKeys } from '@/lib/queries';
 import { usePermission } from '@/lib/permissions';
 
 function formatGNF(amount: number) {
@@ -40,6 +40,7 @@ function ProductsContent() {
   const { data: productsData, isLoading } = useProductsQuery();
   const { data: categoriesData } = useCategoriesQuery();
   const { data: statsData } = useProductStatsQuery();
+  const { data: tenantData } = useTenantQuery();
   const products = productsData?.items ?? [];
   const categories = categoriesData?.items ?? [];
   const [searchQuery, setSearchQuery] = useState('');
@@ -250,6 +251,35 @@ function ProductsContent() {
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  // Partage (Phase 3, chantier vitrine publique) — le lien pointe toujours
+  // vers la PAGE PRODUIT publique, jamais l'accueil (voir cahier des
+  // charges). Le domaine actuel (Vercel) fonctionne dès maintenant ; le
+  // jour d'un domaine personnalisé, seule NEXT_PUBLIC_SITE_URL change.
+  const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://boutik-flow.vercel.app';
+  const getPublicProductUrl = (productId: string) =>
+    `${SITE_URL}/boutique/${tenantData?.slug}/produit/${productId}`;
+
+  const handleShareWhatsApp = (product: Product) => {
+    const url = getPublicProductUrl(product.id);
+    const text = `${product.name} — ${formatGNF(product.price)}\n${url}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  const handleShareFacebook = (product: Product) => {
+    const url = getPublicProductUrl(product.id);
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
+  };
+
+  const handleCopyProductLink = async (product: Product) => {
+    const url = getPublicProductUrl(product.id);
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Lien copié');
+    } catch {
+      toast.error('Impossible de copier le lien');
+    }
   };
 
   // QR Code download/print helpers — générés localement (le service Google
@@ -792,6 +822,23 @@ function ProductsContent() {
               </div>
             )}
 
+            {viewProduct.is_public && tenantData?.slug && (
+              <div className="share-section">
+                <div className="share-label"><Share2 size={14} /> Partager le produit</div>
+                <div className="share-buttons">
+                  <button className="btn btn-secondary btn-sm" onClick={() => handleShareWhatsApp(viewProduct)}>
+                    <MessageCircle size={14} /> WhatsApp
+                  </button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => handleShareFacebook(viewProduct)}>
+                    <Globe size={14} /> Facebook
+                  </button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => handleCopyProductLink(viewProduct)}>
+                    <LinkIcon size={14} /> Copier le lien
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="modal-actions">
               <button className="btn btn-ghost" onClick={() => setViewProduct(null)}>Fermer</button>
               {canWrite && (
@@ -946,6 +993,32 @@ function ProductsContent() {
           border-radius: 12px;
           padding: 0.75rem;
           margin-top: 0.5rem;
+        }
+        .share-section {
+          background: var(--overlay-subtle);
+          border: 1px solid var(--border-subtle);
+          border-radius: 12px;
+          padding: 0.75rem;
+          margin-top: 0.75rem;
+        }
+        .share-label {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: var(--text-secondary);
+          margin-bottom: 0.6rem;
+        }
+        .share-buttons {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+        }
+        .share-buttons .btn {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
         }
         @media (max-width: 480px) {
           .qr-container-row {

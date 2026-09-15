@@ -93,6 +93,18 @@ export function useProductStatsQuery() {
   });
 }
 
+// Slug de la boutique courante — change rarement (jamais en pratique), mis
+// en cache longtemps. Utilisé pour construire les liens de partage vers la
+// vitrine publique (Phase 3 du chantier vitrine) sans refaire cet appel à
+// chaque ouverture de la fiche produit.
+export function useTenantQuery() {
+  return useQuery({
+    queryKey: ['tenant'],
+    queryFn: () => api.getTenant(),
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
 // Tout l'historique des commandes, en une seule entrée de cache partagée
 // par Dashboard et Ventes (comme products()/clients() le sont par
 // Dashboard/Vendre/Produits/Clients). Boucle sur toutes les pages serveur

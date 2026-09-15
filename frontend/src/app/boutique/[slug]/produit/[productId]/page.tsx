@@ -3,8 +3,11 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { ArrowLeft } from 'lucide-react';
 import { publicApi, PublicApiError } from '@/lib/api/publicClient';
+import { ShareButtons } from '@/components/storefront/ShareButtons';
 
 export const dynamic = 'force-dynamic';
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://boutik-flow.vercel.app';
 
 async function getData(slug: string, productId: string) {
   try {
@@ -82,6 +85,12 @@ export default async function StorefrontProductPage({
           <span className="product-detail-price">{Number(product.price).toLocaleString('fr-GN')} GNF</span>
           {!product.is_available && <span className="badge-unavailable-inline">Rupture de stock</span>}
           {product.description && <p className="product-detail-description">{product.description}</p>}
+
+          <ShareButtons
+            url={`${SITE_URL}/boutique/${slug}/produit/${productId}`}
+            title={product.name}
+            price={`${Number(product.price).toLocaleString('fr-GN')} GNF`}
+          />
         </div>
       </main>
 
