@@ -52,19 +52,21 @@ export function ShareButtons({ url, title, price }: { url: string; title: string
           display: flex;
           align-items: center;
           gap: 0.4rem;
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          color: #e5e7eb;
+          background: var(--surface-2);
+          border: 1px solid var(--border-default);
+          color: var(--text-primary);
           padding: 0.5rem 0.9rem;
-          border-radius: 10px;
+          border-radius: var(--radius-md);
+          font-family: var(--font-sans);
           font-size: 0.85rem;
           font-weight: 600;
           cursor: pointer;
           text-decoration: none;
-          transition: background 0.15s ease;
+          transition: background 0.15s ease, border-color 0.15s ease;
         }
         .share-btn:hover {
-          background: rgba(255, 255, 255, 0.12);
+          background: var(--surface-3);
+          border-color: var(--border-strong);
         }
       `}</style>
     </div>

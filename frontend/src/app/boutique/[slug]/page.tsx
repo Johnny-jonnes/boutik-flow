@@ -10,30 +10,20 @@ import { WhatsAppButton } from '@/components/storefront/WhatsAppButton';
 // catalogue, rendu direct côté serveur — rapide sur mobile/connexion
 // lente, et permet un vrai SEO (generateMetadata ci-dessous) plutôt
 // qu'une page vide indexée par les moteurs de recherche/crawlers sociaux.
-// La recherche/pagination "voir plus" sont déléguées à ProductGrid (client
-// component), seule partie de la page qui a besoin d'interactivité.
+// La recherche/filtre catégorie/pagination sont délégués à ProductGrid
+// (client component), seule partie de la page qui a besoin d'interactivité.
 export const dynamic = 'force-dynamic';
 
 const PER_PAGE = 24;
 
-// Convertit #RRGGBB en rgba(...) pour les fonds/halos dérivés de la couleur
-// d'accent choisie par le boutiquier — calculé côté serveur (Server
-// Component), pas de JS client nécessaire pour ça.
-function hexToRgba(hex: string, alpha: number): string {
-  const m = /^#([0-9a-f]{6})$/i.exec(hex);
-  if (!m) return `rgba(16, 185, 129, ${alpha})`;
-  const int = parseInt(m[1], 16);
-  const r = (int >> 16) & 255, g = (int >> 8) & 255, b = int & 255;
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
 async function getData(slug: string) {
   try {
-    const [store, products] = await Promise.all([
+    const [store, products, categories] = await Promise.all([
       publicApi.getStore(slug),
       publicApi.listProducts(slug, 1, PER_PAGE),
+      publicApi.getCategories(slug),
     ]);
-    return { store, products };
+    return { store, products, categories };
   } catch (e) {
     if (e instanceof PublicApiError && e.status === 404) return null;
     throw e;
@@ -64,14 +54,17 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
   const { slug } = await params;
   const data = await getData(slug);
   if (!data) notFound();
-  const { store, products } = data;
+  const { store, products, categories } = data;
 
-  const accent = store.theme_color || '#10b981';
-  const accentSoft = hexToRgba(accent, 0.12);
-  const accentGlow = hexToRgba(accent, 0.35);
+  // Bandeau défilant : construit côté serveur à partir des premiers
+  // produits déjà chargés — aucune requête ni JS client supplémentaire.
+  // Dupliqué une fois pour une boucle CSS parfaitement continue.
+  const tickerSource = products.items.slice(0, 8);
+  const showTicker = tickerSource.length >= 3;
+  const tickerItems = showTicker ? [...tickerSource, ...tickerSource] : [];
 
   return (
-    <div className="storefront">
+    <div className="storefront light">
       <header className="storefront-header">
         <div className="storefront-header-inner">
           <Link href="/" className="logo-brand">
@@ -83,20 +76,32 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
 
       <main className="storefront-content">
         <div className="store-banner">
-          <div className="store-glow" style={{ background: accentGlow }} />
-          <div className="store-icon" style={{ background: accentSoft, color: accent, borderColor: hexToRgba(accent, 0.3) }}>
+          <div className="store-icon">
             {store.has_logo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={publicApi.logoUrl(slug)} alt={store.name} className="store-logo-img" />
             ) : (
-              <Store size={28} />
+              <Store size={44} />
             )}
           </div>
           <h1 className="store-name">{store.name}</h1>
           {store.description && <p className="store-description">{store.description}</p>}
         </div>
 
-        <ProductGrid slug={slug} initialData={products} perPage={PER_PAGE} accent={accent} />
+        {showTicker && (
+          <div className="ticker-wrap" aria-hidden="true">
+            <div className="ticker-track">
+              {tickerItems.map((p, i) => (
+                <span className="ticker-item" key={`${p.id}-${i}`}>
+                  <span className="ticker-dot" />
+                  <b>{p.name}</b> — {Number(p.price).toLocaleString('fr-GN')} GNF
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <ProductGrid slug={slug} initialData={products} categories={categories} perPage={PER_PAGE} />
       </main>
 
       <footer className="storefront-footer">
@@ -111,19 +116,23 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
       )}
 
       <style>{`
+        /* Vitrine publique : toujours claire, même si l'appareil du
+           visiteur est en mode sombre (voir classe "light" sur le
+           conteneur) — s'appuie sur le design system de l'app
+           (globals.css) plutôt qu'une palette dupliquée à la main. */
         .storefront {
           min-height: 100vh;
-          background: #090d16;
-          color: #e5e7eb;
-          font-family: system-ui, -apple-system, sans-serif;
+          background: var(--surface-0);
+          color: var(--text-primary);
+          font-family: var(--font-sans);
         }
         .storefront-header {
           position: sticky;
           top: 0;
           z-index: 50;
-          background: rgba(17, 24, 39, 0.85);
+          background: color-mix(in srgb, var(--surface-1) 88%, transparent);
           backdrop-filter: blur(12px);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          border-bottom: 1px solid var(--border-subtle);
           padding: 1rem 1.5rem;
         }
         .storefront-header-inner {
@@ -138,56 +147,48 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
           width: fit-content;
         }
         .logo-badge {
-          width: 34px;
-          height: 34px;
-          border-radius: 8px;
-          background: linear-gradient(135deg, #10b981, #059669);
+          width: 32px;
+          height: 32px;
+          border-radius: var(--radius-sm);
+          background: linear-gradient(135deg, var(--logo-gradient-from), var(--logo-gradient-to));
           display: flex;
           align-items: center;
           justify-content: center;
           color: white;
           font-weight: 800;
-          font-size: 0.9rem;
+          font-size: 0.85rem;
         }
         .logo-text {
-          font-size: 1.2rem;
+          font-family: var(--font-display);
+          font-size: 1.1rem;
           font-weight: 700;
-          color: white;
+          color: var(--text-primary);
         }
         .storefront-content {
           max-width: 1100px;
           margin: 0 auto;
           padding: 1.5rem;
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
         }
         .store-banner {
-          position: relative;
           display: flex;
           flex-direction: column;
           align-items: center;
           text-align: center;
-          gap: 0.6rem;
-          padding: 2.5rem 1rem 2rem;
-          overflow: hidden;
-        }
-        .store-glow {
-          position: absolute;
-          top: -60px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 320px;
-          height: 200px;
-          filter: blur(60px);
-          border-radius: 50%;
-          pointer-events: none;
-          z-index: 0;
+          gap: 0.7rem;
+          padding: 1.5rem 1rem 0.5rem;
         }
         .store-icon {
-          position: relative;
-          z-index: 1;
-          width: 64px;
-          height: 64px;
-          border-radius: 18px;
-          border: 1px solid;
+          width: 116px;
+          height: 116px;
+          border-radius: var(--radius-xl);
+          background: linear-gradient(155deg, var(--surface-2), var(--surface-1)) padding-box,
+                      linear-gradient(120deg, var(--color-brand-300), var(--color-brand-600) 55%, var(--color-warning)) border-box;
+          border: 2px solid transparent;
+          box-shadow: var(--shadow-brand);
+          color: var(--color-brand-700);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -195,34 +196,74 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
           animation: store-icon-in 0.5s ease;
         }
         @keyframes store-icon-in {
-          from { opacity: 0; transform: scale(0.85) translateY(-6px); }
+          from { opacity: 0; transform: scale(0.9) translateY(-6px); }
           to { opacity: 1; transform: scale(1) translateY(0); }
         }
         .store-logo-img { width: 100%; height: 100%; object-fit: cover; }
         .store-name {
-          position: relative;
-          z-index: 1;
+          font-family: var(--font-display);
           font-size: 1.7rem;
-          font-weight: 800;
-          color: white;
+          font-weight: 700;
+          color: var(--text-primary);
           margin: 0;
         }
         .store-description {
-          position: relative;
-          z-index: 1;
           max-width: 480px;
-          color: #9ca3af;
+          color: var(--text-secondary);
           font-size: 0.95rem;
           line-height: 1.6;
           margin: 0;
         }
+
+        .ticker-wrap {
+          border-top: 1px solid var(--border-subtle);
+          border-bottom: 1px solid var(--border-subtle);
+          background: var(--surface-2);
+          overflow: hidden;
+          padding: 0.6rem 0;
+          margin: 0 -1.5rem;
+        }
+        .ticker-track {
+          display: flex;
+          width: max-content;
+          gap: 2.2rem;
+          padding: 0 1.5rem;
+          animation: ticker-scroll 26s linear infinite;
+        }
+        @keyframes ticker-scroll {
+          from { transform: translateX(0); }
+          to { transform: translateX(-50%); }
+        }
+        .ticker-item {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.8rem;
+          color: var(--text-secondary);
+          white-space: nowrap;
+        }
+        .ticker-item b { color: var(--text-primary); font-weight: 600; }
+        .ticker-dot {
+          width: 5px; height: 5px; border-radius: 50%;
+          background: var(--color-warning); flex-shrink: 0;
+        }
+
         .storefront-footer {
           text-align: center;
           padding: 2rem 1rem;
-          color: #6b7280;
+          color: var(--text-muted);
           font-size: 0.85rem;
-          border-top: 1px solid rgba(255, 255, 255, 0.05);
-          margin-top: 2rem;
+          border-top: 1px solid var(--border-subtle);
+          margin-top: 1rem;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .ticker-track { animation: none; }
+          .store-icon { animation: none; }
+        }
+
+        @media (max-width: 640px) {
+          .store-icon { width: 88px; height: 88px; }
         }
       `}</style>
     </div>

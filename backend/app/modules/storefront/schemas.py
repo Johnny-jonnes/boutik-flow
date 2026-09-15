@@ -53,3 +53,12 @@ class PublicProductListResponse(BaseModel):
     total: int
     page: int
     per_page: int
+
+
+class PublicCategoryResponse(BaseModel):
+    """Catégorie affichée sur la vitrine — uniquement celles qui ont au
+    moins un produit public, jamais la liste interne complète du
+    boutiquier (une catégorie vide ou 100% privée n'a rien à faire ici)."""
+    id: uuid.UUID
+    name: str
+    count: int

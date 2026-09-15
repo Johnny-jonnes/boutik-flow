@@ -58,13 +58,12 @@ export default async function StorefrontProductPage({
   const data = await getData(slug, productId);
   if (!data) notFound();
   const { store, product } = data;
-  const accent = store.theme_color || '#10b981';
 
   return (
-    <div className="storefront">
+    <div className="storefront light">
       <header className="storefront-header">
         <div className="storefront-header-inner">
-          <Link href={`/boutique/${slug}`} className="back-link" style={{ color: accent }}>
+          <Link href={`/boutique/${slug}`} className="back-link">
             <ArrowLeft size={16} />
             <span>{store.name}</span>
           </Link>
@@ -82,9 +81,9 @@ export default async function StorefrontProductPage({
         </div>
 
         <div className="product-detail-info">
-          {product.category_name && <span className="product-category" style={{ color: accent }}>{product.category_name}</span>}
+          {product.category_name && <span className="product-category">{product.category_name}</span>}
           <h1 className="product-detail-name">{product.name}</h1>
-          <span className="product-detail-price" style={{ color: accent }}>{Number(product.price).toLocaleString('fr-GN')} GNF</span>
+          <span className="product-detail-price">{Number(product.price).toLocaleString('fr-GN')} GNF</span>
           {!product.is_available && <span className="badge-unavailable-inline">Rupture de stock</span>}
           {product.description && <p className="product-detail-description">{product.description}</p>}
 
@@ -121,17 +120,17 @@ export default async function StorefrontProductPage({
       <style>{`
         .storefront {
           min-height: 100vh;
-          background: #090d16;
-          color: #e5e7eb;
-          font-family: system-ui, -apple-system, sans-serif;
+          background: var(--surface-0);
+          color: var(--text-primary);
+          font-family: var(--font-sans);
         }
         .storefront-header {
           position: sticky;
           top: 0;
           z-index: 50;
-          background: rgba(17, 24, 39, 0.85);
+          background: color-mix(in srgb, var(--surface-1) 88%, transparent);
           backdrop-filter: blur(12px);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          border-bottom: 1px solid var(--border-subtle);
           padding: 1rem 1.5rem;
         }
         .storefront-header-inner {
@@ -145,6 +144,7 @@ export default async function StorefrontProductPage({
           text-decoration: none;
           font-size: 0.9rem;
           font-weight: 600;
+          color: var(--color-brand-700);
         }
         .back-link:hover { opacity: 0.8; }
         .product-detail {
@@ -159,9 +159,9 @@ export default async function StorefrontProductPage({
           width: 100%;
           aspect-ratio: 1;
           max-height: 420px;
-          border-radius: 16px;
+          border-radius: var(--radius-lg);
           overflow: hidden;
-          background: #1f2937;
+          background: var(--surface-2);
           animation: pd-fade-in 0.4s ease;
         }
         @keyframes pd-fade-in {
@@ -177,7 +177,7 @@ export default async function StorefrontProductPage({
         .product-detail-image-placeholder {
           width: 100%;
           height: 100%;
-          background: linear-gradient(135deg, #1f2937, #111827);
+          background: linear-gradient(135deg, var(--surface-2), var(--surface-3));
         }
         .product-detail-info {
           display: flex;
@@ -194,29 +194,35 @@ export default async function StorefrontProductPage({
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.05em;
+          color: var(--color-brand-600);
         }
         .product-detail-name {
+          font-family: var(--font-display);
           font-size: 1.5rem;
-          font-weight: 800;
-          color: white;
+          font-weight: 700;
+          color: var(--text-primary);
           margin: 0;
         }
         .product-detail-price {
           font-size: 1.3rem;
-          font-weight: 700;
+          font-weight: 800;
+          font-variant-numeric: tabular-nums;
+          background: linear-gradient(90deg, var(--color-brand-700), var(--color-warning));
+          -webkit-background-clip: text; background-clip: text; color: transparent;
+          width: fit-content;
         }
         .badge-unavailable-inline {
           display: inline-block;
           width: fit-content;
-          background: rgba(244, 63, 94, 0.15);
-          color: #fb7185;
+          background: color-mix(in srgb, var(--color-error) 12%, transparent);
+          color: var(--color-error);
           font-size: 0.8rem;
           font-weight: 700;
           padding: 0.3rem 0.7rem;
-          border-radius: 8px;
+          border-radius: var(--radius-sm);
         }
         .product-detail-description {
-          color: #9ca3af;
+          color: var(--text-secondary);
           font-size: 0.95rem;
           line-height: 1.7;
           white-space: pre-wrap;
@@ -232,7 +238,7 @@ export default async function StorefrontProductPage({
           font-weight: 700;
           font-size: 0.9rem;
           padding: 0.7rem 1.3rem;
-          border-radius: 10px;
+          border-radius: var(--radius-md);
           text-decoration: none;
           transition: filter 0.15s ease;
         }
@@ -240,9 +246,9 @@ export default async function StorefrontProductPage({
         .storefront-footer {
           text-align: center;
           padding: 2rem 1rem;
-          color: #6b7280;
+          color: var(--text-muted);
           font-size: 0.85rem;
-          border-top: 1px solid rgba(255, 255, 255, 0.05);
+          border-top: 1px solid var(--border-subtle);
           margin-top: 2rem;
         }
       `}</style>

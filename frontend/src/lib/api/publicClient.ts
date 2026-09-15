@@ -67,12 +67,23 @@ export interface PublicProductList {
   per_page: number;
 }
 
+export interface PublicCategory {
+  id: string;
+  name: string;
+  count: number;
+}
+
 export const publicApi = {
   getStore(slug: string): Promise<PublicStore> {
     return publicRequest(`/storefront/${encodeURIComponent(slug)}`);
   },
-  listProducts(slug: string, page = 1, perPage = 20, q?: string): Promise<PublicProductList> {
-    const query = q && q.trim() ? `&q=${encodeURIComponent(q.trim())}` : '';
+  getCategories(slug: string): Promise<PublicCategory[]> {
+    return publicRequest(`/storefront/${encodeURIComponent(slug)}/categories`);
+  },
+  listProducts(slug: string, page = 1, perPage = 20, q?: string, categoryId?: string): Promise<PublicProductList> {
+    const query =
+      (q && q.trim() ? `&q=${encodeURIComponent(q.trim())}` : '') +
+      (categoryId ? `&category_id=${encodeURIComponent(categoryId)}` : '');
     return publicRequest(`/storefront/${encodeURIComponent(slug)}/products?page=${page}&per_page=${perPage}${query}`);
   },
   getProduct(slug: string, productId: string): Promise<PublicProduct> {

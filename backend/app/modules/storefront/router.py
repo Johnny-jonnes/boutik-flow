@@ -16,17 +16,18 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy.orm import Session, selectinload, defer
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 
 from app.core.database import get_bypass_db
 from app.core.rate_limit import limiter
 from app.core.thumbnails import decode_data_uri
 from app.modules.auth.models import Tenant, TenantStatusEnum
-from app.modules.products.models import Product
+from app.modules.products.models import Product, Category
 from app.modules.storefront.schemas import (
     PublicStoreResponse,
     PublicProductResponse,
     PublicProductListResponse,
+    PublicCategoryResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -86,6 +87,38 @@ def get_public_store(
 
 
 @router.get(
+    "/{tenant_slug}/categories",
+    response_model=list[PublicCategoryResponse],
+    summary="Catégories ayant au moins un produit public",
+)
+@limiter.limit("60/minute")
+def list_public_categories(
+    tenant_slug: str,
+    request: Request,
+    db: Annotated[Session, Depends(get_bypass_db)],
+) -> list[PublicCategoryResponse]:
+    tenant = _resolve_public_tenant(db, tenant_slug)
+
+    rows = (
+        db.query(Category.id, Category.name, func.count(Product.id))
+        .join(Product, Product.category_id == Category.id)
+        .filter(
+            and_(
+                Category.tenant_id == tenant.id,
+                Product.tenant_id == tenant.id,
+                Product.is_public.is_(True),
+                Product.is_available.is_(True),
+                Product.deleted_at.is_(None),
+            )
+        )
+        .group_by(Category.id, Category.name)
+        .order_by(Category.name.asc())
+        .all()
+    )
+    return [PublicCategoryResponse(id=r[0], name=r[1], count=r[2]) for r in rows]
+
+
+@router.get(
     "/{tenant_slug}/logo",
     summary="Logo d'une boutique (servi comme une vraie ressource HTTP)",
 )
@@ -116,6 +149,7 @@ def list_public_products(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     q: str | None = Query(None, max_length=100, description="Recherche par nom de produit"),
+    category_id: uuid.UUID | None = Query(None, description="Filtrer par catégorie"),
 ) -> PublicProductListResponse:
     tenant = _resolve_public_tenant(db, tenant_slug)
 
@@ -129,6 +163,8 @@ def list_public_products(
     )
     if q and q.strip():
         query = query.filter(Product.name.ilike(f"%{q.strip()}%"))
+    if category_id:
+        query = query.filter(Product.category_id == category_id)
     total = query.count()
     items = (
         query.order_by(Product.created_at.desc())
