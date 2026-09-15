@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, ShieldCheck, Lock, CheckCircle2, Mail, Phone, Building, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, CheckCircle2, Mail, Phone, Building } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 
 export default function PrivacyPage() {
@@ -51,19 +51,6 @@ export default function PrivacyPage() {
               : 'Last updated: September 15, 2026 · Powered by TrillionX'}
           </p>
 
-          {/* Placeholder notice — honnêteté avant tout : rien n'est inventé ici */}
-          <div className="placeholder-alert-box">
-            <div className="alert-icon-wrap"><AlertTriangle size={22} /></div>
-            <div className="alert-body">
-              <h3>{isFr ? 'Informations à compléter par TrillionX' : 'Information to be completed by TrillionX'}</h3>
-              <p>
-                {isFr
-                  ? "Cette page ne contient aucune information juridique inventée. La raison sociale complète, l'adresse légale et le numéro d'enregistrement d'entreprise de TrillionX doivent être renseignés ci-dessous avant publication officielle — voir les emplacements marqués « À compléter »."
-                  : "This page contains no fabricated legal information. TrillionX's full legal name, registered address, and business registration number must be filled in below before official publication — see the sections marked \"To be completed\"."}
-              </p>
-            </div>
-          </div>
-
           <div className="divider" />
 
           <div className="terms-articles">
@@ -72,23 +59,9 @@ export default function PrivacyPage() {
               <h2>{isFr ? 'Article 1 — Responsable du Traitement' : 'Article 1 — Data Controller'}</h2>
               <p>
                 {isFr
-                  ? "BoutikFlow est édité par TrillionX (TrillionX Tech Solution), responsable du traitement des données décrites dans cette politique."
-                  : "BoutikFlow is published by TrillionX (TrillionX Tech Solution), which acts as data controller for the processing described in this policy."}
+                  ? "BoutikFlow est édité par TrillionX (TrillionX Tech Solution), responsable du traitement des données décrites dans cette politique. Pour toute question ou demande formelle concernant nos coordonnées légales complètes, contactez-nous à l'adresse indiquée à l'Article 9."
+                  : "BoutikFlow is published by TrillionX (TrillionX Tech Solution), which acts as data controller for the processing described in this policy. For any question or formal request regarding our full legal details, contact us at the address listed in Article 9."}
               </p>
-              <ul>
-                <li>
-                  <strong>{isFr ? 'Raison sociale complète : ' : 'Full legal name: '}</strong>
-                  <span className="placeholder-inline">{isFr ? 'À compléter' : 'To be completed'}</span>
-                </li>
-                <li>
-                  <strong>{isFr ? 'Adresse légale : ' : 'Registered address: '}</strong>
-                  <span className="placeholder-inline">{isFr ? 'À compléter' : 'To be completed'}</span>
-                </li>
-                <li>
-                  <strong>{isFr ? "Numéro d'enregistrement d'entreprise : " : 'Business registration number: '}</strong>
-                  <span className="placeholder-inline">{isFr ? 'À compléter' : 'To be completed'}</span>
-                </li>
-              </ul>
             </section>
 
             {/* Article 2 — Données collectées */}
@@ -399,48 +372,6 @@ export default function PrivacyPage() {
           margin-bottom: 2rem;
         }
 
-        .placeholder-alert-box {
-          display: flex;
-          gap: 1.25rem;
-          background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.08));
-          border: 1px solid rgba(245, 158, 11, 0.35);
-          border-radius: 14px;
-          padding: 1.5rem;
-          margin-bottom: 2.5rem;
-        }
-
-        .placeholder-alert-box .alert-icon-wrap {
-          color: #fbbf24;
-        }
-
-        .placeholder-alert-box .alert-body h3 {
-          color: #fef3c7;
-        }
-
-        .alert-icon-wrap {
-          flex-shrink: 0;
-          padding-top: 0.2rem;
-        }
-
-        .alert-body h3 {
-          margin: 0 0 0.5rem 0;
-          font-size: 1.1rem;
-          font-weight: 700;
-        }
-
-        .alert-body p {
-          margin: 0;
-          color: #d1d5db;
-          font-size: 0.95rem;
-          line-height: 1.65;
-        }
-
-        .placeholder-inline {
-          color: #fbbf24;
-          font-weight: 700;
-          font-style: italic;
-        }
-
         .divider {
           height: 1px;
           background: rgba(255, 255, 255, 0.08);
@@ -578,10 +509,6 @@ export default function PrivacyPage() {
           }
           .terms-title {
             font-size: 1.6rem;
-          }
-          .placeholder-alert-box {
-            flex-direction: column;
-            gap: 0.75rem;
           }
         }
       `}</style>
