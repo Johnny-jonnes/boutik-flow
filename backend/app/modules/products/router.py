@@ -341,9 +341,10 @@ def get_product_stats(
         )
     ).first()
 
+    hidden = financials_hidden_for(db, current_user.tenant_id, current_user.role)
     return ProductStatsResponse(
         total_products=row[0] or 0,
-        total_stock_value=row[1] or 0,
+        total_stock_value=None if hidden else (row[1] or 0),
         total_stock_units=int(row[2] or 0),
     )
 

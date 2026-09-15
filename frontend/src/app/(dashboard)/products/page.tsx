@@ -341,7 +341,12 @@ function ProductsContent() {
   // revalidation en arrière-plan remplaçait un ajout optimiste local
   // au-delà de 100 par la vraie page serveur.
   const totalProducts = productsData?.total ?? products.length;
+  // null (jamais 0) quand le propriétaire a masqué les chiffres financiers
+  // pour ce rôle (voir Tenant.hidden_financial_roles côté backend) —
+  // distinct de "pas encore chargé" (statsData absent), qui ne doit pas
+  // afficher "Masqué" pendant le premier rendu.
   const totalStockValue = statsData?.total_stock_value ?? 0;
+  const stockValueHidden = !!statsData && statsData.total_stock_value == null;
   const totalStockUnits = statsData?.total_stock_units ?? 0;
 
   const renderProductForm = (
@@ -567,7 +572,7 @@ function ProductsContent() {
         <div className="kpi-card">
           <div className="kpi-icon-wrap kpi-icon-green"><Wallet size={20} /></div>
           <span className="kpi-label">{language === 'fr' ? 'Valeur du stock' : 'Stock value'}</span>
-          <span className="kpi-value">{formatGNF(totalStockValue)}</span>
+          <span className="kpi-value">{stockValueHidden ? (language === 'fr' ? 'Masqué' : 'Hidden') : formatGNF(totalStockValue)}</span>
         </div>
         <div className="kpi-card">
           <div className="kpi-icon-wrap kpi-icon-indigo"><Package size={20} /></div>

@@ -1730,7 +1730,7 @@ export const api = {
   // Agrégats calculés en base sur TOUT le catalogue (pas seulement la page
   // courante) — ne jamais recalculer ces valeurs en additionnant une liste
   // paginée côté client, ce serait faux dès que le catalogue dépasse une page.
-  getProductStats(signal?: AbortSignal): Promise<{ total_products: number; total_stock_value: number; total_stock_units: number }> {
+  getProductStats(signal?: AbortSignal): Promise<{ total_products: number; total_stock_value: number | null; total_stock_units: number }> {
     return request('/products/stats', { signal });
   },
 

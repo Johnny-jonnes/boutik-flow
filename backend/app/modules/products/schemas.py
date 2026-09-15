@@ -113,9 +113,16 @@ class ProductListResponse(BaseModel):
 class ProductStatsResponse(BaseModel):
     """Statistiques agrégées du catalogue — calculées en base sur
     l'ensemble des produits (pas seulement la page courante), pour rester
-    exactes quel que soit le nombre de produits de la boutique."""
+    exactes quel que soit le nombre de produits de la boutique.
+
+    total_stock_value (valeur monétaire du stock, prix × quantité) est
+    None quand le rôle courant a les chiffres financiers masqués (voir
+    Tenant.hidden_financial_roles / app.core.visibility) — total_stock_units
+    (une quantité, pas un montant) reste toujours visible : la gestion de
+    stock a besoin de savoir "combien d'unités", même sans en voir la
+    valeur en argent."""
     total_products: int
-    total_stock_value: Decimal
+    total_stock_value: Decimal | None
     total_stock_units: int
 
 
