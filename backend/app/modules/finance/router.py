@@ -5,7 +5,7 @@ Gestion des entrées, dépenses et calcul du Solde Net.
 from typing import Annotated
 import uuid
 from datetime import datetime
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -16,6 +16,7 @@ from app.core.idempotency import IdempotencyHeader, get_cached_response, store_r
 from app.core.permissions import require_permission
 from app.core.period import resolve_period
 from app.core.metrics import financial_totals, product_margin
+from app.core.visibility import financials_hidden_for
 from app.modules.finance.models import FinancialTransaction
 from app.modules.finance.schemas import (
     TransactionCreate,
@@ -48,6 +49,15 @@ def list_transactions(
         None, description="Synchronisation incrémentale : ne renvoie que les transactions créées après cette date. Les transactions sont immuables (jamais modifiées ni supprimées), un simple filtre sur created_at suffit."
     ),
 ) -> TransactionListResponse:
+    # Module Finance masqué en bloc pour ce rôle (voir app.core.visibility,
+    # réglable par le propriétaire) — contrairement au masquage partiel des
+    # KPIs dashboard, l'accès à l'historique complet est refusé d'un coup.
+    if financials_hidden_for(db, current_user.tenant_id, current_user.role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="L'accès aux finances a été désactivé pour votre rôle par le propriétaire de la boutique.",
+        )
+
     # Fenêtre de dates résolue par la fonction partagée avec le Tableau de bord :
     # une même sélection y produit donc rigoureusement les mêmes bornes.
     start, end = resolve_period(period, start_date, end_date)

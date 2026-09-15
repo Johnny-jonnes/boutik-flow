@@ -25,51 +25,53 @@ export type Module =
   | 'audit'
   | 'settings';
 
-export type Role = 'owner' | 'manager' | 'stock_manager' | 'cashier' | 'staff' | 'admin';
+export type Role = 'owner' | 'manager' | 'stock_manager' | 'cashier' | 'seller_stock_manager' | 'staff' | 'admin';
 
-const ALL_SELLING_ROLES: Role[] = ['owner', 'manager', 'stock_manager', 'cashier', 'staff'];
+const ALL_SELLING_ROLES: Role[] = ['owner', 'manager', 'stock_manager', 'cashier', 'seller_stock_manager', 'staff'];
 
+// seller_stock_manager = fusion exacte de cashier + stock_manager (vente +
+// stock, rien de plus) — miroir de core/permissions.py.
 export const PERMISSIONS: Record<Module, Record<string, Role[]>> = {
   dashboard: {
     view: ['owner', 'manager'],
   },
   products: {
     view: ALL_SELLING_ROLES,
-    write: ['owner', 'manager', 'stock_manager'],
-    delete: ['owner', 'manager', 'stock_manager'],
+    write: ['owner', 'manager', 'stock_manager', 'seller_stock_manager'],
+    delete: ['owner', 'manager', 'stock_manager', 'seller_stock_manager'],
   },
   categories: {
     view: ALL_SELLING_ROLES,
-    write: ['owner', 'manager', 'stock_manager'],
-    delete: ['owner', 'manager', 'stock_manager'],
+    write: ['owner', 'manager', 'stock_manager', 'seller_stock_manager'],
+    delete: ['owner', 'manager', 'stock_manager', 'seller_stock_manager'],
   },
   stock: {
-    write: ['owner', 'manager', 'stock_manager'],
+    write: ['owner', 'manager', 'stock_manager', 'seller_stock_manager'],
   },
   orders: {
     view: ALL_SELLING_ROLES,
-    create: ['owner', 'manager', 'cashier', 'staff'],
+    create: ['owner', 'manager', 'cashier', 'staff', 'seller_stock_manager'],
     cancel: ['owner', 'manager'],
   },
   returns: {
-    create: ['owner', 'manager', 'stock_manager', 'cashier'],
+    create: ['owner', 'manager', 'stock_manager', 'cashier', 'seller_stock_manager'],
   },
   clients: {
     view: ALL_SELLING_ROLES,
     create: ALL_SELLING_ROLES,
-    edit: ['owner', 'manager', 'cashier'],
+    edit: ['owner', 'manager', 'cashier', 'seller_stock_manager'],
     delete: ['owner', 'manager'],
   },
   // Miroir exact de PERMISSIONS["debts"] dans core/permissions.py (Phase 4).
   debts: {
     view: ALL_SELLING_ROLES,
-    create: ['owner', 'manager', 'cashier', 'staff'],
-    pay: ['owner', 'manager', 'cashier', 'staff'],
+    create: ['owner', 'manager', 'cashier', 'staff', 'seller_stock_manager'],
+    pay: ['owner', 'manager', 'cashier', 'staff', 'seller_stock_manager'],
   },
   suppliers: {
-    view: ['owner', 'manager', 'stock_manager'],
-    write: ['owner', 'manager', 'stock_manager'],
-    delete: ['owner', 'manager', 'stock_manager'],
+    view: ['owner', 'manager', 'stock_manager', 'seller_stock_manager'],
+    write: ['owner', 'manager', 'stock_manager', 'seller_stock_manager'],
+    delete: ['owner', 'manager', 'stock_manager', 'seller_stock_manager'],
   },
   finance: {
     view: ['owner', 'manager'],

@@ -143,6 +143,7 @@ export default function TeamPage() {
       case 'manager': return <span className="badge role-manager">{t('team.role_manager')}</span>;
       case 'cashier': return <span className="badge role-cashier">{t('team.role_cashier')}</span>;
       case 'stock_manager': return <span className="badge role-stock">{t('team.role_stock')}</span>;
+      case 'seller_stock_manager': return <span className="badge role-seller-stock">{t('team.role_seller_stock')}</span>;
       default: return <span className="badge role-staff">{t('team.role_staff')}</span>;
     }
   };
@@ -311,6 +312,7 @@ export default function TeamPage() {
               <option value="manager">{t('team.role_manager')}</option>
               <option value="cashier">{t('team.role_cashier')}</option>
               <option value="stock_manager">{t('team.role_stock')}</option>
+              <option value="seller_stock_manager">{t('team.role_seller_stock')}</option>
             </select>
           </div>
           <div className="modal-actions">
@@ -333,6 +335,7 @@ export default function TeamPage() {
               <option value="manager">{t('team.role_manager')}</option>
               <option value="cashier">{t('team.role_cashier')}</option>
               <option value="stock_manager">{t('team.role_stock')}</option>
+              <option value="seller_stock_manager">{t('team.role_seller_stock')}</option>
             </select>
           </div>
           <div className="modal-actions">
@@ -436,6 +439,7 @@ export default function TeamPage() {
         .role-manager { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
         .role-cashier { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
         .role-stock { background: rgba(168, 85, 247, 0.15); color: #c084fc; }
+        .role-seller-stock { background: rgba(20, 184, 166, 0.15); color: #2dd4bf; }
         .role-staff { background: var(--surface-3); color: var(--text-secondary); }
 
         /* Toggle Switch */

@@ -13,15 +13,19 @@ class DashboardKPIs(BaseModel):
     `total_revenue`, `total_expenses` et `net_balance` proviennent du même
     calcul que le module Finance (`app.core.metrics.financial_totals`) :
     les deux écrans affichent donc toujours les mêmes montants.
+
+    Les champs monétaires sont `None` quand le rôle courant fait partie de
+    `Tenant.hidden_financial_roles` (voir app.core.visibility) — masquage
+    serveur, jamais une valeur factice comme 0.
     """
-    total_revenue: Decimal
+    total_revenue: Decimal | None
     total_orders: int
     total_clients: int
     active_clients: int
     vip_clients: int
     pending_orders: int
-    total_expenses: Decimal = Decimal("0.00")
-    net_balance: Decimal = Decimal("0.00")
+    total_expenses: Decimal | None = Decimal("0.00")
+    net_balance: Decimal | None = Decimal("0.00")
     # Nombre d'articles effectivement vendus sur la période.
     items_sold: int = 0
     # Clients créés pendant la période (les autres compteurs clients sont des
@@ -31,8 +35,8 @@ class DashboardKPIs(BaseModel):
     # sur les articles dont le produit a un prix d'achat renseigné — jamais
     # estimée pour le reste. `product_margin_coverage` indique le % du CA
     # que cette marge couvre réellement (voir app.core.metrics.product_margin).
-    product_margin: Decimal = Decimal("0.00")
-    product_margin_coverage: float = 0.0
+    product_margin: Decimal | None = Decimal("0.00")
+    product_margin_coverage: float | None = 0.0
     # Bornes réellement appliquées, pour que le frontend puisse les afficher
     # et vérifier qu'il regarde bien la période qu'il a demandée.
     period_start: datetime | None = None
@@ -66,20 +70,25 @@ class AnalyticsKPIs(BaseModel):
     """
     Mêmes montants que `DashboardKPIs` et que le module Finance : ces trois
     écrans partagent le calcul défini dans `app.core.metrics`.
+
+    Champs monétaires `None` quand masqués pour le rôle courant (voir
+    DashboardKPIs et app.core.visibility) — `average_order_value` et
+    `revenue_change`/`aov_change` sont directement dérivés du CA, donc
+    masqués avec lui pour éviter de le retrouver par simple calcul.
     """
-    total_revenue: Decimal
+    total_revenue: Decimal | None
     total_orders: int
-    average_order_value: Decimal
+    average_order_value: Decimal | None
     conversion_rate: float
-    revenue_change: str
+    revenue_change: str | None
     orders_change: str
-    aov_change: str
+    aov_change: str | None
     conversion_change: str
-    total_expenses: Decimal = Decimal("0.00")
-    net_balance: Decimal = Decimal("0.00")
+    total_expenses: Decimal | None = Decimal("0.00")
+    net_balance: Decimal | None = Decimal("0.00")
     items_sold: int = 0
-    product_margin: Decimal = Decimal("0.00")
-    product_margin_coverage: float = 0.0
+    product_margin: Decimal | None = Decimal("0.00")
+    product_margin_coverage: float | None = 0.0
 
 
 class AnalyticsData(BaseModel):

@@ -12,6 +12,9 @@ export interface Tenant {
   plan: 'freemium' | 'starter' | 'pro';
   is_active: boolean;
   created_at: string;
+  // Rôles pour lesquels marge/prix d'achat/CA/module Finance sont masqués
+  // (réglable par le propriétaire, voir PUT /auth/tenant/financial-visibility).
+  hidden_financial_roles?: string[];
 }
 
 export interface User {
@@ -19,7 +22,7 @@ export interface User {
   email: string;
   full_name: string | null;
   phone: string | null;
-  role: 'owner' | 'manager' | 'cashier' | 'stock_manager' | 'staff' | 'admin';
+  role: 'owner' | 'manager' | 'cashier' | 'stock_manager' | 'seller_stock_manager' | 'staff' | 'admin';
   is_active: boolean;
   tenant: Tenant;
 }
@@ -217,22 +220,23 @@ export interface OrderCreate {
 // ─── Dashboard KPIs ───────────────────────────────────────────────────────
 
 export interface DashboardKPIs {
-  total_revenue: number;
+  /** null quand le rôle courant a les chiffres financiers masqués (voir Tenant.hidden_financial_roles). */
+  total_revenue: number | null;
   total_orders: number;
   total_clients: number;
   active_clients: number;
   vip_clients: number;
   pending_orders: number;
-  total_expenses?: number;
-  net_balance?: number;
+  total_expenses?: number | null;
+  net_balance?: number | null;
   /** Articles vendus sur la période. */
   items_sold?: number;
   /** Clients créés pendant la période (les autres compteurs sont cumulés). */
   new_clients?: number;
   /** Marge brute réelle (vente − achat), calculée seulement sur les articles avec prix d'achat connu. */
-  product_margin?: number;
+  product_margin?: number | null;
   /** % du chiffre d'affaires couvert par un prix d'achat connu. */
-  product_margin_coverage?: number;
+  product_margin_coverage?: number | null;
   period_start?: string | null;
   period_end?: string | null;
 }
@@ -300,19 +304,20 @@ export interface ClientSegmentPoint {
 }
 
 export interface AnalyticsKPIs {
-  total_revenue: number;
+  /** null quand le rôle courant a les chiffres financiers masqués (voir Tenant.hidden_financial_roles). */
+  total_revenue: number | null;
   total_orders: number;
-  average_order_value: number;
+  average_order_value: number | null;
   conversion_rate: number;
-  revenue_change: string;
+  revenue_change: string | null;
   orders_change: string;
-  aov_change: string;
+  aov_change: string | null;
   conversion_change: string;
-  total_expenses?: number;
-  net_balance?: number;
+  total_expenses?: number | null;
+  net_balance?: number | null;
   items_sold?: number;
-  product_margin?: number;
-  product_margin_coverage?: number;
+  product_margin?: number | null;
+  product_margin_coverage?: number | null;
 }
 
 export interface AnalyticsData {
@@ -494,7 +499,7 @@ export interface SupplierUpdate extends Partial<SupplierCreate> {}
 
 // ─── Team Management ─────────────────────────────────────────────────────
 
-export type TeamRole = 'owner' | 'manager' | 'cashier' | 'stock_manager' | 'staff';
+export type TeamRole = 'owner' | 'manager' | 'cashier' | 'stock_manager' | 'seller_stock_manager' | 'staff';
 
 export interface TeamMember {
   id: string;

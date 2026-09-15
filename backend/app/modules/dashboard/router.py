@@ -24,6 +24,7 @@ from app.core.deps import CurrentUser
 from app.core.permissions import require_permission
 from app.core.period import resolve_period, previous_period
 from app.core.metrics import financial_totals, sales_metrics, product_margin, format_change
+from app.core.visibility import financials_hidden_for
 from app.modules.products.models import Order, OrderStatusEnum, OrderItem, Product
 from app.modules.finance.models import FinancialTransaction, TransactionTypeEnum
 from app.modules.crm.models import Client, ClientStatusEnum
@@ -108,10 +109,12 @@ def get_kpis(
     vip_clients = client_counts.vip
     new_clients = client_counts.new
 
+    hidden = financials_hidden_for(db, tenant_id, current_user.role)
+
     return DashboardKPIs(
-        total_revenue=money.total_income,
-        total_expenses=money.total_expense,
-        net_balance=money.net_balance,
+        total_revenue=None if hidden else money.total_income,
+        total_expenses=None if hidden else money.total_expense,
+        net_balance=None if hidden else money.net_balance,
         total_orders=sales.total_orders,
         pending_orders=sales.pending_orders,
         items_sold=sales.items_sold,
@@ -119,8 +122,8 @@ def get_kpis(
         active_clients=active_clients,
         vip_clients=vip_clients,
         new_clients=new_clients,
-        product_margin=margin.gross_margin,
-        product_margin_coverage=margin.coverage_pct,
+        product_margin=None if hidden else margin.gross_margin,
+        product_margin_coverage=None if hidden else margin.coverage_pct,
         period_start=start,
         period_end=end,
     )
@@ -343,20 +346,22 @@ def get_analytics(
         ClientSegmentPoint(name="Inactifs", value=pct(ClientStatusEnum.inactif), color="#6b7280"),
     ]
 
+    hidden = financials_hidden_for(db, tenant_id, current_user.role)
+
     kpis = AnalyticsKPIs(
-        total_revenue=money.total_income,
-        total_expenses=money.total_expense,
-        net_balance=money.net_balance,
+        total_revenue=None if hidden else money.total_income,
+        total_expenses=None if hidden else money.total_expense,
+        net_balance=None if hidden else money.net_balance,
         total_orders=sales.total_orders,
         items_sold=sales.items_sold,
-        average_order_value=sales.average_order_value,
+        average_order_value=None if hidden else sales.average_order_value,
         conversion_rate=conversion,
-        revenue_change=format_change(money.total_income, prev_revenue),
+        revenue_change=None if hidden else format_change(money.total_income, prev_revenue),
         orders_change=format_change(sales.total_orders, prev_orders),
-        aov_change=format_change(sales.average_order_value, prev_aov),
+        aov_change=None if hidden else format_change(sales.average_order_value, prev_aov),
         conversion_change=format_change(conversion, prev_conversion),
-        product_margin=margin.gross_margin,
-        product_margin_coverage=margin.coverage_pct,
+        product_margin=None if hidden else margin.gross_margin,
+        product_margin_coverage=None if hidden else margin.coverage_pct,
     )
 
     return AnalyticsData(

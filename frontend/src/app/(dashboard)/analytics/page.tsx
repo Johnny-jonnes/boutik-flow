@@ -20,7 +20,7 @@ function formatGNF(amount: number) {
 }
 
 export default function AnalyticsPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { theme } = useTheme();
   const [period, setPeriod] = useState('7j');
   // useAnalyticsQuery (déjà utilisé par le Dashboard, voir lib/queries.ts)
@@ -66,9 +66,14 @@ export default function AnalyticsPage() {
 
   const { kpis, revenue_data, orders_data, top_products, client_segments } = data;
 
-  const isRevenueUp = !kpis.revenue_change.startsWith('-');
+  // total_revenue (et donc revenue_change/aov_change, dérivés du CA) sont
+  // null quand le propriétaire a masqué les chiffres financiers pour ce
+  // rôle (voir Tenant.hidden_financial_roles côté backend) — jamais une
+  // chaîne vide, donc toujours vérifier avant .startsWith().
+  const financialsMasked = kpis.total_revenue === null || kpis.total_revenue === undefined;
+  const isRevenueUp = !kpis.revenue_change?.startsWith('-');
   const isOrdersUp = !kpis.orders_change.startsWith('-');
-  const isAovUp = !kpis.aov_change.startsWith('-');
+  const isAovUp = !kpis.aov_change?.startsWith('-');
   const isConversionUp = !kpis.conversion_change.startsWith('-');
 
   return (
@@ -96,11 +101,17 @@ export default function AnalyticsPage() {
             <span className="kpi-label">{t('ana.revenue')}</span>
             <div className="kpi-icon kpi-icon--green"><TrendingUp size={18} /></div>
           </div>
-          <div className="kpi-value">{Number(kpis.total_revenue).toLocaleString('fr-GN')} <span className="kpi-currency">GNF</span></div>
-          <div className={`kpi-trend ${isRevenueUp ? 'kpi-trend--up' : 'kpi-trend--down'}`}>
-            {isRevenueUp ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-            {kpis.revenue_change} vs période passée
-          </div>
+          {financialsMasked ? (
+            <div className="kpi-value">{language === 'fr' ? 'Masqué' : 'Hidden'}</div>
+          ) : (
+            <>
+              <div className="kpi-value">{Number(kpis.total_revenue).toLocaleString('fr-GN')} <span className="kpi-currency">GNF</span></div>
+              <div className={`kpi-trend ${isRevenueUp ? 'kpi-trend--up' : 'kpi-trend--down'}`}>
+                {isRevenueUp ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                {kpis.revenue_change} vs période passée
+              </div>
+            </>
+          )}
         </div>
 
         <div className="kpi-card">
@@ -120,11 +131,17 @@ export default function AnalyticsPage() {
             <span className="kpi-label">{t('ana.avg_basket')}</span>
             <div className="kpi-icon kpi-icon--purple"><DollarSign size={18} /></div>
           </div>
-          <div className="kpi-value">{Math.round(Number(kpis.average_order_value)).toLocaleString('fr-GN')} <span className="kpi-currency">GNF</span></div>
-          <div className={`kpi-trend ${isAovUp ? 'kpi-trend--up' : 'kpi-trend--down'}`}>
-            {isAovUp ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-            {kpis.aov_change} vs période passée
-          </div>
+          {financialsMasked ? (
+            <div className="kpi-value">{language === 'fr' ? 'Masqué' : 'Hidden'}</div>
+          ) : (
+            <>
+              <div className="kpi-value">{Math.round(Number(kpis.average_order_value)).toLocaleString('fr-GN')} <span className="kpi-currency">GNF</span></div>
+              <div className={`kpi-trend ${isAovUp ? 'kpi-trend--up' : 'kpi-trend--down'}`}>
+                {isAovUp ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                {kpis.aov_change} vs période passée
+              </div>
+            </>
+          )}
         </div>
 
         <div className="kpi-card">

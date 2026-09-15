@@ -20,6 +20,7 @@ from app.core.deps import CurrentUser
 from app.core.idempotency import IdempotencyHeader, get_cached_response, store_response
 from app.core.permissions import require_permission
 from app.core.thumbnails import generate_thumbnail
+from app.core.visibility import financials_hidden_for
 from app.modules.audit.router import log_action
 from app.modules.products.models import Product, InventoryLog, Category
 from app.modules.products.schemas import (
@@ -195,7 +196,16 @@ def delete_category(
 
 # ──────────────────────────── GET /products ────────────────────────────
 
-def _product_to_list_response(p: Product) -> ProductResponse:
+def _mask_cost_price(response: ProductResponse, hidden: bool) -> ProductResponse:
+    """Masquage serveur du prix d'achat (voir app.core.visibility) — le
+    champ est mis à None dans la réponse, jamais seulement caché à
+    l'affichage, pour rester impossible à contourner depuis le navigateur."""
+    if hidden:
+        response.cost_price = None
+    return response
+
+
+def _product_to_list_response(p: Product, hide_cost_price: bool = False) -> ProductResponse:
     """Construit la réponse d'un produit pour une LISTE, sans jamais
     accéder à p.images : ce champ est différé (defer) sur la requête de
     list_products, et le lire ici déclencherait une requête de lazy-load
@@ -207,7 +217,7 @@ def _product_to_list_response(p: Product) -> ProductResponse:
         name=p.name,
         description=p.description,
         price=p.price,
-        cost_price=p.cost_price,
+        cost_price=None if hide_cost_price else p.cost_price,
         stock=p.stock,
         category_id=p.category_id,
         category_rel=CategoryResponse.model_validate(p.category_rel) if p.category_rel else None,
@@ -292,8 +302,9 @@ def list_products(
         .all()
     )
 
+    hidden = financials_hidden_for(db, current_user.tenant_id, current_user.role)
     return ProductListResponse(
-        items=[_product_to_list_response(p) for p in items],
+        items=[_product_to_list_response(p, hidden) for p in items],
         total=total,
         page=page,
         per_page=per_page,
@@ -363,7 +374,8 @@ def get_product(
             detail="Produit introuvable",
         )
 
-    return ProductResponse.model_validate(product)
+    hidden = financials_hidden_for(db, current_user.tenant_id, current_user.role)
+    return _mask_cost_price(ProductResponse.model_validate(product), hidden)
 
 
 # ──────────────────────────── POST /products ────────────────────────────
@@ -465,7 +477,8 @@ def create_product(
     db.refresh(product)
 
     logger.info("Produit créé : %s (tenant=%s)", product.name, current_user.tenant_id)
-    response = ProductResponse.model_validate(product)
+    hidden = financials_hidden_for(db, current_user.tenant_id, current_user.role)
+    response = _mask_cost_price(ProductResponse.model_validate(product), hidden)
     store_response(db, current_user.tenant_id, "products.create", idempotency_key, status.HTTP_201_CREATED, jsonable_encoder(response))
     return response
 
@@ -501,6 +514,7 @@ def create_products_bulk(
     # aussi être détectées avant d'atteindre la base).
     seen_barcodes: set[str] = set()
     seen_skus: set[str] = set()
+    hidden = financials_hidden_for(db, current_user.tenant_id, current_user.role)
 
     for index, item in enumerate(payload.products):
         savepoint = db.begin_nested()
@@ -574,7 +588,7 @@ def create_products_bulk(
             savepoint.commit()
             seen_barcodes.add(item.barcode) if item.barcode else None
             seen_skus.add(sku_val)
-            created.append(ProductResponse.model_validate(product))
+            created.append(_mask_cost_price(ProductResponse.model_validate(product), hidden))
         except Exception as e:
             savepoint.rollback()
             errors.append(ProductBulkCreateError(index=index, name=item.name, error=str(e)))
@@ -615,6 +629,7 @@ def bulk_stock_in(
 
     updated: list[ProductResponse] = []
     errors: list[StockBulkInError] = []
+    hidden = financials_hidden_for(db, current_user.tenant_id, current_user.role)
 
     for index, item in enumerate(payload.items):
         savepoint = db.begin_nested()
@@ -642,7 +657,7 @@ def bulk_stock_in(
                 "stock_in_bulk", str(old_stock), str(product.stock),
             )
             savepoint.commit()
-            updated.append(ProductResponse.model_validate(product))
+            updated.append(_mask_cost_price(ProductResponse.model_validate(product), hidden))
         except Exception as e:
             savepoint.rollback()
             errors.append(StockBulkInError(index=index, product_id=str(item.product_id), error=str(e)))
@@ -760,7 +775,8 @@ def update_product(
 
     db.commit()
     db.refresh(product)
-    response = ProductResponse.model_validate(product)
+    hidden = financials_hidden_for(db, current_user.tenant_id, current_user.role)
+    response = _mask_cost_price(ProductResponse.model_validate(product), hidden)
     store_response(db, current_user.tenant_id, "products.update", idempotency_key, status.HTTP_200_OK, jsonable_encoder(response))
     return response
 

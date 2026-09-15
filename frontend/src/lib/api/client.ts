@@ -1495,6 +1495,7 @@ interface TenantInfo {
   plan: string;
   is_active: boolean;
   created_at: string;
+  hidden_financial_roles?: string[];
 }
 
 interface SubscriptionInfo {
@@ -1586,6 +1587,13 @@ export const api = {
 
   getTenant(): Promise<TenantInfo> {
     return request('/auth/tenant');
+  },
+
+  updateFinancialVisibility(hiddenRoles: string[]): Promise<TenantInfo> {
+    return request('/auth/tenant/financial-visibility', {
+      method: 'PUT',
+      body: JSON.stringify({ hidden_roles: hiddenRoles }),
+    });
   },
 
   // ── Dashboard ─────────────────────────────────────────────────────────

@@ -39,6 +39,10 @@ class RoleEnum(str, enum.Enum):
     manager = "manager"           # Gérant boutique
     cashier = "cashier"           # Vendeur / Caissier
     stock_manager = "stock_manager" # Gestionnaire de stock
+    # Fusion de cashier + stock_manager : vend ET gère le stock, sans accès
+    # supplémentaire (pas de finances, pas d'équipe, pas d'audit) — voir
+    # app.core.permissions.PERMISSIONS pour le détail rôle par rôle.
+    seller_stock_manager = "seller_stock_manager"  # Vendeur / Gestionnaire de stock
     staff = "staff"               # Employé polyvalent
     admin = "admin"               # Admin BoutikFlow (super-admin)
 
@@ -59,6 +63,12 @@ class Tenant(Base):
     whatsapp_phone_id = Column(String(100), nullable=True)
     # Token stocké chiffré — jamais en clair
     whatsapp_token_encrypted = Column(String(512), nullable=True)
+    # Rôles (valeurs RoleEnum) pour lesquels le propriétaire a choisi de
+    # masquer les chiffres financiers (marge, prix d'achat, CA, module
+    # Finance) — voir app.core.visibility. Vide par défaut : aucun
+    # changement de comportement tant que rien n'est activé. owner/admin ne
+    # peuvent jamais être masqués, même ajoutés ici par erreur.
+    hidden_financial_roles = Column(ARRAY(String), default=[], nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)

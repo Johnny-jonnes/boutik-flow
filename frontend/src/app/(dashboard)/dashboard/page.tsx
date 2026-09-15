@@ -69,6 +69,7 @@ function KPICard({
   icon,
   color,
   isCurrency = false,
+  masked = false,
 }: {
   title: string;
   value: number;
@@ -76,6 +77,7 @@ function KPICard({
   icon: React.ReactNode;
   color: string;
   isCurrency?: boolean;
+  masked?: boolean;
 }) {
   const { language } = useLanguage();
   return (
@@ -84,7 +86,13 @@ function KPICard({
         <div className="kpi-info">
           <span className="kpi-label">{title}</span>
           <div className="kpi-value">
-            <AnimatedNumber value={value} isCurrency={isCurrency} />
+            {masked ? (
+              <span title={language === 'fr' ? 'Masqué par le propriétaire pour votre rôle' : 'Hidden by the owner for your role'}>
+                {language === 'fr' ? 'Masqué' : 'Hidden'}
+              </span>
+            ) : (
+              <AnimatedNumber value={value} isCurrency={isCurrency} />
+            )}
           </div>
           <div className="kpi-change">
             <span className="kpi-change-badge">{change}</span>
@@ -335,6 +343,11 @@ export default function DashboardPage() {
     value: Number(pt.value),
   }));
 
+  // total_revenue est null (jamais 0) quand le propriétaire a masqué les
+  // chiffres financiers pour ce rôle (voir Tenant.hidden_financial_roles,
+  // app.core.visibility côté backend) — signal fiable pour les 4 cartes
+  // monétaires, qui sont toujours masquées ensemble.
+  const financialsMasked = kpis.total_revenue === null || kpis.total_revenue === undefined;
   const kpiCards = [
     {
       title: language === 'fr' ? 'Chiffre d\'Affaires' : 'Revenue',
@@ -343,6 +356,7 @@ export default function DashboardPage() {
       icon: <CircleDollarSign size={20} style={{ color: 'var(--color-brand-400)' }} />,
       color: 'var(--brand-alpha-12, rgba(109,213,196,0.12))',
       isCurrency: true,
+      masked: financialsMasked,
     },
     {
       title: language === 'fr' ? 'Dépenses' : 'Expenses',
@@ -351,6 +365,7 @@ export default function DashboardPage() {
       icon: <ArrowDownRight size={20} style={{ color: '#f43f5e' }} />,
       color: 'rgba(244,63,94,0.12)',
       isCurrency: true,
+      masked: financialsMasked,
     },
     {
       title: language === 'fr' ? 'Bénéfice Net' : 'Net Profit',
@@ -359,6 +374,7 @@ export default function DashboardPage() {
       icon: <Wallet size={20} style={{ color: '#3ea39b' }} />,
       color: 'rgba(62,163,155,0.12)',
       isCurrency: true,
+      masked: financialsMasked,
     },
     {
       // Marge réelle (vente − achat), calculée uniquement sur les articles
@@ -371,6 +387,7 @@ export default function DashboardPage() {
       icon: <TrendingUp size={20} style={{ color: '#8b5cf6' }} />,
       color: 'rgba(139,92,246,0.12)',
       isCurrency: true,
+      masked: financialsMasked,
     },
     {
       title: t('dash.orders'),

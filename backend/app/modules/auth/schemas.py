@@ -94,6 +94,10 @@ class TenantResponse(BaseModel):
     plan: str
     is_active: bool
     created_at: datetime
+    # Rôles pour lesquels les chiffres financiers (marge, prix d'achat, CA,
+    # module Finance) sont masqués — voir app.core.visibility et
+    # PUT /auth/tenant/financial-visibility.
+    hidden_financial_roles: list[str] = []
 
     model_config = {"from_attributes": True}
 
@@ -106,12 +110,12 @@ class InviteUserRequest(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=128)
     phone: str | None = Field(None, max_length=20)
-    role: str = Field("staff", description="Role: owner, manager, cashier, stock_manager, staff")
+    role: str = Field("staff", description="Role: owner, manager, cashier, stock_manager, seller_stock_manager, staff")
 
     @field_validator("role")
     @classmethod
     def validate_role(cls, v: str) -> str:
-        allowed = {"owner", "manager", "cashier", "stock_manager", "staff"}
+        allowed = {"owner", "manager", "cashier", "stock_manager", "seller_stock_manager", "staff"}
         if v not in allowed:
             raise ValueError(f"Rôle invalide. Rôles autorisés : {', '.join(allowed)}")
         return v
@@ -123,7 +127,7 @@ class UpdateUserRoleRequest(BaseModel):
     @field_validator("role")
     @classmethod
     def validate_role(cls, v: str) -> str:
-        allowed = {"owner", "manager", "cashier", "stock_manager", "staff"}
+        allowed = {"owner", "manager", "cashier", "stock_manager", "seller_stock_manager", "staff"}
         if v not in allowed:
             raise ValueError(f"Rôle invalide. Rôles autorisés : {', '.join(allowed)}")
         return v
@@ -164,6 +168,24 @@ class ChangeMyPasswordRequest(BaseModel):
 class UpdateTenantRequest(BaseModel):
     """Modification des informations de la boutique (propriétaire uniquement)."""
     name: str = Field(..., min_length=2, max_length=255)
+
+
+class UpdateFinancialVisibilityRequest(BaseModel):
+    """Rôles pour lesquels masquer marge/prix d'achat/CA/module Finance
+    (propriétaire uniquement) — voir app.core.visibility."""
+    hidden_roles: list[str] = Field(default_factory=list)
+
+    @field_validator("hidden_roles")
+    @classmethod
+    def validate_hidden_roles(cls, v: list[str]) -> list[str]:
+        # owner/admin exclus explicitement : ce sont les seuls rôles qui
+        # peuvent régler ce paramètre, se le masquer à eux-mêmes n'a pas
+        # de sens (voir app.core.visibility._NEVER_HIDDEN).
+        allowed = {"manager", "cashier", "stock_manager", "seller_stock_manager", "staff"}
+        invalid = set(v) - allowed
+        if invalid:
+            raise ValueError(f"Rôle(s) invalide(s) pour le masquage : {', '.join(sorted(invalid))}")
+        return list(dict.fromkeys(v))  # dédoublonne en préservant l'ordre
 
 
 class ChangePasswordRequest(BaseModel):

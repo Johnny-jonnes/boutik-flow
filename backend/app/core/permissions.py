@@ -22,50 +22,53 @@ Action = str
 
 # module -> action -> rôles autorisés (RoleEnum.value, voir
 # app.modules.auth.models.RoleEnum — "staff" = Employé).
+# seller_stock_manager = fusion exacte de cashier + stock_manager (vente +
+# stock, rien de plus) — ajouté partout où l'un des deux apparaît déjà,
+# jamais au-delà.
 PERMISSIONS: dict[Module, dict[Action, set[str]]] = {
     "dashboard": {
         "view": {"owner", "manager"},
     },
     "products": {
-        "view": {"owner", "manager", "stock_manager", "cashier", "staff"},
-        "write": {"owner", "manager", "stock_manager"},
-        "delete": {"owner", "manager", "stock_manager"},
+        "view": {"owner", "manager", "stock_manager", "cashier", "staff", "seller_stock_manager"},
+        "write": {"owner", "manager", "stock_manager", "seller_stock_manager"},
+        "delete": {"owner", "manager", "stock_manager", "seller_stock_manager"},
     },
     "categories": {
-        "view": {"owner", "manager", "stock_manager", "cashier", "staff"},
-        "write": {"owner", "manager", "stock_manager"},
-        "delete": {"owner", "manager", "stock_manager"},
+        "view": {"owner", "manager", "stock_manager", "cashier", "staff", "seller_stock_manager"},
+        "write": {"owner", "manager", "stock_manager", "seller_stock_manager"},
+        "delete": {"owner", "manager", "stock_manager", "seller_stock_manager"},
     },
     "stock": {
-        "write": {"owner", "manager", "stock_manager"},
+        "write": {"owner", "manager", "stock_manager", "seller_stock_manager"},
     },
     "orders": {
-        "view": {"owner", "manager", "stock_manager", "cashier", "staff"},
-        "create": {"owner", "manager", "cashier", "staff"},
+        "view": {"owner", "manager", "stock_manager", "cashier", "staff", "seller_stock_manager"},
+        "create": {"owner", "manager", "cashier", "staff", "seller_stock_manager"},
         "cancel": {"owner", "manager"},
     },
     "returns": {
-        "create": {"owner", "manager", "stock_manager", "cashier"},
+        "create": {"owner", "manager", "stock_manager", "cashier", "seller_stock_manager"},
     },
     # Reprend exactement les rôles déjà utilisés aujourd'hui via
     # require_permission("orders", ...) dans debt_router.py — isolation
     # propre du module Dettes Clients, aucun changement d'accès pour
     # personne au moment de cette migration.
     "debts": {
-        "view": {"owner", "manager", "stock_manager", "cashier", "staff"},
-        "create": {"owner", "manager", "cashier", "staff"},
-        "pay": {"owner", "manager", "cashier", "staff"},
+        "view": {"owner", "manager", "stock_manager", "cashier", "staff", "seller_stock_manager"},
+        "create": {"owner", "manager", "cashier", "staff", "seller_stock_manager"},
+        "pay": {"owner", "manager", "cashier", "staff", "seller_stock_manager"},
     },
     "clients": {
-        "view": {"owner", "manager", "stock_manager", "cashier", "staff"},
-        "create": {"owner", "manager", "stock_manager", "cashier", "staff"},
-        "edit": {"owner", "manager", "cashier"},
+        "view": {"owner", "manager", "stock_manager", "cashier", "staff", "seller_stock_manager"},
+        "create": {"owner", "manager", "stock_manager", "cashier", "staff", "seller_stock_manager"},
+        "edit": {"owner", "manager", "cashier", "seller_stock_manager"},
         "delete": {"owner", "manager"},
     },
     "suppliers": {
-        "view": {"owner", "manager", "stock_manager"},
-        "write": {"owner", "manager", "stock_manager"},
-        "delete": {"owner", "manager", "stock_manager"},
+        "view": {"owner", "manager", "stock_manager", "seller_stock_manager"},
+        "write": {"owner", "manager", "stock_manager", "seller_stock_manager"},
+        "delete": {"owner", "manager", "stock_manager", "seller_stock_manager"},
     },
     "finance": {
         "view": {"owner", "manager"},

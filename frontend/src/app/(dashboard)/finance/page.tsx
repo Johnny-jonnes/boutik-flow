@@ -112,9 +112,13 @@ export default function FinancePage() {
   // filtres déjà consultée reste en cache, revalidée silencieusement en
   // arrière-plan (synchronisation, nouvelle vente ailleurs — voir
   // QueryProvider) sans jamais vider la liste affichée.
-  const { data: transactionsData, isLoading } = useFinanceTransactionsQuery(
+  const { data: transactionsData, isLoading, error: financeError } = useFinanceTransactionsQuery(
     page, perPage, typeParam, categoryParam, range.period, range.start_date, range.end_date, hasValidRange
   );
+  // Le propriétaire peut masquer le module Finance en bloc pour certains
+  // rôles (voir paramètres boutique) — le backend renvoie alors un 403,
+  // distinct d'une simple absence de transactions.
+  const financeHidden = (financeError as any)?.status === 403;
 
   const transactions = useMemo(() => {
     return (transactionsData?.items || [])
@@ -199,6 +203,21 @@ export default function FinancePage() {
       (CATEGORY_LABELS[t.category] || t.category).toLowerCase().includes(q)
     );
   });
+
+  if (financeHidden) {
+    return (
+      <div className="page fade-in">
+        <div className="card" style={{ padding: '2.5rem', textAlign: 'center', maxWidth: 480, margin: '3rem auto' }}>
+          <h2 style={{ marginBottom: '0.5rem' }}>{language === 'fr' ? 'Module Finance masqué' : 'Finance module hidden'}</h2>
+          <p className="text-muted">
+            {language === 'fr'
+              ? 'Le propriétaire de la boutique a désactivé l\'accès à ce module pour votre rôle.'
+              : 'The shop owner has disabled access to this module for your role.'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page fade-in">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Store, User, KeyRound, Eye, EyeOff, Save } from 'lucide-react';
+import { Store, User, KeyRound, Eye, EyeOff, Save, Landmark } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
@@ -19,7 +19,18 @@ interface TenantInfo {
   name: string;
   slug: string;
   plan: string;
+  hidden_financial_roles?: string[];
 }
+
+const MASKABLE_ROLES = ['manager', 'cashier', 'stock_manager', 'seller_stock_manager', 'staff'] as const;
+const ROLE_LABELS_FR: Record<string, string> = {
+  manager: 'Gérant', cashier: 'Caissier', stock_manager: 'Gestionnaire de stock',
+  seller_stock_manager: 'Vendeur / Gestionnaire de stock', staff: 'Employé',
+};
+const ROLE_LABELS_EN: Record<string, string> = {
+  manager: 'Manager', cashier: 'Cashier', stock_manager: 'Stock Manager',
+  seller_stock_manager: 'Seller / Stock Manager', staff: 'Staff',
+};
 
 export default function SettingsPage() {
   const { language } = useLanguage();
@@ -32,6 +43,10 @@ export default function SettingsPage() {
   // Boutique (owner uniquement)
   const [shopName, setShopName] = useState('');
   const [isSavingShop, setIsSavingShop] = useState(false);
+
+  // Masquage des chiffres financiers par rôle (owner uniquement)
+  const [hiddenFinancialRoles, setHiddenFinancialRoles] = useState<string[]>([]);
+  const [isSavingVisibility, setIsSavingVisibility] = useState(false);
 
   // Profil personnel
   const [profileForm, setProfileForm] = useState({ full_name: '', email: '', phone: '' });
@@ -55,6 +70,7 @@ export default function SettingsPage() {
           phone: meRes.phone || '',
         });
         setShopName(tenantRes.name || '');
+        setHiddenFinancialRoles(tenantRes.hidden_financial_roles || []);
       } catch {
         toast.error(fr ? 'Erreur lors du chargement des informations' : 'Error loading information');
       } finally {
@@ -82,6 +98,27 @@ export default function SettingsPage() {
       toast.error(err.message || (fr ? 'Erreur lors de la mise à jour' : 'Error updating'));
     } finally {
       setIsSavingShop(false);
+    }
+  };
+
+  const toggleHiddenRole = (role: string) => {
+    setHiddenFinancialRoles(prev =>
+      prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]
+    );
+  };
+
+  const handleSaveVisibility = async () => {
+    if (isSavingVisibility) return;
+    setIsSavingVisibility(true);
+    try {
+      const updated = await api.updateFinancialVisibility(hiddenFinancialRoles);
+      setTenant(updated);
+      setHiddenFinancialRoles(updated.hidden_financial_roles || []);
+      toast.success(fr ? 'Réglage de confidentialité enregistré' : 'Visibility setting saved');
+    } catch (err: any) {
+      toast.error(err.message || (fr ? 'Erreur lors de la mise à jour' : 'Error updating'));
+    } finally {
+      setIsSavingVisibility(false);
     }
   };
 
@@ -169,6 +206,37 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {isOwner && (
+        <div className="card settings-card">
+          <div className="settings-card-head">
+            <Landmark size={18} />
+            <h2>{fr ? 'Confidentialité financière' : 'Financial privacy'}</h2>
+          </div>
+          <p className="settings-hint">
+            {fr
+              ? 'Choisissez les rôles qui ne doivent voir ni la marge, ni le prix d\'achat, ni le chiffre d\'affaires, ni le module Finance. Masquage appliqué côté serveur : ces chiffres ne sont jamais envoyés au navigateur pour ces rôles.'
+              : 'Choose which roles should never see margin, purchase price, revenue, or the Finance module. Enforced server-side: these figures are never sent to the browser for these roles.'}
+          </p>
+          <div className="settings-form">
+            <div className="role-visibility-list">
+              {MASKABLE_ROLES.map(role => (
+                <label key={role} className="role-visibility-item">
+                  <input
+                    type="checkbox"
+                    checked={hiddenFinancialRoles.includes(role)}
+                    onChange={() => toggleHiddenRole(role)}
+                  />
+                  <span>{fr ? ROLE_LABELS_FR[role] : ROLE_LABELS_EN[role]}</span>
+                </label>
+              ))}
+            </div>
+            <button type="button" className="btn btn-primary" onClick={handleSaveVisibility} disabled={isSavingVisibility}>
+              <Save size={16} /> {isSavingVisibility ? (fr ? 'Enregistrement…' : 'Saving…') : (fr ? 'Enregistrer' : 'Save')}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="card settings-card">
         <div className="settings-card-head">
           <User size={18} />
@@ -253,8 +321,15 @@ export default function SettingsPage() {
           margin-bottom: 1.25rem; color: var(--text-primary);
         }
         .settings-card-head h2 { font-size: 1.05rem; font-weight: 700; margin: 0; }
+        .settings-hint { color: var(--text-muted); font-size: 0.85rem; margin: -0.5rem 0 1rem; line-height: 1.5; }
         .settings-form { display: flex; flex-direction: column; gap: 1rem; }
         .settings-form .btn { align-self: flex-start; display: flex; align-items: center; gap: 0.5rem; }
+        .role-visibility-list { display: flex; flex-direction: column; gap: 0.6rem; }
+        .role-visibility-item {
+          display: flex; align-items: center; gap: 0.6rem;
+          font-size: 0.9rem; color: var(--text-primary); cursor: pointer;
+        }
+        .role-visibility-item input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
         .pw-field { position: relative; display: flex; align-items: center; }
         .pw-toggle {
           position: absolute; right: 0.6rem; background: none; border: none;

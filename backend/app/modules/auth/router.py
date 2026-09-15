@@ -45,6 +45,7 @@ from app.modules.auth.schemas import (
     UpdateMeRequest,
     ChangeMyPasswordRequest,
     UpdateTenantRequest,
+    UpdateFinancialVisibilityRequest,
 )
 
 logger = logging.getLogger(__name__)
@@ -456,6 +457,45 @@ def update_tenant(
     db.commit()
     db.refresh(tenant)
     logger.info("Boutique renommée : %s (tenant=%s)", tenant.name, tenant.id)
+    return TenantResponse.model_validate(tenant)
+
+
+@router.put(
+    "/tenant/financial-visibility",
+    response_model=TenantResponse,
+    summary="Masquer/afficher les chiffres financiers par rôle (propriétaire uniquement)",
+)
+def update_financial_visibility(
+    payload: UpdateFinancialVisibilityRequest,
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> TenantResponse:
+    """Choisit les rôles pour lesquels marge/prix d'achat/CA/module Finance
+    sont masqués côté serveur (voir app.core.visibility) — jamais un simple
+    masquage d'affichage, les champs concernés sont omis de la réponse API
+    elle-même."""
+    if current_user.role != "owner":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Seul le propriétaire peut modifier ce réglage.",
+        )
+
+    tenant = db.query(Tenant).filter(
+        and_(Tenant.id == current_user.tenant_id, Tenant.deleted_at.is_(None))
+    ).first()
+    if not tenant:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Boutique introuvable")
+
+    tenant.hidden_financial_roles = payload.hidden_roles
+    log_action(
+        db=db, tenant_id=current_user.tenant_id, user_id=current_user.user_id,
+        user_email=current_user.email, action="update_financial_visibility",
+        target_entity="tenant", target_id=str(tenant.id),
+        details=f"Rôles avec chiffres financiers masqués : {', '.join(payload.hidden_roles) or 'aucun'}",
+    )
+    db.commit()
+    db.refresh(tenant)
+    logger.info("Masquage financier mis à jour (tenant=%s) : %s", tenant.id, payload.hidden_roles)
     return TenantResponse.model_validate(tenant)
 
 
