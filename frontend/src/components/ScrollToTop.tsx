@@ -63,8 +63,8 @@ export function ScrollToTop() {
       <style jsx>{`
         .scroll-to-top {
           position: fixed;
-          bottom: 24px;
-          right: 24px;
+          bottom: max(24px, env(safe-area-inset-bottom, 0px));
+          right: max(24px, env(safe-area-inset-right, 0px));
           width: 40px;
           height: 40px;
           border-radius: 10px;

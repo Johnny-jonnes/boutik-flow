@@ -20,6 +20,7 @@ from app.core.deps import CurrentUser
 from app.core.idempotency import IdempotencyHeader, get_cached_response, store_response
 from app.core.permissions import require_permission
 from app.core.thumbnails import generate_thumbnail
+from app.modules.audit.router import log_action
 from app.modules.products.models import Product, InventoryLog, Category
 from app.modules.products.schemas import (
     ProductCreate,
@@ -453,10 +454,16 @@ def create_product(
         db, current_user.tenant_id, product.id, current_user.user_id,
         "creation", "None", f"stock:{payload.stock}, price:{payload.price}"
     )
+    log_action(
+        db=db, tenant_id=current_user.tenant_id, user_id=current_user.user_id,
+        user_email=current_user.email, action="create_product",
+        target_entity="product", target_id=str(product.id),
+        details=f"Produit créé : {product.name} (stock:{payload.stock}, prix:{payload.price})",
+    )
 
     db.commit()
     db.refresh(product)
-    
+
     logger.info("Produit créé : %s (tenant=%s)", product.name, current_user.tenant_id)
     response = ProductResponse.model_validate(product)
     store_response(db, current_user.tenant_id, "products.create", idempotency_key, status.HTTP_201_CREATED, jsonable_encoder(response))
@@ -640,6 +647,16 @@ def bulk_stock_in(
             savepoint.rollback()
             errors.append(StockBulkInError(index=index, product_id=str(item.product_id), error=str(e)))
 
+    if updated:
+        # Une entrée d'audit résumée (pas une par ligne) : le détail
+        # produit-par-produit vit déjà dans les InventoryLog ci-dessus.
+        log_action(
+            db=db, tenant_id=current_user.tenant_id, user_id=current_user.user_id,
+            user_email=current_user.email, action="stock_bulk_in",
+            target_entity="product", target_id=None,
+            details=f"Entrée de stock groupée : {len(updated)} produit(s) mis à jour, {len(errors)} erreur(s).",
+        )
+
     db.commit()
     logger.info(
         "Entrée de stock groupée : %d mis à jour, %d erreurs (tenant=%s)",
@@ -734,6 +751,13 @@ def update_product(
     if "images" in update_data:
         product.thumbnail = generate_thumbnail(update_data["images"][0]) if update_data["images"] else None
 
+    log_action(
+        db=db, tenant_id=current_user.tenant_id, user_id=current_user.user_id,
+        user_email=current_user.email, action="update_product",
+        target_entity="product", target_id=str(product.id),
+        details=f"Produit modifié : {product.name} (champs: {', '.join(update_data.keys())})",
+    )
+
     db.commit()
     db.refresh(product)
     response = ProductResponse.model_validate(product)
@@ -780,6 +804,12 @@ def delete_product(
     _create_inventory_log(
         db, current_user.tenant_id, product.id, current_user.user_id,
         "deletion", "active", "deleted"
+    )
+    log_action(
+        db=db, tenant_id=current_user.tenant_id, user_id=current_user.user_id,
+        user_email=current_user.email, action="delete_product",
+        target_entity="product", target_id=str(product.id),
+        details=f"Produit supprimé : {product.name}",
     )
 
     db.commit()

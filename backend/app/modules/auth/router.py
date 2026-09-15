@@ -519,6 +519,13 @@ def invite_team_member(
         is_active=True,
     )
     db.add(new_user)
+    db.flush()
+    log_action(
+        db=db, tenant_id=current_user.tenant_id, user_id=current_user.user_id,
+        user_email=current_user.email, action="invite_team_member",
+        target_entity="user", target_id=str(new_user.id),
+        details=f"Membre invité : {new_user.email} (rôle: {new_user.role.value if hasattr(new_user.role, 'value') else new_user.role})",
+    )
     db.commit()
     db.refresh(new_user)
     return new_user
@@ -544,7 +551,14 @@ def update_team_member_role(
     if current_user.role != "owner" and user.role == "owner":
         raise HTTPException(status_code=403, detail="Un manager ne peut pas modifier un owner")
 
+    old_role = user.role.value if hasattr(user.role, "value") else user.role
     user.role = payload.role
+    log_action(
+        db=db, tenant_id=current_user.tenant_id, user_id=current_user.user_id,
+        user_email=current_user.email, action="update_team_member_role",
+        target_entity="user", target_id=str(user.id),
+        details=f"Rôle modifié pour {user.email} : {old_role} → {payload.role}",
+    )
     db.commit()
     db.refresh(user)
     return user
@@ -574,6 +588,12 @@ def update_team_member_status(
         raise HTTPException(status_code=403, detail="Un manager ne peut pas modifier le statut d'un owner")
 
     user.is_active = payload.is_active
+    log_action(
+        db=db, tenant_id=current_user.tenant_id, user_id=current_user.user_id,
+        user_email=current_user.email, action="update_team_member_status",
+        target_entity="user", target_id=str(user.id),
+        details=f"{user.email} {'activé' if payload.is_active else 'désactivé'}",
+    )
     db.commit()
     db.refresh(user)
     return user
@@ -600,8 +620,14 @@ def delete_team_member(
     ).first()
     if not user:
         raise HTTPException(status_code=404, detail="Utilisateur introuvable")
-    
+
     user.deleted_at = datetime.now(timezone.utc)
+    log_action(
+        db=db, tenant_id=current_user.tenant_id, user_id=current_user.user_id,
+        user_email=current_user.email, action="delete_team_member",
+        target_entity="user", target_id=str(user.id),
+        details=f"Membre supprimé : {user.email}",
+    )
     db.commit()
 
 

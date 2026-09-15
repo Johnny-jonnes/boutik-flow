@@ -20,6 +20,7 @@ from app.core.database import get_db
 from app.core.deps import CurrentUser
 from app.core.idempotency import IdempotencyHeader, get_cached_response, store_response
 from app.core.permissions import require_permission
+from app.modules.audit.router import log_action
 from app.modules.crm.models import Client, ClientStatusEnum, Segment
 from app.modules.crm.schemas import (
     ClientCreate,
@@ -302,6 +303,13 @@ def create_client(
         last_activity_at=datetime.now(timezone.utc),
     )
     db.add(client)
+    db.flush()
+    log_action(
+        db=db, tenant_id=current_user.tenant_id, user_id=current_user.user_id,
+        user_email=current_user.email, action="create_client",
+        target_entity="client", target_id=str(client.id),
+        details=f"Client créé : {client.name} ({client.phone})",
+    )
     db.commit()
     db.refresh(client)
 
@@ -355,6 +363,12 @@ def update_client(
         setattr(client, field, value)
 
     client.last_activity_at = datetime.now(timezone.utc)
+    log_action(
+        db=db, tenant_id=current_user.tenant_id, user_id=current_user.user_id,
+        user_email=current_user.email, action="update_client",
+        target_entity="client", target_id=str(client.id),
+        details=f"Client modifié : {client.name} (champs: {', '.join(update_data.keys())})",
+    )
     db.commit()
     db.refresh(client)
 
@@ -401,6 +415,12 @@ def delete_client(
         )
 
     client.deleted_at = datetime.now(timezone.utc)
+    log_action(
+        db=db, tenant_id=current_user.tenant_id, user_id=current_user.user_id,
+        user_email=current_user.email, action="delete_client",
+        target_entity="client", target_id=str(client.id),
+        details=f"Client supprimé : {client.name}",
+    )
     db.commit()
     store_response(db, current_user.tenant_id, "clients.delete", idempotency_key, status.HTTP_204_NO_CONTENT, None)
 

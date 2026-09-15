@@ -765,6 +765,20 @@ def update_order_status(
         note=payload.note,
     )
 
+    if is_cancelled or was_cancelled:
+        # order_logs (ci-dessus) trace déjà tout changement de statut, mais
+        # n'est pas exposé via GET /audit — l'annulation/réactivation touche
+        # stock et finances, donc doit aussi apparaître dans le journal
+        # d'audit consultable par owner/manager.
+        log_action(
+            db=db, tenant_id=current_user.tenant_id, user_id=current_user.user_id,
+            user_email=current_user.email,
+            action="cancel_order" if is_cancelled else "reactivate_order",
+            target_entity="order", target_id=str(order.id),
+            details=f"Commande {str(order.id)[:8]} : {old_status.value if hasattr(old_status, 'value') else old_status} → {new_status_enum.value}."
+                    + (f" Note: {payload.note}" if payload.note else ""),
+        )
+
     db.commit()
     db.refresh(order)
     
