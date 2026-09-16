@@ -25,7 +25,19 @@ interface TenantInfo {
   description?: string | null;
   theme_color?: string | null;
   public_whatsapp?: string | null;
+  about?: string | null;
+  opening_hours?: string | null;
+  delivery_info?: string | null;
+  payment_methods?: string[];
 }
+
+const PAYMENT_METHODS = ['cash', 'orange_money', 'mobile_money', 'card'] as const;
+const PAYMENT_LABELS_FR: Record<string, string> = {
+  cash: 'Espèces', orange_money: 'Orange Money', mobile_money: 'Mobile Money (autre)', card: 'Carte bancaire',
+};
+const PAYMENT_LABELS_EN: Record<string, string> = {
+  cash: 'Cash', orange_money: 'Orange Money', mobile_money: 'Mobile Money (other)', card: 'Card',
+};
 
 const MASKABLE_ROLES = ['manager', 'cashier', 'stock_manager', 'seller_stock_manager', 'staff'] as const;
 const ROLE_LABELS_FR: Record<string, string> = {
@@ -51,6 +63,10 @@ export default function SettingsPage() {
   const [shopThemeColor, setShopThemeColor] = useState('#10b981');
   const [shopWhatsapp, setShopWhatsapp] = useState('');
   const [shopLogo, setShopLogo] = useState<string | null>(null);
+  const [shopAbout, setShopAbout] = useState('');
+  const [shopOpeningHours, setShopOpeningHours] = useState('');
+  const [shopDeliveryInfo, setShopDeliveryInfo] = useState('');
+  const [shopPaymentMethods, setShopPaymentMethods] = useState<string[]>([]);
   const [isSavingShop, setIsSavingShop] = useState(false);
 
   // Masquage des chiffres financiers par rôle (owner uniquement)
@@ -83,6 +99,10 @@ export default function SettingsPage() {
         setShopThemeColor(tenantRes.theme_color || '#10b981');
         setShopWhatsapp(tenantRes.public_whatsapp || '');
         setShopLogo(tenantRes.logo || null);
+        setShopAbout(tenantRes.about || '');
+        setShopOpeningHours(tenantRes.opening_hours || '');
+        setShopDeliveryInfo(tenantRes.delivery_info || '');
+        setShopPaymentMethods(tenantRes.payment_methods || []);
         setHiddenFinancialRoles(tenantRes.hidden_financial_roles || []);
       } catch {
         toast.error(fr ? 'Erreur lors du chargement des informations' : 'Error loading information');
@@ -115,6 +135,10 @@ export default function SettingsPage() {
         theme_color: shopThemeColor || null,
         public_whatsapp: whatsapp || null,
         logo: shopLogo,
+        about: shopAbout.trim() || null,
+        opening_hours: shopOpeningHours.trim() || null,
+        delivery_info: shopDeliveryInfo.trim() || null,
+        payment_methods: shopPaymentMethods,
       });
       setTenant(updated);
       toast.success(fr ? 'Boutique mise à jour' : 'Shop updated');
@@ -135,6 +159,12 @@ export default function SettingsPage() {
       setShopLogo(compressed);
     };
     reader.readAsDataURL(file);
+  };
+
+  const togglePaymentMethod = (method: string) => {
+    setShopPaymentMethods(prev =>
+      prev.includes(method) ? prev.filter(m => m !== method) : [...prev, method]
+    );
   };
 
   // Lien public de la boutique — même domaine que le partage produit
@@ -357,6 +387,55 @@ export default function SettingsPage() {
               <span className="settings-field-hint">
                 <MessageCircle size={12} /> {fr ? 'Format international, ex : +224620000000. Laissez vide pour masquer le bouton WhatsApp sur la vitrine.' : 'International format, e.g. +224620000000. Leave empty to hide the WhatsApp button on the storefront.'}
               </span>
+            </div>
+
+            <div className="input-group">
+              <label className="form-label">{fr ? 'À propos de la boutique' : 'About the shop'}</label>
+              <textarea
+                className="input"
+                rows={4}
+                maxLength={4000}
+                value={shopAbout}
+                onChange={e => setShopAbout(e.target.value)}
+                placeholder={fr ? 'Qui êtes-vous, depuis quand, ce qui vous distingue…' : 'Who you are, since when, what sets you apart…'}
+              />
+              <span className="settings-field-hint">{fr ? 'Affiché dans une section "À propos" sur la vitrine — plus détaillé que le slogan court ci-dessus.' : 'Shown in an "About" section on the storefront — more detailed than the short tagline above.'}</span>
+            </div>
+
+            <div className="input-group">
+              <label className="form-label">{fr ? 'Horaires d\'ouverture' : 'Opening hours'}</label>
+              <input
+                className="input"
+                value={shopOpeningHours}
+                onChange={e => setShopOpeningHours(e.target.value)}
+                placeholder={fr ? 'Ex : Lun-Sam 8h-19h, Dim fermé' : 'E.g. Mon-Sat 8am-7pm, Closed Sun'}
+              />
+            </div>
+
+            <div className="input-group">
+              <label className="form-label">{fr ? 'Livraison' : 'Delivery'}</label>
+              <input
+                className="input"
+                value={shopDeliveryInfo}
+                onChange={e => setShopDeliveryInfo(e.target.value)}
+                placeholder={fr ? 'Ex : Livraison à Conakry sous 24h, 20 000 GNF' : 'E.g. Delivery in Conakry within 24h, 20,000 GNF'}
+              />
+            </div>
+
+            <div className="input-group">
+              <label className="form-label">{fr ? 'Moyens de paiement acceptés' : 'Accepted payment methods'}</label>
+              <div className="role-visibility-list">
+                {PAYMENT_METHODS.map(method => (
+                  <label key={method} className="role-visibility-item">
+                    <input
+                      type="checkbox"
+                      checked={shopPaymentMethods.includes(method)}
+                      onChange={() => togglePaymentMethod(method)}
+                    />
+                    <span>{fr ? PAYMENT_LABELS_FR[method] : PAYMENT_LABELS_EN[method]}</span>
+                  </label>
+                ))}
+              </div>
             </div>
 
             <button type="submit" className="btn btn-primary" disabled={isSavingShop}>

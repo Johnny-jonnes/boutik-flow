@@ -48,6 +48,12 @@ export interface PublicStore {
   theme_color: string | null;
   has_logo: boolean;
   public_whatsapp: string | null;
+  about: string | null;
+  opening_hours: string | null;
+  delivery_info: string | null;
+  payment_methods: string[];
+  orders_count: number;
+  is_verified: boolean;
 }
 
 export interface PublicProduct {

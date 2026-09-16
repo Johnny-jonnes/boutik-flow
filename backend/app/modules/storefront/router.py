@@ -22,7 +22,7 @@ from app.core.database import get_bypass_db
 from app.core.rate_limit import limiter
 from app.core.thumbnails import decode_data_uri
 from app.modules.auth.models import Tenant, TenantStatusEnum
-from app.modules.products.models import Product, Category
+from app.modules.products.models import Product, Category, Order, OrderStatusEnum
 from app.modules.storefront.schemas import (
     PublicStoreResponse,
     PublicProductResponse,
@@ -76,6 +76,15 @@ def get_public_store(
     db: Annotated[Session, Depends(get_bypass_db)],
 ) -> PublicStoreResponse:
     tenant = _resolve_public_tenant(db, tenant_slug)
+
+    orders_count = db.query(func.count(Order.id)).filter(
+        and_(
+            Order.tenant_id == tenant.id,
+            Order.status != OrderStatusEnum.cancelled,
+            Order.deleted_at.is_(None),
+        )
+    ).scalar() or 0
+
     return PublicStoreResponse(
         name=tenant.name,
         slug=tenant.slug,
@@ -83,6 +92,11 @@ def get_public_store(
         theme_color=tenant.theme_color,
         has_logo=bool(tenant.logo),
         public_whatsapp=tenant.public_whatsapp,
+        about=tenant.about,
+        opening_hours=tenant.opening_hours,
+        delivery_info=tenant.delivery_info,
+        payment_methods=tenant.payment_methods or [],
+        orders_count=orders_count,
     )
 
 

@@ -105,6 +105,10 @@ class TenantResponse(BaseModel):
     description: str | None = None
     theme_color: str | None = None
     public_whatsapp: str | None = None
+    about: str | None = None
+    opening_hours: str | None = None
+    delivery_info: str | None = None
+    payment_methods: list[str] = []
 
     model_config = {"from_attributes": True}
 
@@ -183,6 +187,19 @@ class UpdateTenantRequest(BaseModel):
     theme_color: str | None = Field(None, description="Couleur d'accent hex, ex: #10b981")
     logo: str | None = Field(None, description="Logo en data-URI base64, None pour retirer")
     public_whatsapp: str | None = Field(None, max_length=20, description="Numéro WhatsApp affiché aux visiteurs, format E.164")
+    about: str | None = Field(None, max_length=4000, description="Présentation détaillée de la boutique, affichée sur la vitrine")
+    opening_hours: str | None = Field(None, max_length=200)
+    delivery_info: str | None = Field(None, max_length=300)
+    payment_methods: list[str] = Field(default_factory=list)
+
+    @field_validator("payment_methods")
+    @classmethod
+    def validate_payment_methods(cls, v: list[str]) -> list[str]:
+        allowed = {"cash", "orange_money", "mobile_money", "card"}
+        invalid = set(v) - allowed
+        if invalid:
+            raise ValueError(f"Moyen de paiement invalide : {', '.join(invalid)}. Autorisés : {', '.join(allowed)}")
+        return v
 
     @field_validator("theme_color")
     @classmethod

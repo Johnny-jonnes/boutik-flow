@@ -26,6 +26,18 @@ class PublicStoreResponse(BaseModel):
     # whatsapp_phone_id/whatsapp_token_encrypted (identifiants API internes,
     # voir Tenant.public_whatsapp pour la distinction).
     public_whatsapp: str | None = None
+    about: str | None = None
+    opening_hours: str | None = None
+    delivery_info: str | None = None
+    payment_methods: list[str] = []
+    # Nombre réel de commandes servies (non annulées) — signal de confiance
+    # honnête, jamais un chiffre inventé côté frontend.
+    orders_count: int = 0
+    # Toujours True ici : _resolve_public_tenant ne laisse jamais passer un
+    # tenant hors status=active, qui exige déjà une validation manuelle de
+    # l'équipe BoutikFlow (voir TenantStatusEnum) — pas un champ séparé à
+    # activer, une conséquence directe du filtre déjà appliqué.
+    is_verified: bool = True
 
 
 class PublicProductResponse(BaseModel):

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { Store } from 'lucide-react';
+import { Store, BadgeCheck, ShoppingBag, Clock, Truck, Wallet } from 'lucide-react';
 import { publicApi, PublicApiError } from '@/lib/api/publicClient';
 import { ProductGrid } from '@/components/storefront/ProductGrid';
 import { WhatsAppButton } from '@/components/storefront/WhatsAppButton';
@@ -15,6 +15,10 @@ import { WhatsAppButton } from '@/components/storefront/WhatsAppButton';
 export const dynamic = 'force-dynamic';
 
 const PER_PAGE = 24;
+
+const PAYMENT_LABELS: Record<string, string> = {
+  cash: 'Espèces', orange_money: 'Orange Money', mobile_money: 'Mobile Money', card: 'Carte bancaire',
+};
 
 async function getData(slug: string) {
   try {
@@ -86,6 +90,34 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
           </div>
           <h1 className="store-name">{store.name}</h1>
           {store.description && <p className="store-description">{store.description}</p>}
+
+          <div className="trust-row">
+            <span className="trust-badge verified">
+              <BadgeCheck size={14} /> Boutique vérifiée
+            </span>
+            {store.orders_count > 0 && (
+              <span className="trust-badge">
+                <ShoppingBag size={14} /> {store.orders_count.toLocaleString('fr-GN')} commande{store.orders_count > 1 ? 's' : ''} servie{store.orders_count > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+
+          {(store.opening_hours || store.delivery_info || store.payment_methods.length > 0) && (
+            <div className="practical-row">
+              {store.opening_hours && (
+                <span className="practical-item"><Clock size={14} />{store.opening_hours}</span>
+              )}
+              {store.delivery_info && (
+                <span className="practical-item"><Truck size={14} />{store.delivery_info}</span>
+              )}
+              {store.payment_methods.length > 0 && (
+                <span className="practical-item">
+                  <Wallet size={14} />
+                  {store.payment_methods.map(m => PAYMENT_LABELS[m] || m).join(' · ')}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {showTicker && (
@@ -102,6 +134,13 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
         )}
 
         <ProductGrid slug={slug} initialData={products} categories={categories} perPage={PER_PAGE} />
+
+        {store.about && (
+          <section className="about-section">
+            <h2 className="about-title">À propos de {store.name}</h2>
+            <p className="about-text">{store.about}</p>
+          </section>
+        )}
       </main>
 
       <footer className="storefront-footer">
@@ -212,6 +251,43 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
           color: var(--text-secondary);
           font-size: 0.95rem;
           line-height: 1.6;
+          margin: 0;
+        }
+
+        .trust-row { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; margin-top: 0.2rem; }
+        .trust-badge {
+          display: flex; align-items: center; gap: 0.35rem;
+          font-size: 0.78rem; font-weight: 600; color: var(--text-secondary);
+          background: var(--surface-2); border: 1px solid var(--border-default);
+          padding: 0.3rem 0.65rem; border-radius: var(--radius-full);
+        }
+        .trust-badge.verified { color: var(--color-brand-700); background: var(--brand-alpha-15); border-color: transparent; }
+
+        .practical-row { display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: center; margin-top: 0.1rem; }
+        .practical-item {
+          display: flex; align-items: center; gap: 0.4rem;
+          font-size: 0.82rem; color: var(--text-secondary);
+        }
+        .practical-item svg { color: var(--color-brand-600); flex-shrink: 0; }
+
+        .about-section {
+          border-top: 1px solid var(--border-subtle);
+          padding-top: 1.5rem;
+          margin-top: 0.5rem;
+        }
+        .about-title {
+          font-family: var(--font-display);
+          font-size: 1.15rem;
+          font-weight: 700;
+          color: var(--text-primary);
+          margin: 0 0 0.6rem;
+        }
+        .about-text {
+          color: var(--text-secondary);
+          font-size: 0.92rem;
+          line-height: 1.7;
+          white-space: pre-wrap;
+          max-width: 70ch;
           margin: 0;
         }
 

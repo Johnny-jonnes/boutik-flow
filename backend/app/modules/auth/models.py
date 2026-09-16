@@ -84,6 +84,14 @@ class Tenant(Base):
     # Business, jamais un numéro composable dans un lien wa.me/). Stocké tel
     # que saisi (E.164 attendu, ex: +224620000000), jamais reformaté en base.
     public_whatsapp = Column(String(20), nullable=True)
+    # Contenu "vitrine plus communicante" : à propos (texte libre plus long
+    # que description, qui reste le slogan court sous le nom), horaires,
+    # livraison, moyens de paiement acceptés — chacun optionnel, une section
+    # vide côté vitrine ne s'affiche simplement pas (voir storefront/router.py).
+    about = Column(Text, nullable=True)
+    opening_hours = Column(String(200), nullable=True)
+    delivery_info = Column(String(300), nullable=True)
+    payment_methods = Column(ARRAY(String), default=[], nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)

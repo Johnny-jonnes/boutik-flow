@@ -458,6 +458,10 @@ def update_tenant(
     tenant.theme_color = payload.theme_color
     tenant.logo = payload.logo
     tenant.public_whatsapp = payload.public_whatsapp
+    tenant.about = payload.about
+    tenant.opening_hours = payload.opening_hours
+    tenant.delivery_info = payload.delivery_info
+    tenant.payment_methods = payload.payment_methods
     db.commit()
     db.refresh(tenant)
     logger.info("Boutique renommée : %s (tenant=%s)", tenant.name, tenant.id)

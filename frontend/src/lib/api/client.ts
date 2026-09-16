@@ -1500,6 +1500,10 @@ interface TenantInfo {
   description?: string | null;
   theme_color?: string | null;
   public_whatsapp?: string | null;
+  about?: string | null;
+  opening_hours?: string | null;
+  delivery_info?: string | null;
+  payment_methods?: string[];
 }
 
 interface SubscriptionInfo {
@@ -1585,7 +1589,17 @@ export const api = {
     return request('/auth/me/password', { method: 'PUT', body: JSON.stringify(data) });
   },
 
-  updateTenant(data: { name: string; description?: string | null; theme_color?: string | null; logo?: string | null; public_whatsapp?: string | null }): Promise<TenantInfo> {
+  updateTenant(data: {
+    name: string;
+    description?: string | null;
+    theme_color?: string | null;
+    logo?: string | null;
+    public_whatsapp?: string | null;
+    about?: string | null;
+    opening_hours?: string | null;
+    delivery_info?: string | null;
+    payment_methods?: string[];
+  }): Promise<TenantInfo> {
     return request('/auth/tenant', { method: 'PUT', body: JSON.stringify(data) });
   },
 
