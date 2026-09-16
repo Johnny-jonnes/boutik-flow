@@ -95,14 +95,14 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
             <span className="trust-badge verified">
               <BadgeCheck size={14} /> Boutique vérifiée
             </span>
-            {store.orders_count > 0 && (
+            {!!store.orders_count && store.orders_count > 0 && (
               <span className="trust-badge">
                 <ShoppingBag size={14} /> {store.orders_count.toLocaleString('fr-GN')} commande{store.orders_count > 1 ? 's' : ''} servie{store.orders_count > 1 ? 's' : ''}
               </span>
             )}
           </div>
 
-          {(store.opening_hours || store.delivery_info || store.payment_methods.length > 0) && (
+          {(store.opening_hours || store.delivery_info || (store.payment_methods?.length ?? 0) > 0) && (
             <div className="practical-row">
               {store.opening_hours && (
                 <span className="practical-item"><Clock size={14} />{store.opening_hours}</span>
@@ -110,7 +110,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
               {store.delivery_info && (
                 <span className="practical-item"><Truck size={14} />{store.delivery_info}</span>
               )}
-              {store.payment_methods.length > 0 && (
+              {(store.payment_methods?.length ?? 0) > 0 && (
                 <span className="practical-item">
                   <Wallet size={14} />
                   {store.payment_methods.map(m => PAYMENT_LABELS[m] || m).join(' · ')}
