@@ -34,6 +34,9 @@ export async function generateMetadata({
   const { store, product } = data;
   const priceLabel = `${Number(product.price).toLocaleString('fr-GN')} GNF`;
   const description = product.description || `${product.name} — ${priceLabel} — ${store.name}`;
+  // Photo du produit en priorité (le plus pertinent pour un lien vers CE
+  // produit précis) ; à défaut, le logo de la boutique — jamais un lien nu
+  // sans aperçu, voir boutique/[slug]/page.tsx pour la même logique.
   const images = product.has_image ? [publicApi.imageUrl(slug, product.id)] : (store.has_logo ? [publicApi.logoUrl(slug)] : []);
   return {
     title: `${product.name} — ${priceLabel} · ${store.name}`,
@@ -44,6 +47,12 @@ export async function generateMetadata({
       description,
       type: 'website',
       url: `/boutique/${slug}/produit/${productId}`,
+      images,
+    },
+    twitter: {
+      card: images.length > 0 ? 'summary' : 'summary_large_image',
+      title: product.name,
+      description,
       images,
     },
   };

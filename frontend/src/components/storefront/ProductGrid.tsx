@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Search, X, Loader2, Grid3x3 } from 'lucide-react';
+import { Search, X, Loader2, Grid3x3, ChevronLeft, ChevronRight } from 'lucide-react';
 import { publicApi, PublicProduct, PublicProductList, PublicCategory } from '@/lib/api/publicClient';
 
 // Rail de catégories + recherche + grille — composant client isolé : la
@@ -27,7 +27,8 @@ export function ProductGrid({
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [data, setData] = useState(initialData);
   const [isSearching, setIsSearching] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isPaging, setIsPaging] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
   const [debounceTimer, setDebounceTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   // Un seul point d'entrée pour (re)charger la page 1 selon les filtres
@@ -61,20 +62,29 @@ export function ProductGrid({
     runQuery(query, id);
   };
 
-  const handleLoadMore = async () => {
-    setIsLoadingMore(true);
-    try {
-      const nextPage = data.page + 1;
-      const res = await publicApi.listProducts(slug, nextPage, perPage, query, categoryId || undefined);
-      setData(prev => ({ ...res, items: [...prev.items, ...res.items] }));
-    } catch {
-      // Silencieux : le bouton reste disponible pour réessayer.
-    } finally {
-      setIsLoadingMore(false);
-    }
+  // Pagination réelle (remplace l'ancien "Voir plus" qui empilait les
+  // produits) : chaque page reste bornée à `perPage` éléments — jamais le
+  // catalogue entier chargé en mémoire. Le changement de page fait d'abord
+  // sortir les cartes actuelles (classe "leaving"), puis charge/affiche la
+  // nouvelle page une fois la petite animation de sortie terminée.
+  const goToPage = (page: number) => {
+    if (page === data.page || isPaging) return;
+    setIsPaging(true);
+    setIsLeaving(true);
+    setTimeout(() => {
+      publicApi.listProducts(slug, page, perPage, query, categoryId || undefined)
+        .then(res => setData(res))
+        .catch(() => {
+          // Silencieux : la pagination reste utilisable pour réessayer.
+        })
+        .finally(() => {
+          setIsLeaving(false);
+          setIsPaging(false);
+        });
+    }, 180);
   };
 
-  const hasMore = data.items.length < data.total;
+  const totalPages = Math.max(1, Math.ceil(data.total / perPage));
   const totalAll = initialData.total;
 
   return (
@@ -133,7 +143,7 @@ export function ProductGrid({
               <Link
                 key={p.id}
                 href={`/boutique/${slug}/produit/${p.id}`}
-                className="pg-card"
+                className={'pg-card' + (isLeaving ? ' leaving' : '')}
                 style={{ animationDelay: `${Math.min(i, 11) * 45}ms` }}
               >
                 <span className="pg-card-notch" aria-hidden="true" />
@@ -159,12 +169,43 @@ export function ProductGrid({
             ))}
           </div>
 
-          {hasMore && (
-            <div className="pg-load-more-wrap">
-              <button type="button" className="pg-load-more" onClick={handleLoadMore} disabled={isLoadingMore}>
-                {isLoadingMore ? <Loader2 size={16} className="pg-spin" /> : `Voir plus (${data.total - data.items.length} restants)`}
+          {totalPages > 1 && (
+            <nav className="pg-pagination" aria-label="Pages du catalogue">
+              <button
+                type="button"
+                className="pg-page-btn"
+                disabled={data.page === 1 || isPaging}
+                onClick={() => goToPage(data.page - 1)}
+                aria-label="Page précédente"
+              >
+                <ChevronLeft size={15} /> Précédent
               </button>
-            </div>
+              {getPageNumbers(data.page, totalPages).map((p, i) =>
+                p === 'ellipsis' ? (
+                  <span key={`e${i}`} className="pg-page-ellipsis">…</span>
+                ) : (
+                  <button
+                    key={p}
+                    type="button"
+                    className={'pg-page-btn pg-page-num' + (p === data.page ? ' active' : '')}
+                    disabled={isPaging}
+                    onClick={() => goToPage(p)}
+                    aria-current={p === data.page ? 'page' : undefined}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+              <button
+                type="button"
+                className="pg-page-btn"
+                disabled={data.page === totalPages || isPaging}
+                onClick={() => goToPage(data.page + 1)}
+                aria-label="Page suivante"
+              >
+                Suivant <ChevronRight size={15} />
+              </button>
+            </nav>
           )}
         </>
       )}
@@ -234,11 +275,17 @@ export function ProductGrid({
           border-radius: 4px var(--radius-lg) var(--radius-lg) var(--radius-lg);
           overflow: hidden; text-decoration: none;
           transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-          opacity: 0; animation: pg-card-in 0.45s ease forwards;
+          opacity: 0; animation: pg-card-in 0.45s cubic-bezier(.2,.8,.2,1) forwards;
         }
         @keyframes pg-card-in {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        .pg-card.leaving {
+          animation: pg-card-out 0.18s ease forwards;
+        }
+        @keyframes pg-card-out {
+          to { opacity: 0; transform: translateY(-8px) scale(0.96); }
         }
         .pg-card:hover {
           border-color: var(--border-strong);
@@ -256,7 +303,19 @@ export function ProductGrid({
           border-radius: 50%; background: var(--surface-1); z-index: 3;
           box-shadow: inset 0 0 0 1px var(--border-strong);
         }
-        .pg-card-image-wrap { position: relative; width: 100%; aspect-ratio: 1; background: var(--surface-2); overflow: hidden; }
+        .pg-card-image-wrap {
+          position: relative; width: 100%; aspect-ratio: 1; background: var(--surface-2); overflow: hidden;
+          animation: pg-media-float 3.2s ease-in-out infinite;
+        }
+        /* Décalage/durée variés par carte pour un mouvement organique
+           plutôt que toutes les vignettes flottant en parfaite unisson. */
+        .pg-card:nth-child(2n) .pg-card-image-wrap { animation-duration: 3.7s; animation-delay: 0.35s; }
+        .pg-card:nth-child(3n) .pg-card-image-wrap { animation-duration: 2.8s; animation-delay: 0.7s; }
+        .pg-card:nth-child(5n) .pg-card-image-wrap { animation-duration: 4.1s; animation-delay: 0.15s; }
+        @keyframes pg-media-float {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-4px); }
+        }
         .pg-card-image { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s ease; }
         .pg-card:hover .pg-card-image { transform: scale(1.06); }
         .pg-card-image-placeholder { width: 100%; height: 100%; background: linear-gradient(135deg, var(--surface-2), var(--surface-3)); }
@@ -285,17 +344,44 @@ export function ProductGrid({
         }
         .pg-card-price span { font-size: 0.68rem; color: var(--text-muted); }
 
-        .pg-load-more-wrap { display: flex; justify-content: center; margin-top: 0.5rem; }
-        .pg-load-more {
-          background: var(--surface-1); border: 1px solid var(--border-default); color: var(--color-brand-700);
-          padding: 0.65rem 1.4rem; border-radius: var(--radius-md); font-family: var(--font-sans);
-          font-size: 0.85rem; font-weight: 700; cursor: pointer;
-          display: flex; align-items: center; gap: 0.5rem;
-          transition: background 0.15s ease, border-color 0.15s ease;
+        .pg-pagination {
+          display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+          margin-top: 0.5rem; flex-wrap: wrap;
         }
-        .pg-load-more:hover:not(:disabled) { background: var(--surface-2); border-color: var(--border-strong); }
-        .pg-load-more:disabled { opacity: 0.6; cursor: default; }
+        .pg-page-btn {
+          display: flex; align-items: center; gap: 0.3rem;
+          min-width: 38px; height: 38px; padding: 0 0.7rem;
+          border-radius: var(--radius-md); border: 1px solid var(--border-default);
+          background: var(--surface-1); color: var(--text-secondary);
+          font-family: var(--font-sans); font-size: 0.84rem; font-weight: 600;
+          cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+        }
+        .pg-page-btn:hover:not(:disabled):not(.active) { border-color: var(--border-strong); transform: translateY(-1px); }
+        .pg-page-num.active {
+          background: linear-gradient(135deg, var(--logo-gradient-from), var(--logo-gradient-to));
+          border-color: transparent; color: #ffffff;
+        }
+        .pg-page-btn:disabled { opacity: 0.45; cursor: default; }
+        .pg-page-ellipsis { color: var(--text-muted); padding: 0 0.2rem; font-size: 0.84rem; }
+
+        @media (prefers-reduced-motion: reduce) {
+          .pg-card { animation: none; opacity: 1; transform: none; }
+          .pg-card.leaving { animation: none; }
+          .pg-card-image-wrap { animation: none; }
+        }
       `}</style>
     </div>
   );
+}
+
+// Fenêtre de pagination avec "…" — évite une rangée de 30 boutons sur un
+// grand catalogue. En dessous de 8 pages, tout s'affiche (pas de repli utile).
+function getPageNumbers(current: number, total: number): (number | 'ellipsis')[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const pages: (number | 'ellipsis')[] = [1];
+  if (current > 3) pages.push('ellipsis');
+  for (let p = Math.max(2, current - 1); p <= Math.min(total - 1, current + 1); p++) pages.push(p);
+  if (current < total - 2) pages.push('ellipsis');
+  pages.push(total);
+  return pages;
 }

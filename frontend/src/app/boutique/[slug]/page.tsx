@@ -40,6 +40,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!data) return { title: 'Boutique introuvable · BoutikFlow' };
   const { store } = data;
   const description = store.description || `Découvrez les produits de ${store.name} sur BoutikFlow.`;
+  // Logo de la boutique comme image d'aperçu — c'est lui qui "masque" le
+  // lien brut quand on le colle dans WhatsApp/Instagram/Facebook (statut,
+  // message, story) : la plateforme affiche une grande carte avec cette
+  // image au lieu du texte de l'URL. Répété en Open Graph ET Twitter Card
+  // (WhatsApp et certains navigateurs in-app lisent l'un ou l'autre).
+  const previewImages = store.has_logo ? [publicApi.logoUrl(slug)] : [];
   return {
     title: `${store.name} · BoutikFlow`,
     description,
@@ -49,7 +55,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       description,
       type: 'website',
       url: `/boutique/${slug}`,
-      images: store.has_logo ? [publicApi.logoUrl(slug)] : [],
+      images: previewImages,
+    },
+    twitter: {
+      card: previewImages.length > 0 ? 'summary' : 'summary_large_image',
+      title: store.name,
+      description,
+      images: previewImages,
     },
   };
 }
