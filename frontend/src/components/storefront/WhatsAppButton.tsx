@@ -16,8 +16,12 @@ export function WhatsAppButton({ phone, message }: { phone: string; message: str
       <style jsx>{`
         .wa-fab {
           position: fixed;
-          bottom: 1.25rem;
-          right: 1.25rem;
+          /* viewport-fit=cover (voir layout.tsx) étend la page sous
+             l'encoche/l'indicateur d'accueil iOS — sans env(), ce bouton
+             se retrouve caché derrière la barre système sur iPhone (même
+             bug déjà corrigé une fois pour ScrollToTop). */
+          bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+          right: max(1.25rem, env(safe-area-inset-right, 0px));
           z-index: 60;
           width: 56px;
           height: 56px;
@@ -36,7 +40,11 @@ export function WhatsAppButton({ phone, message }: { phone: string; message: str
           50% { box-shadow: 0 6px 28px rgba(37, 211, 102, 0.7); }
         }
         @media (max-width: 480px) {
-          .wa-fab { width: 50px; height: 50px; bottom: 1rem; right: 1rem; }
+          .wa-fab {
+            width: 50px; height: 50px;
+            bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+            right: max(1rem, env(safe-area-inset-right, 0px));
+          }
         }
       `}</style>
     </a>

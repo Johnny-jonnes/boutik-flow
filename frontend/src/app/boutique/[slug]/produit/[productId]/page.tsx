@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, MessageCircle } from 'lucide-react';
 import { publicApi, PublicApiError } from '@/lib/api/publicClient';
 import { ShareButtons } from '@/components/storefront/ShareButtons';
 import { WhatsAppButton } from '@/components/storefront/WhatsAppButton';
@@ -58,6 +58,10 @@ export default async function StorefrontProductPage({
   const data = await getData(slug, productId);
   if (!data) notFound();
   const { store, product } = data;
+  const waMessage = `Bonjour, je suis intéressé(e) par "${product.name}" (${Number(product.price).toLocaleString('fr-GN')} GNF) sur ${store.name}.`;
+  const waHref = store.public_whatsapp
+    ? `https://wa.me/${store.public_whatsapp.replace(/[^\d]/g, '')}?text=${encodeURIComponent(waMessage)}`
+    : null;
 
   return (
     <div className="storefront light">
@@ -78,6 +82,12 @@ export default async function StorefrontProductPage({
           ) : (
             <div className="product-detail-image-placeholder" />
           )}
+          {waHref && (
+            <a href={waHref} target="_blank" rel="noopener noreferrer" className="image-contact-badge" aria-label="Contacter le vendeur sur WhatsApp">
+              <MessageCircle size={15} fill="white" strokeWidth={0} />
+              <span>Contacter le vendeur</span>
+            </a>
+          )}
         </div>
 
         <div className="product-detail-info">
@@ -87,13 +97,8 @@ export default async function StorefrontProductPage({
           {!product.is_available && <span className="badge-unavailable-inline">Rupture de stock</span>}
           {product.description && <p className="product-detail-description">{product.description}</p>}
 
-          {store.public_whatsapp && (
-            <a
-              href={`https://wa.me/${store.public_whatsapp.replace(/[^\d]/g, '')}?text=${encodeURIComponent(`Bonjour, je suis intéressé(e) par "${product.name}" (${Number(product.price).toLocaleString('fr-GN')} GNF) sur ${store.name}.`)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="wa-inline-btn"
-            >
+          {waHref && (
+            <a href={waHref} target="_blank" rel="noopener noreferrer" className="wa-inline-btn">
               Discuter sur WhatsApp
             </a>
           )}
@@ -156,6 +161,7 @@ export default async function StorefrontProductPage({
           gap: 1.5rem;
         }
         .product-detail-image-wrap {
+          position: relative;
           width: 100%;
           aspect-ratio: 1;
           max-height: 420px;
@@ -164,6 +170,24 @@ export default async function StorefrontProductPage({
           background: var(--surface-2);
           animation: pd-fade-in 0.4s ease;
         }
+        .image-contact-badge {
+          position: absolute;
+          left: 0.75rem;
+          bottom: 0.75rem;
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          background: rgba(37, 211, 102, 0.94);
+          color: white;
+          font-size: 0.8rem;
+          font-weight: 700;
+          padding: 0.5rem 0.8rem;
+          border-radius: var(--radius-full);
+          text-decoration: none;
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+          transition: transform 0.15s ease, filter 0.15s ease;
+        }
+        .image-contact-badge:hover { transform: translateY(-2px); filter: brightness(1.05); }
         @keyframes pd-fade-in {
           from { opacity: 0; transform: scale(0.98); }
           to { opacity: 1; transform: scale(1); }
