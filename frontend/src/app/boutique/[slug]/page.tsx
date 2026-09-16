@@ -45,6 +45,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // message, story) : la plateforme affiche une grande carte avec cette
   // image au lieu du texte de l'URL. Répété en Open Graph ET Twitter Card
   // (WhatsApp et certains navigateurs in-app lisent l'un ou l'autre).
+  // "summary_large_image" affiche l'image en grand bandeau plutôt qu'en
+  // petite vignette carrée — le lien devient un détail à peine visible en
+  // dessous, jamais l'inverse (aucune plateforme ne masque totalement le
+  // domaine : protection anti-hameçonnage volontaire, pas un réglage).
   const previewImages = store.has_logo ? [publicApi.logoUrl(slug)] : [];
   return {
     title: `${store.name} · BoutikFlow`,
@@ -55,10 +59,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       description,
       type: 'website',
       url: `/boutique/${slug}`,
+      siteName: store.name,
       images: previewImages,
     },
     twitter: {
-      card: previewImages.length > 0 ? 'summary' : 'summary_large_image',
+      card: previewImages.length > 0 ? 'summary_large_image' : 'summary',
       title: store.name,
       description,
       images: previewImages,

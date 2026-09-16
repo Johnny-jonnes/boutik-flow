@@ -155,7 +155,11 @@ export default function SettingsPage() {
     const reader = new FileReader();
     reader.onloadend = async () => {
       const base64String = reader.result as string;
-      const compressed = await compressImage(base64String, 300, 300, 0.85);
+      // 600x600 plutôt que 300x300 : ce même logo sert aussi de grande
+      // image d'aperçu au partage (Twitter Card "summary_large_image",
+      // Open Graph) — trop petit, certaines plateformes rétrogradent
+      // silencieusement vers une simple vignette carrée.
+      const compressed = await compressImage(base64String, 600, 600, 0.85);
       setShopLogo(compressed);
     };
     reader.readAsDataURL(file);

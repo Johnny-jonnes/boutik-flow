@@ -47,10 +47,11 @@ export async function generateMetadata({
       description,
       type: 'website',
       url: `/boutique/${slug}/produit/${productId}`,
+      siteName: store.name,
       images,
     },
     twitter: {
-      card: images.length > 0 ? 'summary' : 'summary_large_image',
+      card: images.length > 0 ? 'summary_large_image' : 'summary',
       title: product.name,
       description,
       images,
