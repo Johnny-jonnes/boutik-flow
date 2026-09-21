@@ -6,7 +6,15 @@ import { publicApi, PublicApiError } from '@/lib/api/publicClient';
 import { ShareButtons } from '@/components/storefront/ShareButtons';
 import { WhatsAppButton } from '@/components/storefront/WhatsAppButton';
 
-export const dynamic = 'force-dynamic';
+// force-dynamic (avant) obligeait un aller-retour serveur complet — 2
+// appels API réseau vers Render — à CHAQUE navigation, y compris un
+// simple retour vers une fiche déjà vue il y a 2 secondes : d'où la
+// lenteur (2-3s) du bouton retour. Un produit public n'a pas besoin
+// d'être à la milliseconde près (le flux d'achat passe par WhatsApp, pas
+// une transaction en direct sur cette page) — revalidate met en cache le
+// HTML pendant 30s : un retour dans cette fenêtre s'affiche à l'instant,
+// tout en gardant les données globalement à jour.
+export const revalidate = 30;
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://boutik-flow.vercel.app';
 

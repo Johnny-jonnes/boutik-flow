@@ -11,8 +11,14 @@ import { WhatsAppButton } from '@/components/storefront/WhatsAppButton';
 // lente, et permet un vrai SEO (generateMetadata ci-dessous) plutôt
 // qu'une page vide indexée par les moteurs de recherche/crawlers sociaux.
 // La recherche/filtre catégorie/pagination sont délégués à ProductGrid
-// (client component), seule partie de la page qui a besoin d'interactivité.
-export const dynamic = 'force-dynamic';
+// (client component, appels API directs) — cette page ne rend QUE
+// l'instantané initial, jamais l'état d'une recherche/filtre en cours.
+// force-dynamic (avant) obligeait un aller-retour serveur complet — 3
+// appels API vers Render — à CHAQUE navigation, y compris un simple
+// retour depuis une fiche produit consultée 2 secondes plus tôt (d'où la
+// lenteur perçue du bouton retour). revalidate met en cache le HTML
+// pendant 30s : un retour dans cette fenêtre s'affiche à l'instant.
+export const revalidate = 30;
 
 const PER_PAGE = 24;
 
