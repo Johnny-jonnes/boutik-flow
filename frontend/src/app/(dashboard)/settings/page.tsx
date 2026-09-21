@@ -186,53 +186,67 @@ export default function SettingsPage() {
     }
   };
 
-  // QR code généré localement (même lib/pattern que le QR SKU produit) :
-  // le boutiquier peut l'imprimer/partager sans jamais avoir à taper ou
-  // coller ce long lien lui-même.
-  const downloadStoreQRCode = async () => {
-    try {
-      const { default: QRCode } = await import('qrcode');
-      const dataUrl = await QRCode.toDataURL(storeUrl, { width: 300, margin: 1 });
-      const a = document.createElement('a');
-      a.href = dataUrl;
-      a.download = `QRCode-Boutique-${tenant?.slug || 'boutique'}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    } catch {
-      toast.error(fr ? 'Erreur lors de la génération du QR code' : 'Error generating QR code');
+  // QR code généré localement, affiché dans une fenêtre dédiée — aucune
+  // action automatique (ni "onload=window.print()", ni clic <a download>
+  // synthétique) : les deux échouaient silencieusement sur mobile.
+  // - window.print()/window.close() déclenchés depuis onload ne sont pas
+  //   considérés comme un vrai geste utilisateur par de nombreux
+  //   navigateurs (surtout mobile) : ça pouvait sembler fonctionner une
+  //   fois puis être bloqué silencieusement ensuite — pas de logique
+  //   d'état cassée, juste un déclencheur non fiable par nature.
+  // - <a download> sur une data-URI n'est pas supporté par Safari iOS
+  //   (limitation WebKit connue) : le clic programmatique n'aboutissait
+  //   à aucun téléchargement, sans aucune erreur visible.
+  // Ici, tout passe par un vrai bouton/lien cliqué PAR l'utilisateur DANS
+  // la fenêtre ouverte : geste authentique partout, et sur iPhone
+  // l'image est un <img> normal qu'on peut enregistrer par appui long.
+  const openStoreQRWindow = (mode: 'print' | 'download') => {
+    // Ouverture synchrone, avant tout await : sinon les navigateurs
+    // strictement anti-popup (Safari) bloquent window.open() une fois
+    // sorti du contexte direct du clic utilisateur.
+    const popup = window.open('', '_blank');
+    if (!popup) {
+      toast.error(fr
+        ? 'Fenêtre bloquée par le navigateur — autorisez les pop-ups pour ce site puis réessayez.'
+        : 'Window blocked by the browser — allow pop-ups for this site and try again.');
+      return;
     }
-  };
+    popup.document.write(`<!doctype html><html><body style="font-family:sans-serif;text-align:center;padding:2rem;">${fr ? 'Génération du QR code…' : 'Generating QR code…'}</body></html>`);
 
-  const printStoreQRCode = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-    printWindow.document.write(`<html><body style="font-family:sans-serif;text-align:center;padding:2rem;">${fr ? 'Génération du QR code…' : 'Generating QR code…'}</body></html>`);
+    import('qrcode').then(({ default: QRCode }) => QRCode.toDataURL(storeUrl, { width: 320, margin: 1 })).then((dataUrl) => {
+      const filename = `QRCode-Boutique-${tenant?.slug || 'boutique'}.png`;
+      const actionHtml = mode === 'print'
+        ? `<button onclick="window.print()" class="qr-action">${fr ? 'Imprimer' : 'Print'}</button>`
+        : `<a href="${dataUrl}" download="${filename}" class="qr-action">${fr ? "Télécharger l'image" : 'Download image'}</a>
+           <p class="qr-note">${fr ? "Sur iPhone : appuyez longuement sur l'image puis « Enregistrer l'image »." : 'On iPhone: press and hold the image, then “Save Image”.'}</p>`;
 
-    import('qrcode').then(({ default: QRCode }) => QRCode.toDataURL(storeUrl, { width: 260, margin: 1 })).then((dataUrl) => {
-      printWindow.document.open();
-      printWindow.document.write(`
+      popup.document.open();
+      popup.document.write(`
+        <!doctype html>
         <html>
           <head>
-            <title>${fr ? 'Imprimer QR Code' : 'Print QR Code'} - ${tenant?.name || ''}</title>
+            <title>QR Code - ${tenant?.name || ''}</title>
             <style>
-              body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: sans-serif; text-align: center; }
-              h2 { margin-bottom: 5px; }
-              p { margin-top: 5px; color: #555; word-break: break-all; max-width: 320px; }
-              img { border: 1px solid #eee; padding: 10px; }
-              @media print { img { max-width: 100%; } }
+              body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: sans-serif; text-align: center; padding: 2rem 1rem; box-sizing: border-box; }
+              h2 { margin: 0 0 4px; }
+              p.qr-url { margin: 4px 0 1.25rem; color: #555; word-break: break-all; max-width: 320px; font-size: 0.85rem; }
+              img { border: 1px solid #eee; padding: 10px; max-width: 100%; height: auto; }
+              .qr-action { margin-top: 1.25rem; padding: 0.65rem 1.5rem; border-radius: 8px; border: none; background: #31a292; color: #fff; font-weight: 700; font-size: 0.95rem; cursor: pointer; text-decoration: none; display: inline-block; }
+              .qr-note { margin-top: 0.75rem; font-size: 0.78rem; color: #888; max-width: 280px; }
+              @media print { .qr-action, .qr-note { display: none; } }
             </style>
           </head>
-          <body onload="window.print(); window.close();">
+          <body>
             <h2>${tenant?.name || ''}</h2>
-            <img src="${dataUrl}" alt="QR code boutique" />
-            <p>${storeUrl}</p>
+            <img src="${dataUrl}" alt="QR code boutique" width="320" height="320" />
+            <p class="qr-url">${storeUrl}</p>
+            ${actionHtml}
           </body>
         </html>
       `);
-      printWindow.document.close();
+      popup.document.close();
     }).catch(() => {
-      printWindow.close();
+      popup.close();
       toast.error(fr ? 'Erreur lors de la génération du QR code' : 'Error generating QR code');
     });
   };
@@ -474,10 +488,10 @@ export default function SettingsPage() {
               </a>
             </div>
             <div className="store-qr-actions">
-              <button type="button" className="btn btn-secondary btn-sm" onClick={downloadStoreQRCode}>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => openStoreQRWindow('download')}>
                 <Download size={14} /> {fr ? 'Télécharger le QR code' : 'Download QR code'}
               </button>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={printStoreQRCode}>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => openStoreQRWindow('print')}>
                 <Printer size={14} /> {fr ? 'Imprimer le QR code' : 'Print QR code'}
               </button>
             </div>
