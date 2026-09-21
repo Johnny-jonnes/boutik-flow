@@ -78,8 +78,8 @@ export default async function StorefrontProductPage({
       <header className="storefront-header">
         <div className="storefront-header-inner">
           <Link href={`/boutique/${slug}`} className="back-link">
-            <ArrowLeft size={16} />
-            <span>{store.name}</span>
+            <ArrowLeft size={18} />
+            <span>Retour à {store.name}</span>
           </Link>
         </div>
       </header>
@@ -156,12 +156,18 @@ export default async function StorefrontProductPage({
           display: flex;
           align-items: center;
           gap: 0.5rem;
+          width: fit-content;
+          margin: -0.5rem;
+          padding: 0.5rem;
+          border-radius: var(--radius-md);
           text-decoration: none;
           font-size: 0.9rem;
           font-weight: 600;
           color: var(--color-brand-700);
+          transition: background 0.15s ease;
         }
-        .back-link:hover { opacity: 0.8; }
+        .back-link:hover { background: var(--surface-2); }
+        .back-link:active { background: var(--surface-3); }
         .product-detail {
           max-width: 700px;
           margin: 0 auto;
