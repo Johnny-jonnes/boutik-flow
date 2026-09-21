@@ -744,19 +744,9 @@ function ProductsContent() {
 
             {viewProduct.sku && (
               <div className="qr-container-row">
-                <div className="qr-img-wrap">
-                  <img
-                    src={`https://chart.googleapis.com/chart?chs=150x150&cht=qr&chl=${encodeURIComponent(viewProduct.sku)}&choe=UTF-8`}
-                    alt={viewProduct.sku}
-                    className="qr-img"
-                  />
-                </div>
                 <div className="qr-actions-buttons">
                   <button className="btn btn-secondary btn-sm flex items-center justify-center w-full" onClick={() => setIsQrModalOpen(true)}>
-                    <Download size={13} style={{ marginRight: '0.35rem' }} /> Télécharger
-                  </button>
-                  <button className="btn btn-secondary btn-sm flex items-center justify-center w-full mt-2" onClick={() => setIsQrModalOpen(true)}>
-                    <Printer size={13} style={{ marginRight: '0.35rem' }} /> Imprimer
+                    <Printer size={13} style={{ marginRight: '0.35rem' }} /> Imprimer le code QR
                   </button>
                 </div>
               </div>
@@ -970,20 +960,6 @@ function ProductsContent() {
             width: 100%;
           }
         }
-        .qr-img-wrap {
-          background: white;
-          padding: 0.5rem;
-          border-radius: 8px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border: 1px solid var(--border-default);
-          flex-shrink: 0;
-        }
-        .qr-img {
-          width: 90px;
-          height: 90px;
-        }
         .qr-actions-buttons {
           flex: 1;
           display: flex;
@@ -1055,7 +1031,6 @@ function ProductsContent() {
           value={viewProduct.sku || ''}
           title={viewProduct.name}
           subtitle={`SKU: ${viewProduct.sku || ''}`}
-          filename={`QRCode-${viewProduct.name.replace(/\s+/g, '_')}-${viewProduct.sku || ''}.png`}
         />
       )}
     </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Store, User, KeyRound, Eye, EyeOff, Save, Landmark, Copy, ExternalLink, Download, Printer, ImagePlus, X, MessageCircle } from 'lucide-react';
+import { Store, User, KeyRound, Eye, EyeOff, Save, Landmark, Copy, ExternalLink, Printer, ImagePlus, X, MessageCircle } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
@@ -426,9 +426,6 @@ export default function SettingsPage() {
             </div>
             <div className="store-qr-actions">
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => setIsQrModalOpen(true)}>
-                <Download size={14} /> {fr ? 'Télécharger le QR code' : 'Download QR code'}
-              </button>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setIsQrModalOpen(true)}>
                 <Printer size={14} /> {fr ? 'Imprimer le QR code' : 'Print QR code'}
               </button>
             </div>
@@ -615,7 +612,6 @@ export default function SettingsPage() {
         value={storeUrl}
         title={tenant?.name || ''}
         subtitle={storeUrl}
-        filename={`QRCode-Boutique-${tenant?.slug || 'boutique'}.png`}
       />
     </div>
   );
