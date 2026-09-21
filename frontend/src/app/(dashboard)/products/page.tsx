@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
 import { BarcodeScannerModal } from '@/components/ui/BarcodeScannerModal';
 import { SKUPrintModal } from '@/components/ui/SKUPrintModal';
+import { QRCodeModal } from '@/components/ui/QRCodeModal';
 import { BulkAddProductsModal } from '@/components/ui/BulkAddProductsModal';
 import { BulkStockInModal } from '@/components/ui/BulkStockInModal';
 import { useLanguage } from '@/context/LanguageContext';
@@ -62,6 +63,7 @@ function ProductsContent() {
 
   // View modal
   const [viewProduct, setViewProduct] = useState<Product | null>(null);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [skuPrintProduct, setSkuPrintProduct] = useState<Product | null>(null);
 
   // Edit modal
@@ -280,66 +282,6 @@ function ProductsContent() {
     } catch {
       toast.error('Impossible de copier le lien');
     }
-  };
-
-  // QR Code download/print — générés localement (le service Google Charts
-  // précédemment utilisé a été fermé par Google et répond 404). Tout passe
-  // par un vrai bouton/lien cliqué PAR l'utilisateur DANS la fenêtre
-  // ouverte, jamais une action automatique : "onload=window.print()" et le
-  // clic <a download> synthétique sur une data-URI ne sont pas traités
-  // comme un vrai geste utilisateur par de nombreux navigateurs mobiles
-  // (en particulier Safari iOS, qui n'honore même pas l'attribut download
-  // sur une data-URI) — ça pouvait sembler fonctionner une fois puis être
-  // bloqué silencieusement ensuite, sans logique d'état cassée en cause.
-  const openProductQRWindow = (sku: string, productName: string, mode: 'print' | 'download') => {
-    // Ouverture synchrone, avant tout await : sinon les navigateurs
-    // strictement anti-popup (Safari) bloquent window.open() une fois
-    // sorti du contexte direct du clic utilisateur.
-    const popup = window.open('', '_blank');
-    if (!popup) {
-      toast.error(language === 'fr'
-        ? 'Fenêtre bloquée par le navigateur — autorisez les pop-ups pour ce site puis réessayez.'
-        : 'Window blocked by the browser — allow pop-ups for this site and try again.');
-      return;
-    }
-    popup.document.write(`<!doctype html><html><body style="font-family:sans-serif;text-align:center;padding:2rem;">${language === 'fr' ? 'Génération du QR code…' : 'Generating QR code…'}</body></html>`);
-
-    import('qrcode').then(({ default: QRCode }) => QRCode.toDataURL(sku, { width: 300, margin: 1 })).then((dataUrl) => {
-      const filename = `QRCode-${productName.replace(/\s+/g, '_')}-${sku}.png`;
-      const actionHtml = mode === 'print'
-        ? `<button onclick="window.print()" class="qr-action">${language === 'fr' ? 'Imprimer' : 'Print'}</button>`
-        : `<a href="${dataUrl}" download="${filename}" class="qr-action">${language === 'fr' ? "Télécharger l'image" : 'Download image'}</a>
-           <p class="qr-note">${language === 'fr' ? "Sur iPhone : appuyez longuement sur l'image puis « Enregistrer l'image »." : 'On iPhone: press and hold the image, then “Save Image”.'}</p>`;
-
-      popup.document.open();
-      popup.document.write(`
-        <!doctype html>
-        <html>
-          <head>
-            <title>QR Code - ${productName}</title>
-            <style>
-              body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: sans-serif; text-align: center; padding: 2rem 1rem; box-sizing: border-box; }
-              h2 { margin: 0 0 4px; }
-              p.qr-sku { margin: 4px 0 1.25rem; color: #555; }
-              img { border: 1px solid #eee; padding: 10px; max-width: 100%; height: auto; }
-              .qr-action { margin-top: 1.25rem; padding: 0.65rem 1.5rem; border-radius: 8px; border: none; background: #10b981; color: #fff; font-weight: 700; font-size: 0.95rem; cursor: pointer; text-decoration: none; display: inline-block; }
-              .qr-note { margin-top: 0.75rem; font-size: 0.78rem; color: #888; max-width: 280px; }
-              @media print { .qr-action, .qr-note { display: none; } }
-            </style>
-          </head>
-          <body>
-            <h2>${productName}</h2>
-            <img src="${dataUrl}" alt="${sku}" width="300" height="300" />
-            <p class="qr-sku">SKU: <strong>${sku}</strong></p>
-            ${actionHtml}
-          </body>
-        </html>
-      `);
-      popup.document.close();
-    }).catch(() => {
-      popup.close();
-      toast.error(language === 'fr' ? 'Erreur lors de la génération du QR code' : 'Error generating QR code');
-    });
   };
 
   // useMemo — sans lui, ce filtrage (jusqu'à 500 produits en mémoire, voir
@@ -810,10 +752,10 @@ function ProductsContent() {
                   />
                 </div>
                 <div className="qr-actions-buttons">
-                  <button className="btn btn-secondary btn-sm flex items-center justify-center w-full" onClick={() => openProductQRWindow(viewProduct.sku || '', viewProduct.name, 'download')}>
+                  <button className="btn btn-secondary btn-sm flex items-center justify-center w-full" onClick={() => setIsQrModalOpen(true)}>
                     <Download size={13} style={{ marginRight: '0.35rem' }} /> Télécharger
                   </button>
-                  <button className="btn btn-secondary btn-sm flex items-center justify-center w-full mt-2" onClick={() => openProductQRWindow(viewProduct.sku || '', viewProduct.name, 'print')}>
+                  <button className="btn btn-secondary btn-sm flex items-center justify-center w-full mt-2" onClick={() => setIsQrModalOpen(true)}>
                     <Printer size={13} style={{ marginRight: '0.35rem' }} /> Imprimer
                   </button>
                 </div>
@@ -1103,6 +1045,17 @@ function ProductsContent() {
           isOpen={!!skuPrintProduct}
           onClose={() => setSkuPrintProduct(null)}
           product={skuPrintProduct}
+        />
+      )}
+
+      {viewProduct && (
+        <QRCodeModal
+          isOpen={isQrModalOpen}
+          onClose={() => setIsQrModalOpen(false)}
+          value={viewProduct.sku || ''}
+          title={viewProduct.name}
+          subtitle={`SKU: ${viewProduct.sku || ''}`}
+          filename={`QRCode-${viewProduct.name.replace(/\s+/g, '_')}-${viewProduct.sku || ''}.png`}
         />
       )}
     </div>
