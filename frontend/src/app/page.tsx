@@ -3,23 +3,19 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { BrandMark } from '@/components/BrandMark';
-import { 
-  MapPin, 
-  MessageSquareText, 
-  Users, 
-  Package, 
-  BarChart3, 
-  Bot, 
-  Smartphone, 
-  CheckCircle, 
-  ShieldCheck, 
-  Zap, 
-  Globe, 
-  ArrowRight, 
-  Sparkles,
+import {
+  MapPin,
+  Store,
+  Users,
+  Package,
+  BarChart3,
+  Bot,
+  Smartphone,
+  ShieldCheck,
+  WifiOff,
+  ArrowRight,
   ChevronDown,
-  Layers,
-  Sparkle
+  ScanBarcode,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
@@ -84,134 +80,6 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
 }
 
 export default function HomePage() {
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly' | 'lifetime'>('monthly');
-
-  const plans = {
-    monthly: [
-      {
-        name: 'Pack Standard',
-        badge: 'idéal pour démarrer',
-        features: [
-          'Réponse automatique intelligente',
-          'Gestion de 100 clients actifs',
-          'Catalogue produits basique',
-          'Rapports de ventes hebdomadaires',
-          'Support par e-mail standard'
-        ],
-        highlighted: false,
-        cta: 'Essayer BoutikFlow'
-      },
-      {
-        name: 'Pack Pro',
-        badge: 'le plus populaire',
-        features: [
-          'Clients et ventes illimités',
-          'Relances intelligentes par relance WhatsApp',
-          'Assistant virtuel IA inclus',
-          'Génération de SKU et codes barres',
-          'Support WhatsApp prioritaire'
-        ],
-        highlighted: true,
-        cta: 'Lancer ma boutique'
-      },
-      {
-        name: 'Pack Entreprise',
-        badge: 'recommandé pour la croissance',
-        features: [
-          'Multi-boutiques & multi-utilisateurs',
-          'Automatisation marketing poussée',
-          'Export comptable en un clic',
-          'Accès API & intégrations dédiées',
-          'Gestionnaire de compte dédié'
-        ],
-        highlighted: false,
-        cta: 'Contactez-nous'
-      }
-    ],
-    yearly: [
-      {
-        name: 'Pack Standard (Annuel)',
-        badge: '2 mois gratuits inclus',
-        features: [
-          'Réponse automatique intelligente',
-          'Gestion de 200 clients actifs',
-          'Catalogue produits complet',
-          'Rapports de ventes hebdomadaires',
-          'Support par e-mail & WhatsApp'
-        ],
-        highlighted: false,
-        cta: 'Essayer BoutikFlow'
-      },
-      {
-        name: 'Pack Pro (Annuel)',
-        badge: 'meilleur rapport qualité/prix',
-        features: [
-          'Clients et ventes illimités',
-          'Relances intelligentes par relance WhatsApp',
-          'Assistant virtuel IA inclus',
-          'Génération de SKU et codes barres',
-          'Support WhatsApp prioritaire 24/7'
-        ],
-        highlighted: true,
-        cta: 'Lancer ma boutique'
-      },
-      {
-        name: 'Pack Entreprise (Annuel)',
-        badge: 'recommandé pour la croissance',
-        features: [
-          'Multi-boutiques & multi-utilisateurs',
-          'Automatisation marketing poussée',
-          'Export comptable en un clic',
-          'Accès API & intégrations dédiées',
-          'Gestionnaire de compte dédié'
-        ],
-        highlighted: false,
-        cta: 'Contactez-nous'
-      }
-    ],
-    lifetime: [
-      {
-        name: 'Pack Standard à Vie',
-        badge: 'licence perpétuelle standard',
-        features: [
-          'Réponse automatique intelligente',
-          'Gestion de 500 clients actifs',
-          'Catalogue produits complet',
-          'Mises à jour standard incluses à vie',
-          'Support client standard à vie'
-        ],
-        highlighted: false,
-        cta: 'Essayer BoutikFlow'
-      },
-      {
-        name: 'Pack Pro à Vie',
-        badge: 'recommandé pour les leaders',
-        features: [
-          'Clients, ventes et produits illimités',
-          'Relances intelligentes par relance WhatsApp à vie',
-          'Assistant virtuel IA inclus à vie',
-          'Accès prioritaire à toutes les nouveautés',
-          'Support client VIP à vie'
-        ],
-        highlighted: true,
-        cta: 'Lancer ma boutique'
-      },
-      {
-        name: 'Pack Entreprise à Vie',
-        badge: 'solution complète illimitée',
-        features: [
-          'Multi-boutiques & multi-utilisateurs illimités',
-          'Toutes les automatisations incluses à vie',
-          'Hébergement et bande passante inclus à vie',
-          'Déploiement sur mesure',
-          'Support VIP téléphonique dédié 24/7'
-        ],
-        highlighted: false,
-        cta: 'Contactez-nous'
-      }
-    ]
-  };
-
   return (
     <main className="landing">
       {/* Background elements */}
@@ -225,9 +93,7 @@ export default function HomePage() {
           <div className="nav-logo-icon" style={{ background: 'transparent', border: 'none', width: 'auto', height: 'auto' }}>
             <BrandMark size={36} />
           </div>
-          <span className="nav-logo-text" style={{ background: 'var(--flag-text-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 900, fontSize: '1.25rem' }}>
-            BoutikFlow
-          </span>
+          <span className="nav-logo-text">BoutikFlow</span>
         </div>
         <div className="nav-actions">
           <ThemeToggle />
@@ -245,14 +111,14 @@ export default function HomePage() {
           <span className="badge badge-success"><MapPin size={14} className="mr-1" /> Conçu pour les commerçants africains</span>
         </div>
         <h1 className="hero-title">
-          Ne perdez plus aucun client sur <span className="text-gradient">WhatsApp</span>
+          Votre boutique, en magasin <span className="text-gradient">et</span> en ligne
         </h1>
         <p className="hero-subtitle">
-          Le premier assistant intelligent qui répond instantanément à vos acheteurs, gère vos stocks et centralise vos commandes 24h/24. Développez votre chiffre d'affaires sans effort.
+          BoutikFlow enregistre vos ventes en caisse, suit votre stock en temps réel et donne à votre boutique une vraie page en ligne — catalogue, recherche, et un bouton pour que vos clients vous contactent directement sur WhatsApp. Même sans connexion, rien n'est perdu : tout se synchronise dès que le réseau revient.
         </p>
         <div className="hero-actions">
           <Link href="/register" className="btn btn-primary hero-cta animate-pulse-light" id="btn-hero-start">
-            Commencer gratuitement
+            Créer ma boutique
             <ArrowRight size={16} />
           </Link>
           <Link href="/login" className="btn btn-ghost hero-cta-secondary" id="btn-hero-login">
@@ -261,9 +127,9 @@ export default function HomePage() {
         </div>
         <div className="hero-stats">
           {[
-            { value: '24h/7j', label: 'Disponibilité absolue' },
-            { value: '100% Automatique', label: 'Prise de commandes' },
-            { value: '0 Client Perdu', label: 'Satisfaction garantie' },
+            { value: 'Hors-ligne', label: 'La caisse marche sans Internet' },
+            { value: 'Vitrine incluse', label: 'Une page publique par boutique' },
+            { value: 'Multi-rôles', label: "Toute l'équipe, un accès chacun" },
           ].map(stat => (
             <div key={stat.label} className="hero-stat">
               <span className="hero-stat-value">{stat.value}</span>
@@ -287,14 +153,14 @@ export default function HomePage() {
             <p>Vos conversations, fiches clients et historiques de ventes sont cryptés et stockés en toute sécurité.</p>
           </div>
           <div className="cred-card">
-            <Zap size={24} className="text-brand-400" />
-            <h3>Synchro Temps Réel</h3>
-            <p>Dès qu'un client commande sur WhatsApp, vos stocks se mettent à jour instantanément.</p>
+            <WifiOff size={24} className="text-brand-400" />
+            <h3>Fonctionne hors-ligne</h3>
+            <p>Une coupure réseau n'arrête jamais une vente : elle s'enregistre localement et se synchronise dès que la connexion revient.</p>
           </div>
           <div className="cred-card">
-            <Sparkles size={24} className="text-brand-400" />
-            <h3>Assistant IA intégré</h3>
-            <p>Optimisez vos descriptions de produits et générez des réponses intelligentes automatiques.</p>
+            <Bot size={24} className="text-brand-400" />
+            <h3>IA pour vos fiches produits</h3>
+            <p>Prenez une photo d'un article : l'IA rédige le nom, la catégorie et la description à votre place.</p>
           </div>
         </div>
       </section>
@@ -308,34 +174,34 @@ export default function HomePage() {
         <div className="features-grid">
           {[
             {
-              icon: <MessageSquareText size={32} className="text-brand-500" />,
-              title: 'Réponses instantanées 24h/7j',
-              desc: 'Notre assistant WhatsApp intelligent accueille vos clients, répond aux questions fréquentes et prend les commandes même pendant que vous dormez.',
+              icon: <Store size={32} className="text-brand-500" />,
+              title: 'Vitrine publique incluse',
+              desc: "Chaque boutique a sa propre page en ligne — catégories, recherche, fiches produits avec photo — partageable en un lien ou un QR code. Un bouton WhatsApp laisse vos clients vous écrire directement.",
             },
             {
               icon: <Users size={32} className="text-brand-500" />,
-              title: 'CRM Clients & Fidélisation',
-              desc: "Retrouvez instantanément l'historique de chaque client, catégorisez-les avec des étiquettes intelligentes et personnalisez vos échanges pour multiplier vos ventes.",
+              title: 'CRM Clients & Dettes',
+              desc: "Retrouvez l'historique de chaque client, organisez-les par segments, et suivez précisément qui vous doit quoi.",
             },
             {
               icon: <Package size={32} className="text-brand-500" />,
-              title: 'Gestion de stock intelligente',
-              desc: 'Ajoutez vos produits, gérez vos prix et suivez l\'inventaire en temps réel. Fini les ruptures imprévues ou les erreurs de prix communiqués.',
+              title: 'Stock sans erreur',
+              desc: "Chaque vente verrouille la ligne de stock concernée avant de la débiter : impossible de vendre deux fois le même dernier article, même avec plusieurs vendeurs en même temps.",
             },
             {
               icon: <BarChart3 size={32} className="text-brand-500" />,
               title: 'Tableau de bord de performance',
-              desc: 'Suivez la croissance de votre chiffre d\'affaires, le volume de commandes et l\'activité de vos clients en un clin d\'œil sur des graphiques clairs.',
+              desc: "Suivez votre chiffre d'affaires, vos produits qui se vendent le mieux et l'activité de votre équipe — masquable par rôle si vous ne voulez pas que tout le monde voie les chiffres.",
             },
             {
               icon: <Bot size={32} className="text-brand-500" />,
-              title: 'Remplissage Assisté par IA',
-              desc: 'Prenez une photo de votre produit et laissez notre intelligence artificielle rédiger des descriptions captivantes et générer des fiches produits complètes.',
+              title: 'Fiches produits assistées par IA',
+              desc: "Prenez une photo de votre produit : l'IA propose un nom, une catégorie et une description prêts à publier.",
             },
             {
-              icon: <Layers size={32} className="text-brand-500" />,
-              title: 'Scanner POS Intégré',
-              desc: 'Enregistrez vos ventes physiques instantanément grâce au scanner de code-barres et SKU directement depuis l\'appareil photo de votre mobile.',
+              icon: <ScanBarcode size={32} className="text-brand-500" />,
+              title: 'Scanner code-barres intégré',
+              desc: "Enregistrez vos ventes en scannant le code-barres ou le SKU directement depuis l'appareil photo de votre téléphone.",
             },
           ].map(f => (
             <div key={f.title} className="feature-card card">
@@ -357,8 +223,8 @@ export default function HomePage() {
           <div className="why-item">
             <div className="why-num">1</div>
             <div>
-              <h3>Focalisé sur la rentabilité</h3>
-              <p>Chaque message automatique est conçu pour amener le client vers l'achat et réduire les abandons.</p>
+              <h3>Fiable même sans réseau stable</h3>
+              <p>Pensé pour des connexions qui coupent : vos ventes ne dépendent jamais d'Internet pour être enregistrées.</p>
             </div>
           </div>
           <div className="why-item">
@@ -371,8 +237,8 @@ export default function HomePage() {
           <div className="why-item">
             <div className="why-num">3</div>
             <div>
-              <h3>Proximité client préservée</h3>
-              <p>L'IA qualifie le client, vous prenez le relais quand vous le souhaitez pour finaliser les ventes importantes.</p>
+              <h3>Vous gardez le contact direct</h3>
+              <p>Pas de robot entre vous et vos clients : la vitrine les amène jusqu'à votre WhatsApp habituel, c'est vous qui répondez.</p>
             </div>
           </div>
         </div>
@@ -381,62 +247,32 @@ export default function HomePage() {
       {/* Pricing Section */}
       <section className="pricing">
         <div className="section-header">
-          <h2>Formules adaptées à vos besoins</h2>
-          <p>Aucun frais caché. Choisissez l'accès qui correspond à la dynamique de votre commerce.</p>
+          <h2>Commencez gratuitement</h2>
+          <p>Créez votre boutique, ajoutez vos produits et testez la caisse sans engagement. Pour un accompagnement ou des besoins spécifiques, contactez-nous directement.</p>
         </div>
 
-        {/* Billing Period Selector */}
-        <div className="pricing-toggle-container">
-          <div className="pricing-toggle-bar">
-            <button 
-              className={`toggle-btn ${billingPeriod === 'monthly' ? 'active' : ''}`}
-              onClick={() => setBillingPeriod('monthly')}
-            >
-              Mensuel
-            </button>
-            <button 
-              className={`toggle-btn ${billingPeriod === 'yearly' ? 'active' : ''}`}
-              onClick={() => setBillingPeriod('yearly')}
-            >
-              Annuel
-            </button>
-            <button 
-              className={`toggle-btn ${billingPeriod === 'lifetime' ? 'active' : ''}`}
-              onClick={() => setBillingPeriod('lifetime')}
-            >
-              À vie
-            </button>
+        <div className="pricing-single">
+          <ul className="pricing-features">
+            {[
+              'Caisse, stock et suivi des ventes',
+              'Vitrine publique en ligne, incluse',
+              'Gestion clients, dettes et équipe',
+              'Fonctionne hors-ligne, sur mobile',
+            ].map(f => (
+              <li key={f} className="pricing-feature">
+                <span className="pricing-check">✓</span>
+                {f}
+              </li>
+            ))}
+          </ul>
+          <div className="pricing-single-actions">
+            <Link href="/register" className="btn btn-primary pricing-cta" id="btn-pricing-start">
+              Créer ma boutique
+            </Link>
+            <a href="mailto:trillionnx@gmail.com" className="btn btn-ghost pricing-cta" id="btn-pricing-contact">
+              Nous contacter
+            </a>
           </div>
-        </div>
-
-        <div className="pricing-grid">
-          {plans[billingPeriod].map(plan => (
-            <div key={plan.name} className={`pricing-card glass ${plan.highlighted ? 'pricing-highlighted' : ''}`}>
-              <div className="pricing-badge">{plan.badge}</div>
-              <div className="pricing-name">{plan.name}</div>
-              
-              <div className="pricing-price">
-                <span className="pricing-amount">Tarif sur demande</span>
-                <span className="pricing-period">Contactez notre support pour activer</span>
-              </div>
-              
-              <ul className="pricing-features">
-                {plan.features.map(f => (
-                  <li key={f} className="pricing-feature">
-                    <span className="pricing-check">✓</span>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href="/register"
-                className={`btn ${plan.highlighted ? 'btn-primary' : 'btn-ghost'} pricing-cta`}
-                id={`btn-pricing-${plan.name.replace(/\s+/g, '-').toLowerCase()}`}
-              >
-                {plan.cta}
-              </Link>
-            </div>
-          ))}
         </div>
       </section>
 
@@ -447,29 +283,29 @@ export default function HomePage() {
           <p>Toutes les réponses à vos interrogations pour démarrer sereinement.</p>
         </div>
         <div className="faq-grid">
-          <FAQItem 
-            question="Dois-je utiliser un compte WhatsApp Business ?" 
-            answer="BoutikFlow fonctionne aussi bien avec un compte WhatsApp classique qu'avec un compte WhatsApp Business. L'intégration s'effectue simplement en quelques secondes." 
+          <FAQItem
+            question="Comment mes clients me contactent-ils depuis ma vitrine ?"
+            answer="Un bouton « Discuter sur WhatsApp » ouvre directement une conversation avec vous, sur votre numéro WhatsApp habituel — pas de nouvelle carte SIM ni de compte professionnel requis."
           />
-          <FAQItem 
-            question="Puis-je conserver mon numéro de téléphone actuel ?" 
-            answer="Oui absolument. Vous n'avez pas besoin d'acheter une nouvelle carte SIM. Vous connectez votre numéro de téléphone habituel directement sur notre plateforme." 
+          <FAQItem
+            question="Ma vitrine en ligne est-elle automatique ?"
+            answer="Oui : dès qu'un produit est marqué visible, il apparaît sur votre page publique avec catégories et recherche. Vous partagez le lien ou le QR code une seule fois, jamais besoin de le refaire à chaque nouveau produit."
           />
-          <FAQItem 
-            question="Est-il possible de gérer plusieurs boutiques à la fois ?" 
-            answer="Oui, nos plans avancés (Pack Entreprise) vous permettent de configurer et basculer facilement entre plusieurs boutiques à partir du même tableau de bord." 
+          <FAQItem
+            question="Que se passe-t-il si ma connexion coupe pendant une vente ?"
+            answer="La vente s'enregistre quand même sur l'appareil et se synchronise automatiquement dès que le réseau revient — aucune vente perdue."
           />
-          <FAQItem 
-            question="Mes données et celles de mes clients sont-elles sécurisées ?" 
-            answer="La sécurité est notre priorité absolue. Vos bases de données clients sont isolées par boutique, cryptées, et stockées sur des serveurs sécurisés sans aucun partage." 
+          <FAQItem
+            question="Mes données et celles de mes clients sont-elles sécurisées ?"
+            answer="Chaque boutique est isolée : les données d'une boutique ne sont jamais visibles par une autre, et l'accès de chaque membre de votre équipe est limité à son rôle."
           />
-          <FAQItem 
-            question="Puis-je annuler ou changer d'abonnement à tout moment ?" 
-            answer="Oui, les formules mensuelles et annuelles sont sans engagement de durée. Vous pouvez annuler, suspendre ou modifier votre formule librement depuis votre espace." 
+          <FAQItem
+            question="Puis-je masquer les chiffres sensibles (marge, chiffre d'affaires) à certains employés ?"
+            answer="Oui, depuis les réglages vous choisissez quels rôles ne voient ni la marge, ni le prix d'achat, ni le chiffre d'affaires — ces chiffres ne sont alors même pas envoyés à leur appareil."
           />
-          <FAQItem 
-            question="L'application fonctionne-t-elle correctement sur mobile ?" 
-            answer="Tout à fait. L'ensemble de l'interface commerçant a été pensé pour le mobile. Vous pouvez gérer vos stocks, ajouter des produits et valider des commandes directement en déplacement." 
+          <FAQItem
+            question="L'application fonctionne-t-elle correctement sur mobile ?"
+            answer="Oui, toute l'interface est pensée mobile d'abord — vous pouvez l'installer comme une application sur votre téléphone et gérer votre boutique en déplacement."
           />
         </div>
       </section>
@@ -479,7 +315,7 @@ export default function HomePage() {
         <div className="footer-cols">
           <div className="footer-brand-col">
             <span className="text-gradient brand-title-footer">BoutikFlow</span>
-            <p className="brand-subtitle-footer">Le CRM WhatsApp conçu pour digitaliser et accélérer les ventes des commerçants.</p>
+            <p className="brand-subtitle-footer">La caisse, le stock et la vitrine en ligne des commerçants, dans une seule application — même sans connexion.</p>
           </div>
           <div className="footer-links-col">
             <h4>Produit</h4>
@@ -579,7 +415,7 @@ export default function HomePage() {
           font-family: var(--font-display);
           font-size: 1.15rem;
           font-weight: 800;
-          background: var(--flag-text-gradient);
+          background: linear-gradient(135deg, var(--logo-gradient-from), var(--logo-gradient-to));
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
@@ -810,121 +646,33 @@ export default function HomePage() {
           line-height: 1.5;
         }
 
-        /* Pricing Toggle */
-        .pricing-toggle-container {
-          display: flex;
-          justify-content: center;
-          margin-bottom: 3rem;
-        }
-        .pricing-toggle-bar {
-          background: var(--surface-2);
-          border: 1px solid var(--border-subtle);
-          padding: 0.375rem;
-          border-radius: 100px;
-          display: flex;
-          gap: 4px;
-        }
-        .toggle-btn {
-          border: none;
-          background: transparent;
-          color: var(--text-muted);
-          padding: 0.5rem 1.25rem;
-          font-size: 0.875rem;
-          font-weight: 600;
-          border-radius: 100px;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-        .toggle-btn.active {
-          background: var(--color-brand-600);
-          color: white;
-        }
-
         /* Pricing */
         .pricing {
           position: relative;
-          max-width: 1100px;
+          max-width: 700px;
           margin: 0 auto;
           padding: 4rem 2rem;
         }
-        .pricing-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-          gap: 1.5rem;
-          align-items: start;
-        }
-        .pricing-card {
+        .pricing-single {
           border-radius: var(--radius-xl);
           padding: 2.5rem 2rem;
-          position: relative;
-          overflow: hidden;
           background: var(--surface-1);
           border: 1px solid var(--border-subtle);
-          display: flex;
-          flex-direction: column;
-          transition: all 0.3s ease;
-        }
-        .pricing-card:hover {
-          transform: translateY(-4px);
-          box-shadow: var(--shadow-md);
-        }
-        .pricing-highlighted {
-          border-color: rgba(16,185,129,0.3) !important;
           box-shadow: var(--shadow-brand);
-          background: linear-gradient(180deg, var(--surface-1) 0%, rgba(16,185,129,0.02) 100%);
-        }
-        .pricing-badge {
-          position: absolute;
-          top: 1rem;
-          right: 1.25rem;
-          font-size: 0.72rem;
-          font-weight: 700;
-          background: var(--color-brand-600);
-          color: white;
-          padding: 0.25rem 0.75rem;
-          border-radius: 100px;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
-        .pricing-name {
-          font-family: var(--font-display);
-          font-size: 1.3rem;
-          font-weight: 800;
-          margin-bottom: 1.5rem;
-          color: var(--text-primary);
-        }
-        .pricing-price {
-          display: flex;
-          flex-direction: column;
-          margin-bottom: 2rem;
-          border-bottom: 1px solid var(--border-subtle);
-          padding-bottom: 1.5rem;
-        }
-        .pricing-amount {
-          font-family: var(--font-display);
-          font-size: 1.75rem;
-          font-weight: 800;
-          color: var(--color-brand-400);
-        }
-        .pricing-period {
-          font-size: 0.8rem;
-          color: var(--text-muted);
-          margin-top: 0.25rem;
         }
         .pricing-features {
           list-style: none;
           display: flex;
           flex-direction: column;
           gap: 0.75rem;
-          margin-bottom: 2.25rem;
+          margin: 0 0 2rem;
           padding: 0;
-          flex-grow: 1;
         }
         .pricing-feature {
           display: flex;
           align-items: flex-start;
           gap: 0.625rem;
-          font-size: 0.9rem;
+          font-size: 0.95rem;
           color: var(--text-secondary);
           line-height: 1.4;
         }
@@ -932,11 +680,17 @@ export default function HomePage() {
           color: var(--color-brand-400);
           font-weight: 700;
         }
+        .pricing-single-actions {
+          display: flex;
+          gap: 0.75rem;
+          flex-wrap: wrap;
+        }
         .pricing-cta {
-          width: 100%;
+          flex: 1;
           justify-content: center;
           padding: 0.875rem;
           font-weight: 600;
+          min-width: 180px;
         }
 
         /* FAQ */
