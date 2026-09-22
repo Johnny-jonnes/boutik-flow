@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ArrowLeft, ShieldCheck, Lock, CheckCircle2, Mail, Phone, Building } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
+import { BrandMark } from '@/components/BrandMark';
 
 export default function TermsPage() {
   const { language, setLanguage } = useLanguage();
@@ -14,7 +15,7 @@ export default function TermsPage() {
       <header className="terms-header">
         <div className="terms-header-inner">
           <Link href="/" className="logo-brand">
-            <span className="logo-badge">BF</span>
+            <BrandMark size={34} />
             <span className="logo-text">BoutikFlow</span>
           </Link>
 
@@ -308,19 +309,6 @@ export default function TermsPage() {
           align-items: center;
           gap: 0.6rem;
           text-decoration: none;
-        }
-
-        .logo-badge {
-          width: 34px;
-          height: 34px;
-          border-radius: 8px;
-          background: linear-gradient(135deg, #10b981, #059669);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-weight: 800;
-          font-size: 0.9rem;
         }
 
         .logo-text {

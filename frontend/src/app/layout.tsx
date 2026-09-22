@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     description: "Vendre, gérer, suivre. La caisse la plus simple pour les commerçants africains.",
     type: "website",
   },
-  manifest: "/manifest.json?v=7",
+  manifest: "/manifest.json?v=8",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -33,14 +33,14 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/logo-bf.svg?v=7", type: "image/svg+xml" },
-      { url: "/favicon-32x32.png?v=7", sizes: "32x32", type: "image/png" },
-      { url: "/icons/icon-192x192.png?v=7", sizes: "192x192", type: "image/png" },
+      { url: "/logo-bf.svg?v=8", type: "image/svg+xml" },
+      { url: "/favicon-32x32.png?v=8", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192x192.png?v=8", sizes: "192x192", type: "image/png" },
     ],
     apple: [
-      { url: "/apple-touch-icon.png?v=7", sizes: "180x180", type: "image/png" },
+      { url: "/apple-touch-icon.png?v=8", sizes: "180x180", type: "image/png" },
     ],
-    shortcut: "/logo-bf.svg?v=7",
+    shortcut: "/logo-bf.svg?v=8",
   },
 };
 
@@ -66,12 +66,12 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="BoutikFlow" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <link rel="icon" href="/logo-bf.svg?v=7" type="image/svg+xml" />
-        <link rel="icon" href="/favicon-32x32.png?v=7" sizes="32x32" type="image/png" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=7" />
-        <link rel="apple-touch-icon-precomposed" href="/apple-touch-icon-precomposed.png?v=7" />
+        <link rel="icon" href="/logo-bf.svg?v=8" type="image/svg+xml" />
+        <link rel="icon" href="/favicon-32x32.png?v=8" sizes="32x32" type="image/png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=8" />
+        <link rel="apple-touch-icon-precomposed" href="/apple-touch-icon-precomposed.png?v=8" />
         <meta name="msapplication-TileColor" content="#009460" />
-        <meta name="msapplication-TileImage" content="/icons/icon-144x144.png?v=7" />
+        <meta name="msapplication-TileImage" content="/icons/icon-144x144.png?v=8" />
         {/* Enregistrement du Service Worker avant même l'hydratation React
             (PWARegister ne s'exécute qu'après le montage du composant) —
             son cache (fichiers statiques + pages, voir sw.js) devient

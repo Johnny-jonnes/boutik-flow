@@ -5,6 +5,7 @@ import { Store, BadgeCheck, ShoppingBag, Clock, Truck, Wallet } from 'lucide-rea
 import { publicApi, PublicApiError } from '@/lib/api/publicClient';
 import { ProductGrid } from '@/components/storefront/ProductGrid';
 import { WhatsAppButton } from '@/components/storefront/WhatsAppButton';
+import { BrandMark } from '@/components/BrandMark';
 
 // Server Component : pas de JS client nécessaire pour afficher le
 // catalogue, rendu direct côté serveur — rapide sur mobile/connexion
@@ -95,7 +96,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
       <header className="storefront-header">
         <div className="storefront-header-inner">
           <Link href="/" className="logo-brand">
-            <span className="logo-badge">BF</span>
+            <BrandMark size={32} />
             <span className="logo-text">BoutikFlow</span>
           </Link>
         </div>
@@ -207,18 +208,6 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
           gap: 0.6rem;
           text-decoration: none;
           width: fit-content;
-        }
-        .logo-badge {
-          width: 32px;
-          height: 32px;
-          border-radius: var(--radius-sm);
-          background: linear-gradient(135deg, var(--logo-gradient-from), var(--logo-gradient-to));
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-weight: 800;
-          font-size: 0.85rem;
         }
         .logo-text {
           font-family: var(--font-display);

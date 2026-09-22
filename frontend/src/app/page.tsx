@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { BrandMark } from '@/components/BrandMark';
 import { 
   MapPin, 
   MessageSquareText, 
@@ -222,19 +223,7 @@ export default function HomePage() {
       <nav className="landing-nav glass">
         <div className="nav-logo">
           <div className="nav-logo-icon" style={{ background: 'transparent', border: 'none', width: 'auto', height: 'auto' }}>
-            <svg width="36" height="36" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="landing-bf-guinea-h" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#CE1126" />
-                  <stop offset="50%" stopColor="#FCD116" />
-                  <stop offset="100%" stopColor="#009460" />
-                </linearGradient>
-              </defs>
-              <polygon points="50,3 93,26 93,74 50,97 7,74 7,26" fill="url(#landing-bf-guinea-h)" />
-              <polygon points="50,3 93,26 93,74 50,97 7,74 7,26" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />
-              <text x="50" y="62" fontFamily="Arial Black, sans-serif" fontWeight="900" fontSize="38" fill="white" textAnchor="middle" letterSpacing="-3">BF</text>
-              <rect x="22" y="76" width="56" height="3.5" rx="1.75" fill="#009460" opacity="0.8" />
-            </svg>
+            <BrandMark size={36} />
           </div>
           <span className="nav-logo-text" style={{ background: 'var(--flag-text-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 900, fontSize: '1.25rem' }}>
             BoutikFlow

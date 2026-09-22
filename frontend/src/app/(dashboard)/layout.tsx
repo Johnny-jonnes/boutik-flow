@@ -38,6 +38,7 @@ import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { hasPermission, ROUTE_PERMISSIONS, firstAllowedRoute } from '@/lib/permissions';
+import { BrandMark } from '@/components/BrandMark';
 
 /* ─── Navigation simplifiée ─────────────────────────────────────── */
 const NAV_ITEMS = [
@@ -81,30 +82,14 @@ function Logo({ size = 20 }: { size?: number }) {
 
   return (
     <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-      <svg
-        width={size} height={size} viewBox="0 0 100 100" fill="none"
-        xmlns="http://www.w3.org/2000/svg"
+      <BrandMark
+        size={size}
         style={{
-          filter: `drop-shadow(0 0 ${isOnline ? '4px rgba(0,148,96,0.5)' : '4px rgba(245,158,11,0.45)'})`,
+          filter: `drop-shadow(0 0 ${isOnline ? '4px rgba(49,162,146,0.5)' : '4px rgba(245,158,11,0.45)'})`,
           transition: 'filter 0.4s ease',
-          animation: 'logo-breathing 4s ease-in-out infinite'
+          animation: 'logo-breathing 4s ease-in-out infinite',
         }}
-      >
-        <defs>
-          <linearGradient id="bf-guinea-h" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#CE1126" />
-            <stop offset="50%" stopColor="#FCD116" />
-            <stop offset="100%" stopColor="#009460" />
-          </linearGradient>
-        </defs>
-        {/* Hexagone pointy-top */}
-        <polygon points="50,3 93,26 93,74 50,97 7,74 7,26" fill="url(#bf-guinea-h)" opacity="0.95" />
-        <polygon points="50,3 93,26 93,74 50,97 7,74 7,26" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" fill="none" />
-        {/* Monogramme BF */}
-        <text x="50" y="62" fontFamily="Arial Black, sans-serif" fontWeight="900" fontSize="38" fill="white" textAnchor="middle" letterSpacing="-3">BF</text>
-        {/* Accent rouge */}
-        <rect x="22" y="76" width="56" height="3.5" rx="1.75" fill="#CE1126" opacity="0.6" />
-      </svg>
+      />
       <span
         style={{
           position: 'absolute',

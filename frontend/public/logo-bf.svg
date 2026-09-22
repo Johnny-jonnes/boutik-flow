@@ -1,18 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
   <defs>
-    <!-- Dégradé horizontal : Rouge (gauche) -> Jaune (centre) -> Vert (droite) -->
-    <linearGradient id="bf-guinea-h" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#CE1126"/>
-      <stop offset="50%" stop-color="#FCD116"/>
-      <stop offset="100%" stop-color="#009460"/>
+    <!-- Dégradé turquoise — même dégradé de marque utilisé partout dans
+         l'app (voir globals.css --logo-gradient-from/to), remplace
+         l'ancien hexagone aux couleurs du drapeau guinéen qui ne
+         correspondait plus à l'identité visuelle réelle. -->
+    <linearGradient id="bf-mark-grad" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#31A292"/>
+      <stop offset="100%" stop-color="#6DD5C4"/>
     </linearGradient>
   </defs>
-  <!-- Hexagone principal -->
-  <polygon points="50,3 93,26 93,74 50,97 7,74 7,26" fill="url(#bf-guinea-h)"/>
-  <!-- Contour subtil -->
-  <polygon points="50,3 93,26 93,74 50,97 7,74 7,26" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
-  <!-- Monogramme BF -->
-  <text x="50" y="62" font-family="'Arial Black', 'Helvetica Neue', sans-serif" font-weight="900" font-size="38" fill="white" text-anchor="middle" letter-spacing="-3">BF</text>
-  <!-- Ligne d'accent -->
-  <rect x="22" y="76" width="56" height="3.5" rx="1.75" fill="#009460" opacity="0.8"/>
+  <rect width="100" height="100" rx="22" fill="url(#bf-mark-grad)"/>
+  <!-- Ondes de diffusion — portée / publicité -->
+  <path d="M68 24 a18 18 0 0 1 0 20" fill="none" stroke="white" stroke-width="3.2" stroke-linecap="round" opacity="0.5"/>
+  <path d="M74 20 a26 26 0 0 1 0 28" fill="none" stroke="white" stroke-width="3.2" stroke-linecap="round" opacity="0.3"/>
+  <!-- Toit de boutique -->
+  <polygon points="46,22 70,37 22,37" fill="white"/>
+  <!-- Façade -->
+  <rect x="26" y="37" width="40" height="33" rx="2" fill="white"/>
+  <!-- Écran — vente en ligne à la place de la porte -->
+  <rect x="38" y="45" width="16" height="21" rx="3" fill="#2C9A87"/>
+  <rect x="40.5" y="48.5" width="11" height="11" rx="1" fill="white"/>
+  <circle cx="46" cy="63" r="1.4" fill="white"/>
 </svg>

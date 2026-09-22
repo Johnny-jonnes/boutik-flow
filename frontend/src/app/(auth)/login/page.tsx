@@ -7,6 +7,7 @@ import { Check, Eye, EyeOff, AlertCircle, Wifi, WifiOff, Loader2 } from 'lucide-
 import { api, ApiError } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { useServerWakeup } from '@/hooks/useServerWakeup';
+import { BrandMark } from '@/components/BrandMark';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -106,24 +107,9 @@ export default function LoginPage() {
       <div className="auth-glow" />
 
       <div className="auth-container animate-fade-in">
-        {/* Logo BF — couleurs guinéennes */}
         <div className="auth-logo">
-          <div className="auth-logo-icon">
-            <svg width="48" height="48" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 0 10px rgba(0,148,96,0.5))' }}>
-              <defs>
-                <linearGradient id="auth-guinea-h" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#CE1126" />
-                  <stop offset="50%" stopColor="#FCD116" />
-                  <stop offset="100%" stopColor="#009460" />
-                </linearGradient>
-              </defs>
-              <polygon points="50,3 93,26 93,74 50,97 7,74 7,26" fill="url(#auth-guinea-h)" opacity="0.97" />
-              <polygon points="50,3 93,26 93,74 50,97 7,74 7,26" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" fill="none" />
-              <text x="50" y="62" fontFamily="Arial Black, sans-serif" fontWeight="900" fontSize="38" fill="white" textAnchor="middle" letterSpacing="-3">BF</text>
-              <rect x="22" y="76" width="56" height="3.5" rx="1.75" fill="#009460" opacity="0.8" />
-            </svg>
-          </div>
-          <span className="auth-logo-text" style={{ background: 'var(--flag-text-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 900, fontSize: '1.3rem', letterSpacing: '-0.03em' }}>BoutikFlow</span>
+          <BrandMark size={48} style={{ filter: 'drop-shadow(0 0 10px rgba(49,162,146,0.5))' }} />
+          <span className="auth-logo-text" style={{ background: 'linear-gradient(135deg, var(--logo-gradient-from), var(--logo-gradient-to))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 900, fontSize: '1.3rem', letterSpacing: '-0.03em' }}>BoutikFlow</span>
         </div>
 
         <div className="auth-card glass">
@@ -402,18 +388,6 @@ export default function LoginPage() {
           display: flex;
           align-items: center;
           gap: 0.75rem;
-        }
-
-        .auth-logo-icon {
-          width: 48px;
-          height: 48px;
-          border-radius: 14px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: var(--surface-2);
-          border: 1px solid var(--border-default);
-          box-shadow: var(--shadow-brand);
         }
 
         .auth-logo-text {
