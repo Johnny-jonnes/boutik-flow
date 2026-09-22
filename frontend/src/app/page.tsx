@@ -9,10 +9,11 @@ import {
   Users,
   Package,
   BarChart3,
-  Bot,
+  UserCog,
   Smartphone,
   ShieldCheck,
   WifiOff,
+  EyeOff,
   ArrowRight,
   ChevronDown,
   ScanBarcode,
@@ -111,10 +112,10 @@ export default function HomePage() {
           <span className="badge badge-success"><MapPin size={14} className="mr-1" /> Conçu pour les commerçants africains</span>
         </div>
         <h1 className="hero-title">
-          Votre boutique, en magasin <span className="text-gradient">et</span> en ligne
+          Ne perdez plus une <span className="text-gradient">seule vente</span> à cause d&apos;une erreur évitable
         </h1>
         <p className="hero-subtitle">
-          BoutikFlow enregistre vos ventes en caisse, suit votre stock en temps réel et donne à votre boutique une vraie page en ligne — catalogue, recherche, et un bouton pour que vos clients vous contactent directement sur WhatsApp. Même sans connexion, rien n'est perdu : tout se synchronise dès que le réseau revient.
+          Un stock mal compté, une connexion qui coupe en pleine vente, une boutique invisible en dehors du quartier — BoutikFlow règle ces problèmes-là. Caisse fiable, stock verrouillé contre les erreurs, et une vraie vitrine en ligne que vos clients trouvent et vous contactent directement sur WhatsApp.
         </p>
         <div className="hero-actions">
           <Link href="/register" className="btn btn-primary hero-cta animate-pulse-light" id="btn-hero-start">
@@ -139,6 +140,29 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Problems Section */}
+      <section className="problems">
+        <div className="section-header">
+          <h2>Ça vous parle ?</h2>
+        </div>
+        <div className="problems-grid">
+          {[
+            "Le stock affiché ne correspond jamais à ce qu'il reste vraiment en rayon.",
+            "Deux vendeurs encaissent le même dernier article, et vous le découvrez trop tard.",
+            "Une vente se perd parce que la connexion a coupé au mauvais moment.",
+            "Des clients potentiels ne savent même pas ce que vous vendez, faute de vitrine en ligne.",
+            "Vous ne savez plus qui, dans l'équipe, a vraiment vendu quoi.",
+            "Un employé voit vos marges et votre chiffre d'affaires alors que ça ne le regarde pas.",
+          ].map(p => (
+            <div key={p} className="problem-item">
+              <span className="problem-mark">✕</span>
+              <p>{p}</p>
+            </div>
+          ))}
+        </div>
+        <p className="problems-transition">BoutikFlow règle ces six problèmes. Concrètement, pas en promesse.</p>
+      </section>
+
       {/* Credibility section */}
       <section className="credibility-section">
         <div className="cred-grid">
@@ -158,9 +182,9 @@ export default function HomePage() {
             <p>Une coupure réseau n'arrête jamais une vente : elle s'enregistre localement et se synchronise dès que la connexion revient.</p>
           </div>
           <div className="cred-card">
-            <Bot size={24} className="text-brand-400" />
-            <h3>IA pour vos fiches produits</h3>
-            <p>Prenez une photo d'un article : l'IA rédige le nom, la catégorie et la description à votre place.</p>
+            <EyeOff size={24} className="text-brand-400" />
+            <h3>Vos chiffres, vos règles</h3>
+            <p>Choisissez qui voit la marge et le chiffre d'affaires — pour les autres, ces chiffres ne sont même pas envoyés à leur appareil.</p>
           </div>
         </div>
       </section>
@@ -194,9 +218,9 @@ export default function HomePage() {
               desc: "Suivez votre chiffre d'affaires, vos produits qui se vendent le mieux et l'activité de votre équipe — masquable par rôle si vous ne voulez pas que tout le monde voie les chiffres.",
             },
             {
-              icon: <Bot size={32} className="text-brand-500" />,
-              title: 'Fiches produits assistées par IA',
-              desc: "Prenez une photo de votre produit : l'IA propose un nom, une catégorie et une description prêts à publier.",
+              icon: <UserCog size={32} className="text-brand-500" />,
+              title: 'Équipe & permissions',
+              desc: "Vendeur, gestionnaire de stock, gérant : chacun a exactement les droits nécessaires, ni plus ni moins. Vous décidez qui fait quoi.",
             },
             {
               icon: <ScanBarcode size={32} className="text-brand-500" />,
@@ -211,6 +235,9 @@ export default function HomePage() {
             </div>
           ))}
         </div>
+        <p className="features-footnote">
+          Aussi inclus : prenez une photo d&apos;un produit, l&apos;IA propose un nom et une description — pratique, jamais indispensable.
+        </p>
       </section>
 
       {/* Why Choose BoutikFlow Section */}
@@ -515,6 +542,49 @@ export default function HomePage() {
           color: var(--text-muted);
         }
 
+        /* Problems */
+        .problems {
+          max-width: 900px;
+          margin: 0 auto;
+          padding: 3rem 2rem 1rem;
+        }
+        .problems .section-header { margin-bottom: 2rem; }
+        .problems-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+          gap: 0.9rem;
+          margin-bottom: 2rem;
+        }
+        .problem-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.7rem;
+          background: rgba(244, 63, 94, 0.03);
+          border: 1px solid rgba(244, 63, 94, 0.12);
+          border-radius: 12px;
+          padding: 1rem 1.1rem;
+        }
+        .problem-mark {
+          color: #fb7185;
+          font-weight: 800;
+          font-size: 0.85rem;
+          flex-shrink: 0;
+          margin-top: 0.15rem;
+        }
+        .problem-item p {
+          font-size: 0.9rem;
+          color: var(--text-secondary);
+          line-height: 1.5;
+          margin: 0;
+        }
+        .problems-transition {
+          text-align: center;
+          font-family: var(--font-display);
+          font-size: 1.15rem;
+          font-weight: 700;
+          color: var(--text-primary);
+        }
+
         /* Credibility cards */
         .credibility-section {
           max-width: 1100px;
@@ -597,6 +667,13 @@ export default function HomePage() {
           font-size: 0.925rem;
           color: var(--text-secondary);
           line-height: 1.65;
+        }
+        .features-footnote {
+          text-align: center;
+          font-size: 0.85rem;
+          color: var(--text-muted);
+          margin: 2.5rem auto 0;
+          max-width: 500px;
         }
 
         /* Why Choose Section */
