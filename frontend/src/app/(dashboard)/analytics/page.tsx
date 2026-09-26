@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useTheme } from 'next-themes';
-import { BarChart3, TrendingUp, Users, ShoppingBag, ArrowUpRight, ArrowDownRight, DollarSign, Target } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, ShoppingBag, ArrowUpRight, ArrowDownRight, Banknote, Target } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAnalyticsQuery } from '@/lib/queries';
 
@@ -129,7 +129,7 @@ export default function AnalyticsPage() {
         <div className="kpi-card">
           <div className="kpi-header">
             <span className="kpi-label">{t('ana.avg_basket')}</span>
-            <div className="kpi-icon kpi-icon--purple"><DollarSign size={18} /></div>
+            <div className="kpi-icon kpi-icon--purple"><Banknote size={18} /></div>
           </div>
           {financialsMasked ? (
             <div className="kpi-value">{language === 'fr' ? 'Masqué' : 'Hidden'}</div>

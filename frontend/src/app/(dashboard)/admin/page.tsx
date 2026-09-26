@@ -98,7 +98,7 @@ export default function AdminDashboardPage() {
     {
       id: 'kpi-blocked',
       label: 'Bloquées / Rejetées',
-      value: stats.blocked_tenants + stats.rejected_tenants,
+      value: (stats.blocked_tenants ?? 0) + (stats.rejected_tenants ?? 0),
       icon: XCircle,
       color: 'rgba(239, 68, 68, 0.12)',
       iconColor: '#f87171',
@@ -160,7 +160,7 @@ export default function AdminDashboardPage() {
                 </div>
                 <ChevronRight size={14} className="admin-kpi-arrow" />
               </div>
-              <div className="admin-kpi-value">{card.value}</div>
+              <div className="admin-kpi-value">{card.value ?? 0}</div>
               <div className="admin-kpi-label">{card.label}</div>
             </Link>
           );

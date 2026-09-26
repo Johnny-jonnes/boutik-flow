@@ -13,6 +13,15 @@ import "./globals.css";
 // charges chantier vitrine, section 27).
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://boutik-flow.vercel.app";
 
+// Service Worker : production uniquement. En `next dev`, les fichiers
+// /_next/static/ ne sont PAS hashés (ex: chunks/app/layout.js) : le
+// cache-first de sw.js resservait indéfiniment le code de la première
+// visite (modifications invisibles, mauvaise NEXT_PUBLIC_API_URL). En dev,
+// on désinstalle donc tout SW résiduel, on vide ses caches et on recharge
+// une seule fois (la page n'est plus contrôlée ensuite : pas de boucle).
+const SW_REGISTER_SCRIPT = `if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(function(){});}`;
+const SW_CLEANUP_SCRIPT = `if('serviceWorker' in navigator){var c=!!navigator.serviceWorker.controller;navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(r){return r.unregister();}));}).then(function(){return window.caches?caches.keys().then(function(ks){return Promise.all(ks.filter(function(k){return k.indexOf('boutikflow-')===0;}).map(function(k){return caches.delete(k);}));}):null;}).then(function(){if(c)location.reload();}).catch(function(){});}`;
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "BoutikFlow — Vendre, gérer, suivre votre boutique",
@@ -78,7 +87,7 @@ export default function RootLayout({
             actif un peu plus tôt. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(function(){});}`,
+            __html: process.env.NODE_ENV === 'production' ? SW_REGISTER_SCRIPT : SW_CLEANUP_SCRIPT,
           }}
         />
       </head>

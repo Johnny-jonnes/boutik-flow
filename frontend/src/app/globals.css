@@ -101,8 +101,11 @@
   --brand-alpha-30: rgba(109,213,196,0.30);
 
   /* ── Sidebar / nav chrome — suit désormais le thème (voir .light) ── */
-  --sidebar-bg:           #070a09;
-  --sidebar-bg-gradient:  linear-gradient(180deg, #080c0b 0%, #050807 50%, #030504 100%);
+  /* Le menu latéral reste un panneau vert nuit dans LES DEUX thèmes (voir
+     (dashboard)/layout.tsx) : distinct du contenu, texte clair garanti. */
+  --sidebar-bg:           #0a1513;
+  --sidebar-bg-gradient:  radial-gradient(120% 45% at 0% 0%, rgba(109,213,196,0.10) 0%, transparent 60%),
+                          linear-gradient(180deg, #0d1917 0%, #0a1311 55%, #070e0c 100%);
   --sidebar-border:       rgba(109,213,196,0.06);
   --sidebar-gradient-end: #030404;
   --sidebar-mobile-shadow: rgba(0,0,0,0.85);
@@ -188,25 +191,25 @@
   --color-accent-500: #3ea39b;
   --color-accent-600: #2eada2;
 
-  /* ── Surfaces claires — menthe pastel et douce ── */
-  --surface-0:     #f4f8f7;
+  /* ── Surfaces claires — fond menthe-gris, cartes blanches qui se détachent ── */
+  --surface-0:     #eef4f2;
   --surface-1:     #ffffff;
-  --surface-2:     #ebf3f1;
-  --surface-3:     #dce8e5;
-  --surface-4:     #ccdcd8;
-  --surface-hover: #e5edea;
-  --surface-active:#d8e2df;
+  --surface-2:     #f2f7f5;
+  --surface-3:     #e3ece9;
+  --surface-4:     #cddcd7;
+  --surface-hover: #f0f6f4;
+  --surface-active:#e3ece9;
 
-  /* ── Texte ── */
-  --text-primary:   #091312;
-  --text-secondary: #40524f;
-  --text-muted:     #687a77;
+  /* ── Texte — contraste renforcé ── */
+  --text-primary:   #0a1614;
+  --text-secondary: #34474a;
+  --text-muted:     #5f716e;
   --text-disabled:  #9daea9;
 
-  /* ── Borders ── */
-  --border-subtle:  #ebf3f1;
-  --border-default: #dce8e5;
-  --border-strong:  #ccdcd8;
+  /* ── Borders — visibles sur fond clair ── */
+  --border-subtle:  #e1ebe8;
+  --border-default: #d2e0dc;
+  --border-strong:  #bcd0ca;
 
   /* ── Status ── */
   --color-success: #059669;
@@ -214,12 +217,12 @@
   --color-error:   #e11d48;
   --color-info:    #3ea39b;
 
-  /* ── Shadows légères ── */
-  --shadow-xs:    0 1px 2px rgba(109,213,196,0.04);
-  --shadow-sm:    0 1px 3px rgba(109,213,196,0.06), 0 1px 2px rgba(109,213,196,0.04);
-  --shadow-md:    0 4px 16px rgba(109,213,196,0.08), 0 2px 4px rgba(109,213,196,0.04);
-  --shadow-lg:    0 10px 40px rgba(109,213,196,0.10), 0 4px 8px rgba(109,213,196,0.04);
-  --shadow-xl:    0 20px 60px rgba(109,213,196,0.12), 0 8px 16px rgba(109,213,196,0.04);
+  /* ── Ombres en couches (neutre vert-nuit) : les cartes "flottent" sur le fond ── */
+  --shadow-xs:    0 1px 2px rgba(12,43,38,0.06);
+  --shadow-sm:    0 1px 2px rgba(12,43,38,0.05), 0 4px 12px -2px rgba(12,43,38,0.07);
+  --shadow-md:    0 2px 4px rgba(12,43,38,0.05), 0 12px 28px -6px rgba(12,43,38,0.14);
+  --shadow-lg:    0 4px 8px rgba(12,43,38,0.05), 0 20px 44px -8px rgba(12,43,38,0.18);
+  --shadow-xl:    0 8px 16px rgba(12,43,38,0.06), 0 28px 64px -12px rgba(12,43,38,0.22);
   --shadow-brand: 0 0 30px rgba(109,213,196,0.15), 0 4px 16px rgba(0,0,0,0.04);
   --shadow-glow:  0 0 0 1px rgba(109,213,196,0.2), 0 0 20px rgba(109,213,196,0.08);
   --shadow-amber: 0 0 30px rgba(245,158,11,0.15), 0 4px 16px rgba(0,0,0,0.06);
@@ -240,9 +243,10 @@
   --brand-alpha-20: rgba(109,213,196,0.20);
   --brand-alpha-30: rgba(109,213,196,0.30);
 
-  /* ── Sidebar / nav chrome — clair et doux, plus de dégradé noir ── */
-  --sidebar-bg:           #ffffff;
-  --sidebar-bg-gradient:  linear-gradient(180deg, #ffffff 0%, #fcfefd 55%, #f4f8f7 100%);
+  /* ── Sidebar / nav chrome — panneau émeraude profond, distinct du contenu clair ── */
+  --sidebar-bg:           #0d3a33;
+  --sidebar-bg-gradient:  radial-gradient(120% 45% at 0% 0%, rgba(109,213,196,0.24) 0%, transparent 60%),
+                          linear-gradient(180deg, #0f4139 0%, #0c342e 55%, #092a25 100%);
   --sidebar-border:       #e6efec;
   --sidebar-gradient-end: #f4f8f7;
   --sidebar-mobile-shadow: rgba(9,19,17,0.16);
@@ -461,6 +465,16 @@ body {
   color: var(--text-muted);
   font-size: 0.9rem;
   font-weight: 400;
+}
+
+/* Titres de page toujours en gras, police d'affichage — y compris sur les
+   pages qui ne le précisent pas : le reset de Tailwind remet les <h1> en
+   poids normal, d'où des titres "fins" d'une page à l'autre. */
+.main-content h1 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -881,6 +895,10 @@ body {
 .theme-toggle:active {
   transform: scale(0.95);
 }
+/* Thème sombre (défaut) : soleil = "passer au clair" ; thème clair : lune. */
+.theme-toggle__moon { display: none; }
+.light .theme-toggle__sun { display: none; }
+.light .theme-toggle__moon { display: block; }
 
 /* ═══════════════════════════════════════════════════════════════════
    POS — Caisse Premium

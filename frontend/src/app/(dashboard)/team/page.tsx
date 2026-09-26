@@ -2,13 +2,15 @@
 
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { UserPlus, Pencil, Trash2, Shield, AlertTriangle, Eye, EyeOff, KeyRound } from 'lucide-react';
+import { UserPlus, Pencil, Trash2, Shield, AlertTriangle, Eye, EyeOff, KeyRound, UsersRound, UserCheck, UserX, Crown, Mail, Phone } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
 import { useLanguage } from '@/context/LanguageContext';
 import { useTeamQuery } from '@/lib/queries';
 import type { TeamMember } from '@/types';
+import { PageHeader, StatTile, type StatTone } from '@/components/ui/PageHeader';
+import { hueFromString, initials } from '@/lib/format';
 
 export default function TeamPage() {
   const { t } = useLanguage();
@@ -137,122 +139,117 @@ export default function TeamPage() {
     }
   };
 
-  const getRoleBadge = (role: string) => {
+  const getRoleLabel = (role: string) => {
     switch (role) {
-      case 'owner': return <span className="badge role-owner">{t('team.role_owner')}</span>;
-      case 'manager': return <span className="badge role-manager">{t('team.role_manager')}</span>;
-      case 'cashier': return <span className="badge role-cashier">{t('team.role_cashier')}</span>;
-      case 'stock_manager': return <span className="badge role-stock">{t('team.role_stock')}</span>;
-      case 'seller_stock_manager': return <span className="badge role-seller-stock">{t('team.role_seller_stock')}</span>;
-      default: return <span className="badge role-staff">{t('team.role_staff')}</span>;
+      case 'owner': return t('team.role_owner');
+      case 'manager': return t('team.role_manager');
+      case 'cashier': return t('team.role_cashier');
+      case 'stock_manager': return t('team.role_stock');
+      case 'seller_stock_manager': return t('team.role_seller_stock');
+      default: return t('team.role_staff');
     }
   };
 
+  const ROLE_TONES: Record<string, StatTone> = {
+    owner: 'emerald', manager: 'sky', cashier: 'amber', stock_manager: 'violet', seller_stock_manager: 'teal', staff: 'slate',
+  };
+  const activeCount = members.filter(m => m.is_active).length;
+  const managerCount = members.filter(m => m.role === 'owner' || m.role === 'manager').length;
+
   return (
-    <div className="page">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">{t('team.title')}</h1>
-          <p className="page-subtitle">{t('team.subtitle')}</p>
-        </div>
-        <div className="header-actions">
+    <div className="bf-page">
+      <PageHeader
+        icon={UsersRound}
+        title={t('team.title')}
+        subtitle={t('team.subtitle')}
+        actions={
           <button className="btn btn-primary" onClick={() => setIsInviteOpen(true)}>
             <UserPlus size={16} /> {t('team.invite')}
           </button>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="table-container card">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>{t('team.name')}</th>
-              <th>{t('team.email')} / {t('team.phone')}</th>
-              <th>{t('team.role')}</th>
-              <th>{t('team.status')}</th>
-              <th className="text-right">{t('common.actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {members.map(member => (
-              <tr key={member.id} className={!member.is_active ? 'row-inactive' : ''}>
-                <td>
-                  <div className="member-cell">
-                    <div className="member-avatar">
-                      {(member.full_name || member.email).charAt(0).toUpperCase()}
-                    </div>
-                    <div className="member-info">
-                      <span className="member-name">{member.full_name || '—'}</span>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <div className="contact-info">
-                    <span>{member.email}</span>
-                    {member.phone && <span className="text-muted">{member.phone}</span>}
-                  </div>
-                </td>
-                <td>{getRoleBadge(member.role)}</td>
-                <td>
-                  <label className="toggle-switch">
-                    <input 
-                      type="checkbox" 
-                      checked={member.is_active} 
-                      onChange={() => handleToggleStatus(member)} 
-                      disabled={member.role === 'owner'}
-                    />
-                    <span className="slider"></span>
-                  </label>
-                  <span className="status-text text-muted">
-                    {member.is_active ? t('team.active') : t('team.inactive')}
+      <section className="bf-stats">
+        <StatTile tone="teal" icon={UsersRound} label="Membres" value={members.length} hint="Comptes de la boutique" />
+        <StatTile tone="emerald" icon={UserCheck} label={t('team.active')} value={activeCount}
+          hint={<><strong>{members.length ? Math.round((activeCount / members.length) * 100) : 0} %</strong> de l&apos;équipe</>} />
+        <StatTile tone="slate" icon={UserX} label={t('team.inactive')} value={members.length - activeCount} hint="Accès suspendu" />
+        <StatTile tone="sky" icon={Shield} label="Encadrement" value={managerCount} hint="Propriétaire et gérants" />
+      </section>
+
+      {isLoading && members.length === 0 ? (
+        <div className="bf-grid">
+          {[1, 2, 3].map(i => <div key={i} className="bf-skeleton" style={{ height: 200, borderRadius: 20 }} />)}
+        </div>
+      ) : members.length === 0 ? (
+        <div className="bf-panel">
+          <div className="bf-empty">
+            <span className="bf-empty__icon"><UsersRound size={24} /></span>
+            <strong>{fetchError ? `⚠️ ${fetchError}` : (t('team.no_members') || 'Aucun membre trouvé.')}</strong>
+          </div>
+        </div>
+      ) : (
+        <div className="bf-grid">
+          {members.map(member => {
+            const name = member.full_name || member.email;
+            const isOwner = member.role === 'owner';
+            return (
+              <article key={member.id} className={`bf-tile team-tile ${!member.is_active ? 'team-tile--off' : ''}`}>
+                <div className="team-top">
+                  <span className="bf-avatar team-avatar" style={{ '--hue': hueFromString(name) } as React.CSSProperties}>
+                    {initials(name)}
                   </span>
-                </td>
-                <td className="text-right">
-                  <div className="actions-flex">
-                    <button 
-                      className="btn btn-ghost btn-icon" 
-                      title={t('team.edit_role')} 
-                      onClick={() => { setEditMember(member); setEditRole(member.role); }}
-                      disabled={member.role === 'owner'}
-                    >
-                      <Pencil size={16} />
+                  <div className="team-id">
+                    <span className="team-name">{member.full_name || '—'}</span>
+                    <span className="bf-badge" data-tone={ROLE_TONES[member.role] ?? 'slate'}>
+                      {isOwner ? <Crown size={12} /> : <span className="bf-badge__dot" />}
+                      {getRoleLabel(member.role)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="team-contact">
+                  <span><Mail size={14} /> {member.email}</span>
+                  <span><Phone size={14} /> {member.phone || '—'}</span>
+                </div>
+
+                <div className="team-foot">
+                  <label className="team-status">
+                    <span className="toggle-switch">
+                      <input
+                        type="checkbox"
+                        checked={member.is_active}
+                        onChange={() => handleToggleStatus(member)}
+                        disabled={isOwner}
+                      />
+                      <span className="slider"></span>
+                    </span>
+                    <span className={member.is_active ? 'status-on' : 'status-off'}>
+                      {member.is_active ? t('team.active') : t('team.inactive')}
+                    </span>
+                  </label>
+                  <div className="bf-row-actions">
+                    <button type="button" className="bf-icon-btn" title={t('team.edit_role')} aria-label={t('team.edit_role')}
+                      onClick={() => { setEditMember(member); setEditRole(member.role); }} disabled={isOwner}>
+                      <Pencil size={15} />
                     </button>
-                    <button 
-                      className="btn btn-ghost btn-icon" 
-                      title="Changer le MDP" 
-                      onClick={() => { setPasswordTarget(member); setShowPasswordModal(true); }}
-                      disabled={member.role === 'owner'}
-                    >
-                      <KeyRound size={16} />
+                    <button type="button" className="bf-icon-btn" title="Changer le MDP" aria-label="Changer le mot de passe"
+                      onClick={() => { setPasswordTarget(member); setShowPasswordModal(true); }} disabled={isOwner}>
+                      <KeyRound size={15} />
                     </button>
-                    {member.role !== 'owner' && (
-                      <button 
-                        className="btn btn-ghost btn-icon btn-danger-icon" 
-                        title={t('common.delete')} 
-                        onClick={() => setDeleteTarget(member)}
-                      >
-                        <Trash2 size={16} />
+                    {!isOwner && (
+                      <button type="button" className="bf-icon-btn bf-icon-btn--danger" title={t('common.delete')} aria-label={t('common.delete')}
+                        onClick={() => setDeleteTarget(member)}>
+                        <Trash2 size={15} />
                       </button>
                     )}
                   </div>
-                </td>
-              </tr>
-            ))}
-            {isLoading && (
-              <tr><td colSpan={5} className="text-center py-8"><div className="spinner"></div></td></tr>
-            )}
-            {!isLoading && members.length === 0 && (
-              <tr>
-                <td colSpan={5} className="text-center py-8 text-muted">
-                  {fetchError
-                    ? `⚠️ ${fetchError}`
-                    : t('team.no_members') || 'Aucun membre trouvé.'}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
 
       {/* Invite Modal */}
       <Modal isOpen={isInviteOpen} onClose={() => setIsInviteOpen(false)} title={t('team.invite')}>
@@ -402,45 +399,38 @@ export default function TeamPage() {
       </Modal>
 
       <style jsx>{`
-        .page { display: flex; flex-direction: column; gap: 1.5rem; }
-        .page-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; }
-        .page-title { font-size: 1.75rem; margin-bottom: 0.25rem; }
-        .page-subtitle { color: var(--text-muted); font-size: 0.9rem; }
-
-        .table-container { padding: 0; overflow-x: auto; }
-        .data-table { width: 100%; border-collapse: collapse; text-align: left; }
-        .data-table th, .data-table td { padding: 0.875rem 1.25rem; border-bottom: 1px solid var(--border-subtle); vertical-align: middle; }
-        .data-table th { font-weight: 600; color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
-        .data-table tr:hover td { background: var(--surface-hover); }
-        .data-table tr:last-child td { border-bottom: none; }
-        
-        .row-inactive td { opacity: 0.7; }
-
-        .member-cell { display: flex; align-items: center; gap: 0.75rem; }
-        .member-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--surface-3); color: var(--text-primary); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.9rem; flex-shrink: 0; border: 1px solid var(--border-default); }
-        .member-info { display: flex; flex-direction: column; }
-        .member-name { font-weight: 600; }
-        
-        .contact-info { display: flex; flex-direction: column; gap: 0.125rem; font-size: 0.85rem; }
-
-        .actions-flex { display: flex; gap: 0.25rem; justify-content: flex-end; }
-        .btn-icon { padding: 0.4rem; border-radius: 6px; }
-        .btn-danger-icon:hover { color: var(--color-error); background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.2); }
-        .btn-icon:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
-        .text-muted { color: var(--text-muted); font-size: 0.85rem; }
-        .py-8 { padding: 2rem 0; }
-
-        /* Badges */
-        .badge { font-size: 0.7rem; font-weight: 600; padding: 0.125rem 0.5rem; border-radius: 12px; display: inline-block; }
-        .role-owner { background: rgba(16, 185, 129, 0.15); color: #34d399; }
-        .role-manager { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
-        .role-cashier { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
-        .role-stock { background: rgba(168, 85, 247, 0.15); color: #c084fc; }
-        .role-seller-stock { background: rgba(20, 184, 166, 0.15); color: #2dd4bf; }
-        .role-staff { background: var(--surface-3); color: var(--text-secondary); }
+        .team-tile--off { opacity: 0.62; }
+        .team-top { display: flex; align-items: center; gap: 0.85rem; min-width: 0; }
+        .team-avatar { width: 54px; height: 54px; border-radius: 17px; font-size: 1rem; }
+        .team-id { display: flex; flex-direction: column; align-items: flex-start; gap: 0.35rem; min-width: 0; }
+        .team-name {
+          font-family: var(--font-display);
+          font-size: 1.05rem;
+          font-weight: 700;
+          color: var(--text-primary);
+          max-width: 100%;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .team-contact {
+          display: flex;
+          flex-direction: column;
+          gap: 0.4rem;
+          padding: 0.7rem 0.85rem;
+          border-radius: 13px;
+          background: var(--surface-2);
+          border: 1px solid var(--border-subtle);
+          font-size: 0.82rem;
+          color: var(--text-secondary);
+          min-width: 0;
+        }
+        .team-contact span { display: flex; align-items: center; gap: 0.5rem; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .team-contact :global(svg) { flex-shrink: 0; color: var(--text-muted); }
+        .team-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin-top: auto; }
+        .team-status { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+        .status-on { color: var(--color-success); }
+        .status-off { color: var(--text-muted); }
 
         /* Toggle Switch */
         .toggle-switch { position: relative; display: inline-block; width: 36px; height: 20px; margin-right: 8px; vertical-align: middle; }
@@ -461,20 +451,6 @@ export default function TeamPage() {
         .warning-box { display: flex; gap: 1rem; align-items: flex-start; padding: 1rem; background: rgba(239, 68, 68, 0.1); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2); color: var(--text-primary); margin-bottom: 1.5rem; }
         .warning-icon { color: var(--color-error); flex-shrink: 0; }
 
-        @media (max-width: 768px) {
-          .data-table thead { display: none; }
-          .data-table tr { display: flex; flex-direction: column; border: 1px solid var(--border-subtle); border-radius: 8px; margin-bottom: 1rem; padding: 1rem; background: var(--surface-1); }
-          .data-table td { padding: 0.5rem 0; border: none; display: flex; flex-direction: column; gap: 0.5rem; }
-          .data-table td::before { font-weight: 600; font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; }
-          .data-table td:nth-child(1)::before { content: "Membre"; }
-          .data-table td:nth-child(2)::before { content: "Contact"; }
-          .data-table td:nth-child(3)::before { content: "Rôle"; }
-          .data-table td:nth-child(4)::before { content: "Statut"; }
-          .actions-flex { justify-content: flex-start; margin-top: 0.5rem; }
-          .text-right { text-align: left; }
-          .btn, .btn-icon { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
-          :global(.modal-form) { width: 100%; }
-        }
       `}</style>
     </div>
   );

@@ -23,6 +23,7 @@ import {
   Volume1,
   VolumeX,
   Bell,
+  ChevronUp,
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -39,20 +40,42 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { hasPermission, ROUTE_PERMISSIONS, firstAllowedRoute } from '@/lib/permissions';
 import { BrandMark } from '@/components/BrandMark';
+import '@/styles/premium-ui.css';
 
-/* ─── Navigation simplifiée ─────────────────────────────────────── */
-const NAV_ITEMS = [
-  { href: '/dashboard',  icon: LayoutDashboard, label: 'Accueil',     labelEn: 'Home',       id: 'nav-dashboard' },
-  { href: '/pos',        icon: ShoppingCart,    label: 'Vendre',      labelEn: 'Sell',       id: 'nav-pos' },
-  { href: '/products',   icon: Package,         label: 'Produits',    labelEn: 'Products',   id: 'nav-products' },
-  { href: '/categories', icon: FolderTree,      label: 'Catégories',  labelEn: 'Categories', id: 'nav-categories' },
-  { href: '/crm',        icon: Users,           label: 'Clients',     labelEn: 'Clients',    id: 'nav-crm' },
-  { href: '/dettes',     icon: CreditCard,      label: 'Dettes',      labelEn: 'Debts',      id: 'nav-dettes' },
-  { href: '/sales',      icon: History,         label: 'Ventes',      labelEn: 'Sales',      id: 'nav-sales' },
-  { href: '/finance',    icon: Wallet,          label: 'Finances',    labelEn: 'Finances',   id: 'nav-finance' },
-  { href: '/team',       icon: UserCog,         label: 'Équipe',      labelEn: 'Team',       id: 'nav-team' },
-  { href: '/settings',   icon: Settings,        label: 'Paramètres',  labelEn: 'Settings',   id: 'nav-settings' },
+/* ─── Navigation — regroupée par sections ───────────────────────── */
+type NavGroup = 'main' | 'catalog' | 'sales' | 'manage' | 'admin';
+
+const NAV_GROUPS: { id: NavGroup; label: string; labelEn: string }[] = [
+  { id: 'main',    label: 'Principal',        labelEn: 'Main' },
+  { id: 'catalog', label: 'Catalogue',        labelEn: 'Catalog' },
+  { id: 'sales',   label: 'Clients & ventes', labelEn: 'Customers & sales' },
+  { id: 'manage',  label: 'Gestion',          labelEn: 'Management' },
+  { id: 'admin',   label: 'Plateforme',       labelEn: 'Platform' },
 ];
+
+const NAV_ITEMS: { href: string; icon: typeof LayoutDashboard; label: string; labelEn: string; id: string; group: NavGroup }[] = [
+  { href: '/dashboard',  icon: LayoutDashboard, label: 'Accueil',     labelEn: 'Home',       id: 'nav-dashboard',  group: 'main' },
+  { href: '/pos',        icon: ShoppingCart,    label: 'Vendre',      labelEn: 'Sell',       id: 'nav-pos',        group: 'main' },
+  { href: '/products',   icon: Package,         label: 'Produits',    labelEn: 'Products',   id: 'nav-products',   group: 'catalog' },
+  { href: '/categories', icon: FolderTree,      label: 'Catégories',  labelEn: 'Categories', id: 'nav-categories', group: 'catalog' },
+  { href: '/crm',        icon: Users,           label: 'Clients',     labelEn: 'Clients',    id: 'nav-crm',        group: 'sales' },
+  { href: '/dettes',     icon: CreditCard,      label: 'Dettes',      labelEn: 'Debts',      id: 'nav-dettes',     group: 'sales' },
+  { href: '/sales',      icon: History,         label: 'Ventes',      labelEn: 'Sales',      id: 'nav-sales',      group: 'sales' },
+  { href: '/finance',    icon: Wallet,          label: 'Finances',    labelEn: 'Finances',   id: 'nav-finance',    group: 'manage' },
+  { href: '/team',       icon: UserCog,         label: 'Équipe',      labelEn: 'Team',       id: 'nav-team',       group: 'manage' },
+  { href: '/settings',   icon: Settings,        label: 'Paramètres',  labelEn: 'Settings',   id: 'nav-settings',   group: 'manage' },
+];
+
+/* Libellés lisibles des rôles (le JWT porte la valeur brute de RoleEnum). */
+const ROLE_LABELS: Record<string, { fr: string; en: string }> = {
+  owner:                { fr: 'Propriétaire',       en: 'Owner' },
+  manager:              { fr: 'Gérant',             en: 'Manager' },
+  cashier:              { fr: 'Caissier',           en: 'Cashier' },
+  stock_manager:        { fr: 'Gestionnaire stock', en: 'Stock manager' },
+  seller_stock_manager: { fr: 'Vendeur · Stock',    en: 'Seller · Stock' },
+  staff:                { fr: 'Employé',            en: 'Staff' },
+  admin:                { fr: 'Administrateur',     en: 'Administrator' },
+};
 
 /* Bottom nav — 5 raccourcis mobiles */
 const BOTTOM_NAV = [
@@ -237,6 +260,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const userInitial = userInfo.email ? userInfo.email.charAt(0).toUpperCase() : 'U';
   const userName    = userInfo.email ? userInfo.email.split('@')[0] : 'Utilisateur';
+  const roleLabel   = ROLE_LABELS[userInfo.role?.toLowerCase()]?.[language === 'fr' ? 'fr' : 'en'] ?? userInfo.role;
 
   /* Nav items — filtrés par permission du rôle, admin voit tout + entrée dédiée */
   const visibleNavItems = NAV_ITEMS.filter((item) => {
@@ -244,8 +268,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return !perm || hasPermission(userInfo.role, perm.module, perm.action);
   });
   const navItems = userInfo.role?.toLowerCase() === 'admin'
-    ? [...visibleNavItems, { href: '/admin', icon: Store, label: 'Admin', labelEn: 'Admin', id: 'nav-admin' }]
+    ? [...visibleNavItems, { href: '/admin', icon: Store, label: 'Admin', labelEn: 'Admin', id: 'nav-admin', group: 'admin' as NavGroup }]
     : visibleNavItems;
+  /* Sections vides (aucun lien autorisé pour ce rôle) masquées entièrement. */
+  const navSections = NAV_GROUPS
+    .map((group) => ({ ...group, items: navItems.filter((item) => item.group === group.id) }))
+    .filter((group) => group.items.length > 0);
 
   /* Même filtrage par permission que le menu latéral — la nav du bas ne
      doit jamais proposer un raccourci vers une page que le rôle ne peut
@@ -295,14 +323,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* ── Backdrop ── */}
       {isMobileMenuOpen && <div className="backdrop" onClick={() => setIsMobileMenuOpen(false)} />}
 
-      {/* ══ SIDEBAR — Navigation plate 8 liens ══ */}
+      {/* ══ SIDEBAR — panneau émeraude, navigation par sections ══ */}
       <aside className={`sidebar ${isMobileMenuOpen ? 'sidebar--open' : ''}`}>
 
         {/* En-tête : logo + nom boutique + fermer */}
         <div className="sidebar__brand">
           <div className="logo-mark"><Logo size={20} /></div>
           <div className="sidebar-brand-info">
-            <span className="sidebar-boutique-name">{userInfo.boutiqueName}</span>
+            <span className="sidebar-boutique-name" title={userInfo.boutiqueName}>{userInfo.boutiqueName}</span>
             <span className="sidebar-plan-badge">
               {userInfo.plan === 'freemium' ? '✦ Freemium' : userInfo.plan === 'lifetime' ? '⚡ Lifetime' : '✓ Pro'}
             </span>
@@ -312,35 +340,41 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
         </div>
 
-        {/* Navigation plate */}
+        {/* Navigation par sections */}
         <nav className="sidebar__nav">
-          {navItems.map((item) => {
-            const ItemIcon = item.icon;
-            const isDash = item.href === '/dashboard';
-            const active = isDash ? pathname === item.href : pathname.startsWith(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                id={item.id}
-                className={`nav-link ${active ? 'nav-link--active' : ''}`}
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                <div className="nav-icon-wrap">
-                  <ItemIcon size={20} />
-                </div>
-                <span className="nav-text">{language === 'fr' ? item.label : item.labelEn}</span>
-              </Link>
-            );
-          })}
+          {navSections.map((section) => (
+            <div key={section.id} className="nav-section">
+              <span className="nav-section__label">{language === 'fr' ? section.label : section.labelEn}</span>
+              {section.items.map((item) => {
+                const ItemIcon = item.icon;
+                const isDash = item.href === '/dashboard';
+                const active = isDash ? pathname === item.href : pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    id={item.id}
+                    className={`nav-link ${active ? 'nav-link--active' : ''}`}
+                    aria-current={active ? 'page' : undefined}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <span className="nav-icon-wrap">
+                      <ItemIcon size={18} strokeWidth={active ? 2.3 : 2} />
+                    </span>
+                    <span className="nav-text">{language === 'fr' ? item.label : item.labelEn}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         {/* Footer */}
         <div className="sidebar__footer">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+          <div className="sidebar-tools">
             <ThemeToggle />
             <button
-              className="admin-bell-btn admin-bell-btn--sidebar"
+              className="tool-btn"
               onClick={() => setIsSyncJournalOpen(true)}
               aria-label={language === 'fr' ? 'Journal de synchronisation' : 'Sync journal'}
               title={language === 'fr' ? 'Journal de synchronisation' : 'Sync journal'}
@@ -348,48 +382,62 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <History size={15} />
             </button>
             {userInfo.role?.toLowerCase() === 'admin' && (
-              <Link href="/admin" className="admin-bell-btn admin-bell-btn--sidebar" aria-label="Notifications admin">
+              <Link href="/admin" className="tool-btn admin-bell-btn" aria-label="Notifications admin" title="Notifications">
                 <Bell size={15} />
                 {unreadAdminCount > 0 && (
                   <span className="admin-bell-badge">{unreadAdminCount > 9 ? '9+' : unreadAdminCount}</span>
                 )}
               </Link>
             )}
+            <button
+              className="lang-toggle"
+              onClick={() => setLanguage(language === 'fr' ? 'en' : 'fr')}
+              title={language === 'fr' ? 'Switch to English' : 'Passer en français'}
+            >
+              <Globe size={14} />
+              <span>{language === 'fr' ? 'FR' : 'EN'}</span>
+            </button>
           </div>
-          <button className="lang-toggle" onClick={() => setLanguage(language === 'fr' ? 'en' : 'fr')}>
-            <Globe size={14} />
-            <span>{language === 'fr' ? 'Français' : 'English'}</span>
-            <span>{language === 'fr' ? '🇫🇷' : '🇬🇧'}</span>
-          </button>
-
-          <div className="footer-separator" />
 
           <div className="profile-container" ref={profileDropdownRef}>
-            <div
-              className={`profile-card ${isProfileDropdownOpen ? 'profile-card--open' : ''}`}
-              onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-            >
-              <div className="profile-avatar">{userInitial}</div>
-              <div className="profile-info">
-                <span className="profile-name">{userName}</span>
-                <span className="profile-role">
-                  {userInfo.role === 'admin' ? 'Admin' : userInfo.role === 'owner' ? (language === 'fr' ? 'Propriétaire' : 'Owner') : userInfo.role}
-                </span>
-              </div>
-            </div>
-
             {isProfileDropdownOpen && (
               <div className="profile-dropdown">
                 <Link href="/settings" className="dropdown-item" onClick={() => setIsProfileDropdownOpen(false)}>
                   <Settings size={14} />
                   <span>{language === 'fr' ? 'Paramètres' : 'Settings'}</span>
                 </Link>
-                <div className="dropdown-item dropdown-item--logout" onClick={handleLogout}>
+                <button type="button" className="dropdown-item dropdown-item--logout" onClick={handleLogout}>
                   <LogOut size={14} />
                   <span>{language === 'fr' ? 'Déconnexion' : 'Logout'}</span>
-                </div>
+                </button>
               </div>
             )}
+
+            <div className={`profile-card ${isProfileDropdownOpen ? 'profile-card--open' : ''}`}>
+              <button
+                type="button"
+                className="profile-main"
+                onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                aria-expanded={isProfileDropdownOpen}
+              >
+                <span className="profile-avatar">{userInitial}</span>
+                <span className="profile-info">
+                  <span className="profile-name">{userName}</span>
+                  <span className="profile-role">{roleLabel}</span>
+                </span>
+                <ChevronUp size={14} className={`profile-chevron ${isProfileDropdownOpen ? '' : 'profile-chevron--down'}`} />
+              </button>
+              {/* Déconnexion directe en un clic — le menu du profil reste disponible. */}
+              <button
+                type="button"
+                className="profile-logout"
+                onClick={handleLogout}
+                aria-label={language === 'fr' ? 'Se déconnecter' : 'Log out'}
+                title={language === 'fr' ? 'Se déconnecter' : 'Log out'}
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
           </div>
         </div>
       </aside>
@@ -421,12 +469,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </nav>
 
       <style jsx>{`
+        /* styled-jsx n'ajoute sa classe de portée qu'aux éléments DOM natifs :
+           tout className posé sur un composant (<Link>, icône lucide,
+           <ThemeToggle>) doit être ciblé via :global(), sinon il ne reçoit
+           aucun style — c'est ce qui empilait icône et texte dans le menu. */
+
         /* ══ Shell ══════════════════════════════════ */
         .shell {
           display: flex;
           min-height: 100vh;
           background: var(--surface-0);
         }
+        .shell :global(.admin-bell-btn) { position: relative; text-decoration: none; }
 
         /* ══ Mobile top bar ════════════════════════ */
         .mobile-bar {
@@ -448,16 +502,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           backdrop-filter: blur(24px) saturate(160%);
           -webkit-backdrop-filter: blur(24px) saturate(160%);
         }
-        .mobile-brand { display: flex; align-items: center; gap: 0.5rem; }
-        .mobile-toggle {
-          background: var(--surface-2); border: 1px solid var(--border-subtle);
-          border-radius: 8px;
-          color: var(--text-primary); cursor: pointer;
+        .mobile-brand { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+        .mobile-bar :global(.mobile-toggle) {
+          position: relative;
+          border: 1px solid var(--overlay-border);
+          background: var(--overlay-medium);
           width: 36px; height: 36px;
+          border-radius: 10px;
           display: flex; align-items: center; justify-content: center;
-          transition: all 0.15s ease;
+          color: var(--text-primary);
+          cursor: pointer;
+          text-decoration: none;
+          transition: background 0.15s ease, transform 0.15s ease;
+          -webkit-tap-highlight-color: transparent;
         }
-        .mobile-toggle:hover { background: var(--surface-3); }
+        .mobile-bar :global(.mobile-toggle:hover) { background: var(--overlay-border-strong); }
+        .mobile-bar :global(.mobile-toggle:active) { transform: scale(0.94); }
 
         /* ══ Logo ══════════════════════════════════ */
         .logo-mark {
@@ -473,20 +533,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         @keyframes logo-breathing {
           0%, 100% { transform: scale(1); opacity: 0.92; }
           50% { transform: scale(1.06); opacity: 1; }
-        }
-        .brand-text {
-          font-family: var(--font-display);
-          font-size: 1.1rem; font-weight: 800;
-          background: linear-gradient(135deg, #6dd5c4 0%, #4ebfae 50%, #31a292 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          letter-spacing: -0.02em;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          flex: 1;
-          min-width: 0;
         }
 
         /* Nom de boutique dans la barre mobile — couleur accentée */
@@ -504,41 +550,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           max-width: 180px;
         }
 
-        .mobile-toggle {
-          border: none;
-          background: var(--overlay-medium);
-          width: 36px; height: 36px;
-          border-radius: 10px;
-          display: flex; align-items: center; justify-content: center;
-          color: var(--text-primary);
-          cursor: pointer;
-          transition: background 0.15s ease;
-          -webkit-tap-highlight-color: transparent;
-        }
-        .mobile-toggle:hover { background: var(--overlay-border-strong); }
-
-        /* ══ Cloche notifications admin ═════════════ */
-        .admin-bell-btn {
-          position: relative;
-          text-decoration: none;
-          -webkit-tap-highlight-color: transparent;
-        }
-        .admin-bell-btn--sidebar {
-          width: 32px; height: 32px;
-          border-radius: var(--radius-sm, 8px);
-          background: var(--overlay-subtle);
-          border: 1px solid var(--overlay-border);
-          color: var(--text-muted);
-          display: flex; align-items: center; justify-content: center;
-          cursor: pointer;
-          transition: all var(--transition-fast, 120ms ease);
-          flex-shrink: 0;
-        }
-        .admin-bell-btn--sidebar:hover {
-          background: var(--overlay-medium);
-          color: var(--text-primary);
-          border-color: var(--overlay-border-strong);
-        }
         .admin-bell-badge {
           position: absolute;
           top: -4px; right: -4px;
@@ -562,313 +573,319 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           z-index: 1090;
         }
 
-        /* ══ SIDEBAR ════════════════════════════════ */
+        /* ══ SIDEBAR — panneau émeraude (même rendu dans les deux thèmes) ══ */
         .sidebar {
-          width: 256px;
+          /* Le panneau reste sombre quel que soit le thème de la page : ses
+             descendants (ThemeToggle, menu du profil...) héritent donc d'une
+             palette locale claire-sur-sombre au lieu des tokens du thème. */
+          --text-primary: #ffffff;
+          --text-secondary: rgba(233, 247, 243, 0.78);
+          --text-muted: rgba(233, 247, 243, 0.52);
+          --overlay-subtle: rgba(255, 255, 255, 0.03);
+          --overlay-medium: rgba(255, 255, 255, 0.07);
+          --overlay-border: rgba(255, 255, 255, 0.08);
+          --overlay-border-strong: rgba(255, 255, 255, 0.16);
+          --sb-accent: #7fe3d2;
+
+          width: 260px;
           height: 100vh;
           position: sticky; top: 0;
           display: flex; flex-direction: column;
           background: var(--sidebar-bg-gradient);
-          border-right: 1px solid rgba(109,213,196,0.14);
+          background-color: var(--sidebar-bg);
+          border-right: 1px solid rgba(255, 255, 255, 0.06);
+          box-shadow: 10px 0 36px rgba(4, 20, 17, 0.14);
+          color: var(--text-secondary);
           flex-shrink: 0;
           z-index: 50;
-          overflow-y: auto;
-          overflow-x: hidden;
-          padding-bottom: 1rem;
-          scrollbar-width: thin;
-          scrollbar-color: var(--overlay-border-strong) transparent;
+          overflow: hidden;
         }
-
         @media (min-width: 1440px) {
           .sidebar { width: 272px; }
         }
 
         .sidebar__brand {
-          display: flex; align-items: center; gap: 0.625rem;
-          padding: 1rem 1rem 0.875rem;
-          position: sticky; top: 0;
-          background: inherit;
-          z-index: 1;
-          border-bottom: 1px solid rgba(109,213,196,0.10);
-          margin-bottom: 0.25rem;
+          display: flex; align-items: center; gap: 0.7rem;
+          padding: 1.15rem 1rem 1rem;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+          flex-shrink: 0;
           min-width: 0;
         }
-
-        /* Info boutique dans la sidebar */
+        .sidebar__brand .logo-mark {
+          width: 40px; height: 40px;
+          border-radius: 12px;
+          background: linear-gradient(145deg, rgba(127,227,210,0.30), rgba(49,162,146,0.10));
+          border: 1px solid rgba(127,227,210,0.35);
+          box-shadow: 0 8px 20px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.14);
+        }
         .sidebar-brand-info {
-          display: flex; flex-direction: column;
+          display: flex; flex-direction: column; gap: 4px;
           min-width: 0; flex: 1;
         }
         .sidebar-boutique-name {
           font-family: var(--font-display);
-          font-size: 0.95rem; font-weight: 800;
-          color: var(--text-primary);
+          font-size: 1rem; font-weight: 800;
+          color: #ffffff;
+          letter-spacing: -0.015em;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-          letter-spacing: -0.01em;
-          max-width: 160px;
-        }
-        .sidebar-boutique-name:hover {
-          white-space: normal;
-          overflow: visible;
         }
         .sidebar-plan-badge {
-          font-size: 0.67rem; font-weight: 600;
-          color: var(--sidebar-accent);
-          margin-top: 1px;
+          align-self: flex-start;
+          font-size: 0.63rem; font-weight: 700;
+          letter-spacing: 0.04em;
+          color: var(--sb-accent);
+          background: rgba(127,227,210,0.12);
+          border: 1px solid rgba(127,227,210,0.24);
+          padding: 1px 8px;
+          border-radius: 99px;
         }
-
         .sidebar-collapse-btn {
-          background: var(--overlay-medium);
-          border: 1px solid var(--overlay-border-strong);
-          color: var(--text-muted);
-          border-radius: 7px;
-          width: 28px; height: 28px;
-          min-width: 28px;
+          background: rgba(255,255,255,0.07);
+          border: 1px solid rgba(255,255,255,0.12);
+          color: rgba(233,247,243,0.7);
+          border-radius: 8px;
+          width: 30px; height: 30px;
           display: flex; align-items: center; justify-content: center;
           cursor: pointer;
           transition: all 0.15s ease;
           padding: 0;
           flex-shrink: 0;
         }
-        .sidebar-collapse-btn:hover {
-          background: var(--overlay-border-strong);
-          color: var(--text-primary);
-        }
+        .sidebar-collapse-btn:hover { background: rgba(255,255,255,0.14); color: #fff; }
 
-        /* ── Boutique card ────────────────────────── */
-        .boutique-card {
-          display: flex; align-items: center; gap: 0.625rem;
-          margin: 0 0.75rem 1rem;
-          padding: 0.625rem 0.75rem;
-          border-radius: 12px;
-          background: rgba(109,213,196,0.06);
-          border: 1px solid rgba(109,213,196,0.15);
-          transition: all 0.2s ease;
-          cursor: pointer;
-        }
-        .boutique-card:hover {
-          background: rgba(109,213,196,0.12);
-          border-color: rgba(109,213,196,0.28);
-        }
-        .boutique-icon {
-          width: 34px; height: 34px;
-          border-radius: 8px;
-          background: rgba(109,213,196,0.15);
-          color: var(--sidebar-accent);
-          display: flex; align-items: center; justify-content: center;
-          flex-shrink: 0;
-        }
-        .boutique-details {
-          display: flex; flex-direction: column;
-          min-width: 0; flex: 1;
-        }
-        .boutique-name {
-          font-size: 0.83rem; font-weight: 700;
-          color: var(--text-primary);
-          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .boutique-badge {
-          font-size: 0.68rem;
-          color: var(--sidebar-accent);
-          font-weight: 600;
-          margin-top: 1px;
-        }
-
-        /* ── Navigation plate ─────────────────────── */
+        /* ── Navigation par sections ─────────────────── */
         .sidebar__nav {
           flex: 1;
+          min-height: 0;
+          overflow-y: auto;
+          overflow-x: hidden;
           display: flex; flex-direction: column;
-          gap: 2px;
-          padding: 0.25rem 0.75rem;
-          margin-bottom: 0.5rem;
+          gap: 1rem;
+          padding: 1rem 0.75rem 1rem;
+          scrollbar-width: thin;
+          scrollbar-color: rgba(255,255,255,0.14) transparent;
+        }
+        .nav-section { display: flex; flex-direction: column; gap: 3px; }
+        .nav-section__label {
+          font-size: 0.63rem; font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.13em;
+          color: rgba(233,247,243,0.4);
+          padding: 0 0.7rem 0.3rem;
         }
 
-        /* Icône wrap — carré arrondi visible */
-        .nav-icon-wrap {
-          width: 36px; height: 36px;
-          border-radius: 10px;
-          display: flex; align-items: center; justify-content: center;
-          flex-shrink: 0;
-          background: transparent;
-          transition: background 0.15s ease;
-          color: inherit;
-        }
-        .nav-link--active .nav-icon-wrap {
-          background: rgba(109,213,196,0.18);
-          color: var(--sidebar-accent);
-        }
-
-        .nav-link {
-          display: flex; align-items: center; gap: 0.75rem;
-          padding: 0.375rem 0.5rem;
-          min-height: 48px;
+        .sidebar__nav :global(.nav-link) {
+          position: relative;
+          display: flex; align-items: center; gap: 0.7rem;
+          min-height: 42px;
+          padding: 0.3rem 0.6rem 0.3rem 0.4rem;
           border-radius: 12px;
-          text-decoration: none;
           color: var(--text-secondary);
           font-size: 0.9rem; font-weight: 500;
-          position: relative;
-          transition: all 0.15s ease;
-          border: 1px solid transparent;
-          background: transparent;
-          width: 100%;
+          text-decoration: none;
           white-space: nowrap;
-          overflow: hidden;
+          border: 1px solid transparent;
+          transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.12s ease;
           -webkit-tap-highlight-color: transparent;
         }
-        .nav-link:hover {
-          color: var(--text-primary);
-          background: var(--overlay-medium);
-          border-color: var(--overlay-border);
+        .sidebar__nav :global(.nav-link:hover) {
+          background: rgba(255,255,255,0.055);
+          color: #ffffff;
         }
-        .nav-link:active { transform: scale(0.98); }
+        .sidebar__nav :global(.nav-link:active) { transform: scale(0.985); }
+        .sidebar__nav :global(.nav-link:focus-visible) {
+          outline: 2px solid var(--sb-accent);
+          outline-offset: 2px;
+        }
+        .sidebar__nav :global(.nav-link--active) {
+          color: #ffffff;
+          font-weight: 650;
+          background: linear-gradient(90deg, rgba(127,227,210,0.20) 0%, rgba(127,227,210,0.06) 100%);
+          border-color: rgba(127,227,210,0.22);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 20px rgba(0,0,0,0.18);
+        }
+        .sidebar__nav :global(.nav-link--active)::before {
+          content: '';
+          position: absolute;
+          left: -0.75rem; top: 10px; bottom: 10px;
+          width: 3px;
+          border-radius: 0 4px 4px 0;
+          background: var(--sb-accent);
+          box-shadow: 0 0 12px rgba(127,227,210,0.85);
+        }
 
-        .nav-link--active {
-          color: var(--sidebar-accent);
-          background: rgba(109,213,196,0.10);
-          border-color: rgba(109,213,196,0.20);
-          font-weight: 700;
+        .nav-icon-wrap {
+          width: 32px; height: 32px;
+          border-radius: 10px;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+          color: rgba(233,247,243,0.66);
+          background: rgba(255,255,255,0.045);
+          border: 1px solid rgba(255,255,255,0.05);
+          transition: all 0.18s ease;
         }
-        .nav-link--active:hover {
-          background: rgba(109,213,196,0.16);
-          color: var(--sidebar-accent-hover);
+        .sidebar__nav :global(.nav-link:hover) .nav-icon-wrap {
+          color: #ffffff;
+          background: rgba(255,255,255,0.09);
         }
-
-        .nav-icon {
-          flex-shrink: 0; color: inherit;
-          width: 20px; height: 20px;
-          display: inline-block; opacity: 0.85;
+        .sidebar__nav :global(.nav-link--active) .nav-icon-wrap {
+          color: #0a2c27;
+          background: linear-gradient(145deg, #93f1e1 0%, #4cc6b3 100%);
+          border-color: transparent;
+          box-shadow: 0 4px 14px rgba(76,198,179,0.45);
         }
-        .nav-link--active .nav-icon { opacity: 1; color: var(--sidebar-accent); }
-
         .nav-text {
           flex: 1;
-          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          overflow: hidden; text-overflow: ellipsis;
         }
 
-        /* POS badge */
-        .nav-pill-pos {
-          font-size: 0.6rem; font-weight: 800;
-          background: rgba(109,213,196,0.25);
-          color: var(--sidebar-accent);
-          padding: 0.1rem 0.35rem;
-          border-radius: 4px;
-          letter-spacing: 0.05em;
-          flex-shrink: 0;
-        }
-
-        /* WhatsApp live dot */
-        .wa-dot {
-          width: 7px; height: 7px;
-          background: #22c55e;
-          border-radius: 50%;
-          flex-shrink: 0;
-          box-shadow: 0 0 6px rgba(34,197,94,0.6);
-          animation: pulse-wa 2s infinite;
-        }
-        @keyframes pulse-wa {
-          0%,100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-
-        /* ── Footer ───────────────────────────────── */
+        /* ── Footer : outils + profil ─────────────────── */
         .sidebar__footer {
-          padding: 0 0.75rem;
-          display: flex; flex-direction: column;
-          margin-top: auto;
+          flex-shrink: 0;
+          display: flex; flex-direction: column; gap: 0.65rem;
+          padding: 0.75rem 0.75rem 0.9rem;
+          border-top: 1px solid rgba(255,255,255,0.07);
+          background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.14) 100%);
         }
-
-        .lang-toggle {
-          display: flex; align-items: center; gap: 0.5rem;
-          padding: 0.5rem 0.625rem;
-          border-radius: 9px;
-          background: transparent;
-          border: 1px solid var(--overlay-border);
-          color: var(--text-muted);
-          font-size: 0.78rem; font-weight: 500;
-          cursor: pointer;
-          transition: all 0.15s ease;
-          margin-bottom: 0.375rem;
-          width: 100%;
-        }
-        .lang-toggle:hover {
-          background: var(--overlay-medium);
-          color: var(--text-primary);
-          border-color: rgba(109,213,196,0.2);
-        }
-        .lang-flag { margin-left: auto; font-size: 0.9rem; }
-
-        .footer-separator {
-          height: 1px;
-          background: var(--overlay-medium);
-          margin: 0.375rem 0.25rem 0.625rem;
-        }
-
-        /* ── Profile ──────────────────────────────── */
-        .profile-container { position: relative; width: 100%; }
-
-        .profile-card {
-          display: flex; align-items: center; gap: 0.625rem;
-          padding: 0.5rem 0.625rem;
+        .sidebar-tools { display: flex; align-items: center; gap: 0.4rem; }
+        .sidebar-tools :global(.theme-toggle),
+        .sidebar-tools :global(.tool-btn) {
+          position: relative;
+          width: 34px; height: 34px;
           border-radius: 10px;
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.09);
+          color: rgba(233,247,243,0.72);
+          display: flex; align-items: center; justify-content: center;
           cursor: pointer;
-          transition: all 0.15s ease;
-          border: 1px solid transparent;
+          flex-shrink: 0;
+          padding: 0;
+          text-decoration: none;
+          transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+        }
+        .sidebar-tools :global(.theme-toggle:hover),
+        .sidebar-tools :global(.tool-btn:hover) {
+          background: rgba(255,255,255,0.11);
+          border-color: rgba(127,227,210,0.3);
+          color: #ffffff;
+          transform: none;
+        }
+        .lang-toggle {
+          margin-left: auto;
+          display: inline-flex; align-items: center; gap: 0.35rem;
+          height: 34px;
+          padding: 0 0.7rem;
+          border-radius: 10px;
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.09);
+          color: rgba(233,247,243,0.78);
+          font-size: 0.72rem; font-weight: 700;
+          letter-spacing: 0.06em;
+          cursor: pointer;
+          transition: background 0.15s ease, color 0.15s ease;
+        }
+        .lang-toggle:hover { background: rgba(255,255,255,0.11); color: #ffffff; }
+
+        .profile-container { position: relative; width: 100%; }
+        .profile-card {
+          display: flex; align-items: center; gap: 0.35rem;
+          padding: 0.35rem;
+          border-radius: 14px;
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.08);
+          transition: background 0.15s ease, border-color 0.15s ease;
         }
         .profile-card:hover, .profile-card--open {
-          background: var(--overlay-medium);
-          border-color: rgba(109,213,196,0.2);
+          background: rgba(255,255,255,0.08);
+          border-color: rgba(127,227,210,0.24);
         }
-
+        .profile-main {
+          flex: 1; min-width: 0;
+          display: flex; align-items: center; gap: 0.6rem;
+          padding: 0.2rem 0.3rem;
+          background: none; border: none;
+          border-radius: 10px;
+          color: inherit;
+          font-family: inherit;
+          text-align: left;
+          cursor: pointer;
+        }
+        .profile-main:focus-visible { outline: 2px solid var(--sb-accent); outline-offset: 1px; }
         .profile-avatar {
-          width: 34px; height: 34px;
+          width: 36px; height: 36px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #6dd5c4, #31a292);
-          border: 2px solid rgba(109,213,196,0.4);
-          color: #080c0b;
+          background: linear-gradient(145deg, #93f1e1, #31a292);
+          color: #0a2c27;
           display: flex; align-items: center; justify-content: center;
-          font-weight: 800; font-size: 0.85rem;
+          font-weight: 800; font-size: 0.88rem;
           flex-shrink: 0;
-          box-shadow: 0 0 0 0 rgba(109,213,196,0.4);
-          transition: box-shadow 0.2s ease;
+          box-shadow: 0 0 0 2px rgba(127,227,210,0.28);
         }
-        .profile-card:hover .profile-avatar {
-          box-shadow: 0 0 0 3px rgba(109,213,196,0.25);
-        }
-
         .profile-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-        .profile-name { font-size: 0.8rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .profile-role { font-size: 0.68rem; color: var(--text-muted); margin-top: 1px; }
+        .profile-name {
+          font-size: 0.84rem; font-weight: 700;
+          color: #ffffff;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .profile-role { font-size: 0.68rem; color: rgba(233,247,243,0.55); margin-top: 1px; }
+        .profile-main :global(.profile-chevron) {
+          color: rgba(233,247,243,0.5);
+          flex-shrink: 0;
+          transition: transform 0.2s ease;
+        }
+        .profile-main :global(.profile-chevron--down) { transform: rotate(180deg); }
 
-        .profile-chevron { color: var(--text-muted); transition: transform 0.2s ease; flex-shrink: 0; }
-        .profile-chevron--rotated { transform: rotate(180deg); }
+        /* Bouton de déconnexion direct, toujours visible */
+        .profile-logout {
+          width: 38px; height: 38px;
+          flex-shrink: 0;
+          display: flex; align-items: center; justify-content: center;
+          border-radius: 11px;
+          background: rgba(244,63,94,0.12);
+          border: 1px solid rgba(244,63,94,0.3);
+          color: #fda4af;
+          cursor: pointer;
+          transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+        }
+        .profile-logout:hover {
+          background: #f43f5e;
+          border-color: #f43f5e;
+          color: #ffffff;
+          box-shadow: 0 6px 18px rgba(244,63,94,0.35);
+        }
+        .profile-logout:active { transform: scale(0.94); }
+        .profile-logout:focus-visible { outline: 2px solid #fda4af; outline-offset: 2px; }
 
         .profile-dropdown {
           position: absolute;
           bottom: calc(100% + 8px);
           left: 0; right: 0;
-          background: var(--profile-dropdown-bg);
-          border: 1px solid rgba(109,213,196,0.2);
-          border-radius: 12px;
+          background: #10231f;
+          border: 1px solid rgba(127,227,210,0.2);
+          border-radius: 14px;
           padding: 0.35rem;
-          box-shadow: 0 16px 40px var(--chrome-shadow);
+          box-shadow: 0 18px 44px rgba(0,0,0,0.45);
           z-index: 60;
+          transform-origin: bottom center;
           animation: scaleIn 0.18s var(--ease-spring);
         }
-
-        .dropdown-item {
+        .profile-dropdown :global(.dropdown-item) {
+          width: 100%;
           display: flex; align-items: center; gap: 0.6rem;
-          padding: 0.625rem 0.75rem;
-          border-radius: 8px;
+          padding: 0.6rem 0.75rem;
+          border-radius: 9px;
+          font-family: inherit;
           font-size: 0.84rem; font-weight: 500;
-          color: var(--text-primary);
+          color: #ffffff;
           text-decoration: none;
+          background: transparent;
+          border: none;
           cursor: pointer;
-          transition: all 0.12s ease;
-          border: none; background: transparent;
+          transition: background 0.12s ease;
         }
-        .dropdown-item:hover { background: var(--overlay-medium); color: var(--text-primary); }
-        .dropdown-item--logout { color: var(--color-error); }
-        .dropdown-item--logout:hover { background: rgba(244,63,94,0.15); color: var(--color-error); }
+        .profile-dropdown :global(.dropdown-item:hover) { background: rgba(255,255,255,0.08); }
+        .profile-dropdown :global(.dropdown-item--logout) { color: #fda4af; }
+        .profile-dropdown :global(.dropdown-item--logout:hover) { background: rgba(244,63,94,0.18); color: #fecdd3; }
 
         /* ══ Main content ═══════════════════════════ */
         .main { flex: 1; min-width: 0; overflow-y: auto; }
@@ -908,13 +925,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           .sidebar {
             position: fixed; left: 0; top: 0; bottom: 0;
-            width: 280px;
+            width: 284px;
+            height: 100dvh;
             transform: translateX(-100%);
             transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
             z-index: 1300 !important;
             box-shadow: 16px 0 50px var(--sidebar-mobile-shadow);
-            padding-top: calc(0.5rem + env(safe-area-inset-top, 0px));
-            padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+            padding-top: env(safe-area-inset-top, 0px);
+            padding-bottom: env(safe-area-inset-bottom, 0px);
             /* Le tiroir colle au bord gauche : en paysage sur iPhone à
                encoche, son contenu doit rester derrière la découpe. */
             padding-left: env(safe-area-inset-left, 0px);
@@ -955,7 +973,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             padding: 0 0.4rem;
           }
 
-          .bottom-nav-item {
+          .bottom-nav-glass :global(.bottom-nav-item) {
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -965,7 +983,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             height: 100%;
             text-decoration: none;
             color: var(--text-muted);
-            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease;
             position: relative;
             -webkit-tap-highlight-color: transparent;
           }
@@ -981,7 +999,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
           }
 
-          .bottom-nav-icon {
+          .bottom-nav-icon-box :global(.bottom-nav-icon) {
+            position: relative;
             z-index: 2;
             transition: transform 0.2s var(--ease-spring), color 0.2s ease;
           }
@@ -1004,19 +1023,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             transition: color 0.2s ease, font-weight 0.2s ease;
           }
 
-          .bottom-nav-item.active .bottom-nav-icon {
-            color: var(--sidebar-accent);
+          .bottom-nav-glass :global(.bottom-nav-item.active) { color: var(--sidebar-accent); }
+          .bottom-nav-glass :global(.bottom-nav-item.active) .bottom-nav-icon-box :global(.bottom-nav-icon) {
             transform: translateY(-1px) scale(1.1);
           }
-
-          .bottom-nav-item.active .bottom-nav-label {
-            color: var(--sidebar-accent);
-            font-weight: 800;
-          }
-
-          .bottom-nav-item:active {
-            transform: scale(0.92);
-          }
+          .bottom-nav-glass :global(.bottom-nav-item.active) .bottom-nav-label { font-weight: 800; }
+          .bottom-nav-glass :global(.bottom-nav-item:active) { transform: scale(0.92); }
         }
 
         @media (min-width: 769px) {

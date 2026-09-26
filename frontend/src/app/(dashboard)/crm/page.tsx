@@ -1,14 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Search, Eye, Pencil, Trash2, UserPlus, CreditCard } from 'lucide-react';
+import { Search, Eye, Pencil, Trash2, UserPlus, CreditCard, Users, Crown, UserCheck, ShoppingBag, MessageCircle, ChevronDown, ChevronLeft, ChevronRight, UserSearch } from 'lucide-react';
 import type { Client, ClientStatus, ClientDebt } from '@/types';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
 import { useLanguage } from '@/context/LanguageContext';
-import { useClientsQuery, queryKeys } from '@/lib/queries';
+import { useClientsQuery, useOrdersQuery, queryKeys } from '@/lib/queries';
+import { PageHeader, StatTile, type StatTone } from '@/components/ui/PageHeader';
+import { formatGNF, formatNumber, formatRelativeDay, hueFromString, initials } from '@/lib/format';
 import { usePermission } from '@/lib/permissions';
 import { DebtCard } from '@/components/debts/DebtCard';
 import { DebtPaymentModal } from '@/components/debts/DebtPaymentModal';
@@ -18,6 +20,14 @@ const STATUS_COLORS: Record<string, string> = {
   actif: 'badge-success',
   vip: 'badge-warning',
   inactif: 'badge-neutral',
+};
+
+// Libellés affichés — "actif" correspond à "Régulier" dans les formulaires.
+const STATUS_CONFIG: Record<string, { fr: string; en: string; tone: StatTone }> = {
+  nouveau: { fr: 'Nouveau', en: 'New', tone: 'sky' },
+  actif: { fr: 'Régulier', en: 'Regular', tone: 'emerald' },
+  vip: { fr: 'VIP', en: 'VIP', tone: 'amber' },
+  inactif: { fr: 'Inactif', en: 'Inactive', tone: 'slate' },
 };
 
 export default function CRMPage() {
@@ -30,6 +40,12 @@ export default function CRMPage() {
   const { data: clientsData, isLoading } = useClientsQuery();
   const clients = clientsData?.items ?? [];
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | ClientStatus>('all');
+  const [sortBy, setSortBy] = useState<'recent' | 'spent' | 'name'>('recent');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage, setPerPage] = useState(25);
+  // Cache des ventes partagé avec l'Accueil — sert au total d'achats par client.
+  const { data: ordersData } = useOrdersQuery();
 
   // Add modal
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -156,105 +172,246 @@ export default function CRMPage() {
     }
   };
 
-  const filteredClients = clients.filter(c =>
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.phone.includes(searchQuery)
+  const fr = language === 'fr';
+
+  // Achats par client (nombre, total, dernier achat) — dérivés du cache
+  // partagé des ventes (useOrdersQuery, le même que l'Accueil).
+  const purchasesByClient = useMemo(() => {
+    const map = new Map<string, { count: number; total: number; last: string }>();
+    for (const o of ordersData?.items ?? []) {
+      if (!o.client_id || o.status === 'cancelled') continue;
+      const cur = map.get(o.client_id) ?? { count: 0, total: 0, last: o.created_at };
+      cur.count += 1;
+      cur.total += Number(o.total) || 0;
+      if (new Date(o.created_at) > new Date(cur.last)) cur.last = o.created_at;
+      map.set(o.client_id, cur);
+    }
+    return map;
+  }, [ordersData]);
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const c of clients) counts[c.status] = (counts[c.status] ?? 0) + 1;
+    return counts;
+  }, [clients]);
+
+  const filteredClients = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    const list = clients.filter(c =>
+      (c.name.toLowerCase().includes(q) || c.phone.includes(searchQuery)) &&
+      (statusFilter === 'all' || c.status === statusFilter)
+    );
+    const spent = (c: Client) => purchasesByClient.get(c.id)?.total ?? 0;
+    const lastActivity = (c: Client) => new Date(purchasesByClient.get(c.id)?.last || c.last_activity_at || c.created_at).getTime();
+    return [...list].sort((a, b) =>
+      sortBy === 'name' ? a.name.localeCompare(b.name)
+        : sortBy === 'spent' ? spent(b) - spent(a)
+          : lastActivity(b) - lastActivity(a)
+    );
+  }, [clients, searchQuery, statusFilter, sortBy, purchasesByClient]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredClients.length / perPage));
+  const safePage = Math.min(currentPage, totalPages);
+  const pagedClients = filteredClients.slice((safePage - 1) * perPage, safePage * perPage);
+  const totalSpent = [...purchasesByClient.values()].reduce((acc, p) => acc + p.total, 0);
+
+  const setFilter = (status: 'all' | ClientStatus) => { setStatusFilter(status); setCurrentPage(1); };
+
+  const statusBadge = (status: string) => {
+    const cfg = STATUS_CONFIG[status] ?? { fr: status, en: status, tone: 'slate' };
+    return (
+      <span className="bf-badge" data-tone={cfg.tone}>
+        {status === 'vip' ? <Crown size={12} /> : <span className="bf-badge__dot" />}
+        {fr ? cfg.fr : cfg.en}
+      </span>
+    );
+  };
+
+  const whatsappHref = (phone: string) => `https://wa.me/${phone.replace(/[^\d]/g, '')}`;
+
+  const clientActions = (client: Client) => (
+    <div className="bf-row-actions">
+      <a className="bf-icon-btn bf-icon-btn--brand" href={whatsappHref(client.phone)} target="_blank" rel="noopener noreferrer" title="WhatsApp" aria-label="WhatsApp">
+        <MessageCircle size={16} />
+      </a>
+      <button type="button" className="bf-icon-btn" title="Voir" aria-label="Voir" onClick={() => openView(client)}>
+        <Eye size={16} />
+      </button>
+      {canEdit && (
+        <button type="button" className="bf-icon-btn" title="Modifier" aria-label="Modifier" onClick={() => openEdit(client)}>
+          <Pencil size={16} />
+        </button>
+      )}
+      {canDelete && (
+        <button type="button" className="bf-icon-btn bf-icon-btn--danger" title="Supprimer" aria-label="Supprimer" onClick={() => setDeleteTarget(client)}>
+          <Trash2 size={16} />
+        </button>
+      )}
+    </div>
   );
 
+  const avatar = (client: Client) => (
+    <span className="bf-avatar" style={{ '--hue': hueFromString(client.name) } as React.CSSProperties}>{initials(client.name)}</span>
+  );
+
+  const purchasesCell = (client: Client) => {
+    const p = purchasesByClient.get(client.id);
+    return p
+      ? <span className="bf-cell__text"><span className="bf-money">{formatGNF(p.total)}</span><span className="bf-sub">{formatNumber(p.count)} {fr ? (p.count > 1 ? 'achats' : 'achat') : (p.count > 1 ? 'purchases' : 'purchase')}</span></span>
+      : <span className="bf-muted">{fr ? 'Aucun achat' : 'No purchase'}</span>;
+  };
+
+  const lastActivity = (client: Client) =>
+    formatRelativeDay(purchasesByClient.get(client.id)?.last || client.last_activity_at || client.created_at, language);
+
   return (
-    <div className="page">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">{t('crm.title')}</h1>
-          <p className="page-subtitle">{t('crm.subtitle')}</p>
+    <div className="bf-page">
+      <PageHeader
+        icon={Users}
+        title={t('crm.title')}
+        subtitle={t('crm.subtitle')}
+        actions={canCreate && (
+          <button className="btn btn-primary" id="btn-add-client" onClick={() => setIsAddOpen(true)}>
+            <UserPlus size={16} /> {t('crm.new')}
+          </button>
+        )}
+      />
+
+      <section className="bf-stats">
+        <StatTile tone="teal" icon={Users} label={fr ? 'Clients' : 'Customers'} value={formatNumber(clients.length)}
+          hint={<><strong>{formatNumber(statusCounts.nouveau ?? 0)}</strong> {fr ? 'nouveaux' : 'new'}</>} />
+        <StatTile tone="amber" icon={Crown} label="VIP" value={formatNumber(statusCounts.vip ?? 0)}
+          hint={fr ? 'Vos meilleurs clients' : 'Your best customers'} />
+        <StatTile tone="emerald" icon={UserCheck} label={fr ? 'Réguliers' : 'Regulars'} value={formatNumber(statusCounts.actif ?? 0)}
+          hint={<><strong>{formatNumber(purchasesByClient.size)}</strong> {fr ? 'ont déjà acheté' : 'have purchased'}</>} />
+        <StatTile tone="violet" icon={ShoppingBag} label={fr ? 'Dépenses clients' : 'Customer spend'} value={formatNumber(totalSpent)} suffix="GNF"
+          hint={fr ? 'Ventes aux clients identifiés' : 'Sales to known customers'} />
+      </section>
+
+      <section className="bf-toolbar">
+        <div className="bf-search">
+          <Search size={18} />
+          <input type="text" placeholder={t('crm.search')} value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }} />
         </div>
-        <div className="header-actions">
-          {canCreate && (
-            <button className="btn btn-primary" id="btn-add-client" onClick={() => setIsAddOpen(true)}>
-              <UserPlus size={16} /> {t('crm.new')}
+        <div className="bf-select-wrap">
+          <select className="bf-select" value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} aria-label={fr ? 'Trier' : 'Sort'}>
+            <option value="recent">{fr ? 'Activité récente' : 'Recent activity'}</option>
+            <option value="spent">{fr ? 'Meilleurs clients' : 'Top spenders'}</option>
+            <option value="name">{fr ? 'Nom (A → Z)' : 'Name (A → Z)'}</option>
+          </select>
+          <ChevronDown size={15} />
+        </div>
+        <div className="bf-chips" style={{ flexBasis: '100%' }} role="tablist">
+          {(['all', 'nouveau', 'actif', 'vip', 'inactif'] as const).map((st) => (
+            <button key={st} type="button" role="tab" aria-selected={statusFilter === st}
+              className={`bf-chip ${statusFilter === st ? 'bf-chip--active' : ''}`} onClick={() => setFilter(st)}>
+              {st === 'all' ? (fr ? 'Tous' : 'All') : (fr ? STATUS_CONFIG[st].fr : STATUS_CONFIG[st].en)}
+              <span className="bf-chip__count">{formatNumber(st === 'all' ? clients.length : statusCounts[st] ?? 0)}</span>
             </button>
-          )}
+          ))}
         </div>
-      </div>
+      </section>
 
-      <div className="filters card">
-        <div className="search-box">
-          <span className="search-icon"><Search size={18} /></span>
-          <input
-            type="text"
-            className="input search-input"
-            placeholder={t('crm.search')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+      <section className="bf-panel">
+        <div className="bf-panel__head">
+          <span className="bf-panel__title">{fr ? 'Fichier clients' : 'Customer list'} <span className="bf-count">{formatNumber(filteredClients.length)}</span></span>
         </div>
-      </div>
 
-      <div className="table-container card">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>{t('crm.name')}</th>
-              <th>{t('crm.phone')}</th>
-              <th>{t('crm.status')}</th>
-              <th>{t('crm.tags')}</th>
-              <th>{t('crm.last_activity')}</th>
-              <th className="text-right">{t('prod.actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredClients.map(client => (
-              <tr key={client.id}>
-                <td>
-                  <div className="client-cell">
-                    <div className="client-avatar">{client.name.charAt(0)}</div>
-                    <span className="client-name">{client.name}</span>
-                  </div>
-                </td>
-                <td><span className="client-phone">{client.phone}</span></td>
-                <td>
-                  <span className={`badge ${STATUS_COLORS[client.status] || 'badge-neutral'}`}>
-                    {client.status.toUpperCase()}
-                  </span>
-                </td>
-                <td>
-                  <div className="tags-flex">
-                    {client.tags.map(tag => (
-                      <span key={tag} className="tag-pill">{tag}</span>
-                    ))}
-                  </div>
-                </td>
-                <td className="text-muted">
-                  {new Date(client.last_activity_at || client.created_at).toLocaleDateString('fr-FR')}
-                </td>
-                <td className="text-right">
-                  <div className="actions-flex">
-                    <button className="btn btn-ghost btn-icon" title="Voir" onClick={() => openView(client)}>
-                      <Eye size={16} />
-                    </button>
-                    {canEdit && (
-                      <button className="btn btn-ghost btn-icon" title="Modifier" onClick={() => openEdit(client)}>
-                        <Pencil size={16} />
-                      </button>
-                    )}
-                    {canDelete && (
-                      <button className="btn btn-ghost btn-icon btn-danger-icon" title="Supprimer" onClick={() => setDeleteTarget(client)}>
-                        <Trash2 size={16} />
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {isLoading && (
-              <tr><td colSpan={6} className="text-center py-8"><div className="spinner"></div></td></tr>
+        {isLoading && clients.length === 0 ? (
+          <div style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            {[1, 2, 3, 4].map(i => <div key={i} className="bf-skeleton" style={{ height: 56 }} />)}
+          </div>
+        ) : filteredClients.length === 0 ? (
+          <div className="bf-empty">
+            <span className="bf-empty__icon"><UserSearch size={24} /></span>
+            <strong>{clients.length === 0 ? (fr ? 'Aucun client pour le moment' : 'No customers yet') : (fr ? 'Aucun client trouvé' : 'No customer found')}</strong>
+            {clients.length === 0 && canCreate && (
+              <button className="btn btn-primary btn-sm" onClick={() => setIsAddOpen(true)}><UserPlus size={15} /> {t('crm.new')}</button>
             )}
-            {!isLoading && filteredClients.length === 0 && (
-              <tr><td colSpan={6} className="text-center py-8 text-muted">Aucun client trouvé.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        ) : (
+          <>
+            <div className="bf-table-wrap bf-desktop-only">
+              <table className="bf-table">
+                <thead>
+                  <tr>
+                    <th>{t('crm.name')}</th>
+                    <th>{t('crm.phone')}</th>
+                    <th>{t('crm.status')}</th>
+                    <th>{fr ? 'Achats' : 'Purchases'}</th>
+                    <th>{t('crm.last_activity')}</th>
+                    <th className="bf-right">{t('prod.actions')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedClients.map(client => (
+                    <tr key={client.id}>
+                      <td>
+                        <div className="bf-cell">
+                          {avatar(client)}
+                          <span className="bf-cell__text">
+                            <span className="bf-name">{client.name}</span>
+                            {(client.email || client.tags.length > 0) && (
+                              <span className="bf-sub">{client.email || client.tags.join(' · ')}</span>
+                            )}
+                          </span>
+                        </div>
+                      </td>
+                      <td><span className="bf-mono bf-muted" style={{ fontSize: '0.84rem' }}>{client.phone}</span></td>
+                      <td>{statusBadge(client.status)}</td>
+                      <td>{purchasesCell(client)}</td>
+                      <td className="bf-muted">{lastActivity(client)}</td>
+                      <td className="bf-right">{clientActions(client)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="bf-mlist">
+              {pagedClients.map(client => (
+                <article key={client.id} className="bf-mcard">
+                  {avatar(client)}
+                  <div className="bf-mcard__main">
+                    <span className="bf-name">{client.name}</span>
+                    <span className="bf-sub bf-mono">{client.phone}</span>
+                  </div>
+                  <div className="bf-mcard__side">{purchasesCell(client)}</div>
+                  <div className="bf-mcard__foot">
+                    <div className="bf-mcard__meta">
+                      {statusBadge(client.status)}
+                      <span>{lastActivity(client)}</span>
+                    </div>
+                    {clientActions(client)}
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            <div className="bf-pager">
+              <span className="bf-pager__info">
+                <strong>{(safePage - 1) * perPage + 1}–{Math.min(safePage * perPage, filteredClients.length)}</strong>
+                {fr ? ' sur ' : ' of '}<strong>{formatNumber(filteredClients.length)}</strong> {fr ? 'clients' : 'customers'}
+              </span>
+              <div className="bf-pager__controls">
+                <select value={perPage} onChange={e => { setPerPage(Number(e.target.value)); setCurrentPage(1); }} aria-label={fr ? 'Clients par page' : 'Customers per page'}>
+                  <option value={10}>10 / page</option>
+                  <option value={25}>25 / page</option>
+                  <option value={50}>50 / page</option>
+                </select>
+                <button type="button" className="bf-icon-btn" disabled={safePage <= 1} onClick={() => setCurrentPage(safePage - 1)} aria-label={fr ? 'Page précédente' : 'Previous page'}>
+                  <ChevronLeft size={16} />
+                </button>
+                <span className="bf-pager__page">{safePage} / {totalPages}</span>
+                <button type="button" className="bf-icon-btn" disabled={safePage >= totalPages} onClick={() => setCurrentPage(safePage + 1)} aria-label={fr ? 'Page suivante' : 'Next page'}>
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </section>
 
       <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="+ Client">
         <form onSubmit={handleAdd} className="modal-form">
@@ -431,40 +588,6 @@ export default function CRMPage() {
       </Modal>
 
       <style jsx>{`
-        .page { display: flex; flex-direction: column; gap: 1.5rem; }
-        .page-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; }
-        .page-title { font-size: 1.75rem; margin-bottom: 0.25rem; }
-        .page-subtitle { color: var(--text-muted); font-size: 0.9rem; }
-
-        .filters { padding: 1rem; }
-        .search-box { position: relative; max-width: 400px; }
-        .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
-        .search-input { padding-left: 2.5rem; }
-
-        .table-container { padding: 0; overflow-x: auto; }
-        .data-table { width: 100%; border-collapse: collapse; text-align: left; }
-        .data-table th, .data-table td { padding: 0.875rem 1.25rem; border-bottom: 1px solid var(--border-subtle); }
-        .data-table th { font-weight: 600; color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
-        .data-table tr:hover td { background: var(--surface-hover); }
-        .data-table tr:last-child td { border-bottom: none; }
-
-        .client-cell { display: flex; align-items: center; gap: 0.75rem; }
-        .client-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--color-brand-600); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.85rem; flex-shrink: 0; }
-        .client-name { font-weight: 600; }
-        .client-phone { color: var(--text-secondary); font-family: monospace; font-size: 0.9rem; }
-
-        .tags-flex { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-        .tag-pill { background: var(--surface-3); color: var(--text-secondary); padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; border: 1px solid var(--border-default); }
-
-        .actions-flex { display: flex; gap: 0.25rem; justify-content: flex-end; }
-        .btn-icon { padding: 0.4rem; border-radius: 6px; }
-        .btn-danger-icon:hover { color: var(--color-error); background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.2); }
-
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
-        .text-muted { color: var(--text-muted); font-size: 0.85rem; }
-        .py-8 { padding: 2rem 0; }
-
         .modal-form { display: flex; flex-direction: column; gap: 1rem; }
         .form-group { display: flex; flex-direction: column; gap: 0.375rem; }
         .form-label { font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); }

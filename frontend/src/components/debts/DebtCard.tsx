@@ -1,6 +1,6 @@
 'use client';
 
-import { DollarSign, ChevronDown, ChevronUp } from 'lucide-react';
+import { Banknote, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 import type { ClientDebt } from '@/types';
 
@@ -75,7 +75,7 @@ export function DebtCard({
             style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
             onClick={() => onPay(debt)}
           >
-            <DollarSign size={13} /> {language === 'fr' ? 'Enregistrer un règlement' : 'Record payment'}
+            <Banknote size={13} /> {language === 'fr' ? 'Enregistrer un règlement' : 'Record payment'}
           </button>
         )}
         {hasPayments && (

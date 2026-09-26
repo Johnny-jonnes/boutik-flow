@@ -5,6 +5,9 @@ import { useEffect } from 'react';
 export function PWARegister() {
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+    // Production uniquement — en dev, app/layout.tsx désinstalle au
+    // contraire tout SW résiduel (chunks non hashés, voir son commentaire).
+    if (process.env.NODE_ENV !== 'production') return;
 
     // `sw.js` met en cache les fichiers statiques Next.js ET les pages/
     // navigations, avec une clé de cache normalisée pour les secondes
