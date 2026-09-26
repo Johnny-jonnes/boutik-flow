@@ -306,6 +306,11 @@ html {
      téléphone, quel que soit l'écran. Ne change rien pour un contenu qui
      tenait déjà dans le viewport. */
   overflow-x: hidden;
+  /* clip (et non hidden) : même protection contre le défilement horizontal,
+     mais sans créer de conteneur de défilement — "hidden" sur html/body
+     désactivait tous les position: sticky (menu latéral, en-têtes de la
+     vitrine). hidden reste en repli pour les navigateurs sans clip. */
+  overflow-x: clip;
   max-width: 100%;
 }
 
@@ -320,7 +325,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 300ms var(--ease-in-out),
               color 300ms var(--ease-in-out);
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* ─── Scrollbar élégante ── */

@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Store, User, KeyRound, Eye, EyeOff, Save, Landmark, Copy, ExternalLink, Printer, ImagePlus, X, MessageCircle } from 'lucide-react';
+import { Store, User, KeyRound, Eye, EyeOff, Save, Landmark, Copy, ExternalLink, Printer, ImagePlus, X, MessageCircle, Globe, Settings as SettingsIcon } from 'lucide-react';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
@@ -264,22 +265,21 @@ export default function SettingsPage() {
 
   return (
     <div className="settings-page">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">{fr ? 'Paramètres' : 'Settings'}</h1>
-          <p className="page-subtitle">{fr ? 'Gérez votre boutique et votre compte' : 'Manage your shop and your account'}</p>
-        </div>
-      </div>
+      <PageHeader
+        icon={SettingsIcon}
+        title={fr ? 'Paramètres' : 'Settings'}
+        subtitle={fr ? 'Gérez votre boutique, votre page vitrine et votre compte' : 'Manage your shop, your storefront page and your account'}
+      />
 
       {isOwner && (
         <div className="card settings-card">
           <div className="settings-card-head">
             <Store size={18} />
-            <h2>{fr ? 'Boutique' : 'Shop'}</h2>
+            <h2>{fr ? 'Identité de la boutique' : 'Shop identity'}</h2>
           </div>
           <p className="settings-hint">
             {fr
-              ? 'Ces informations personnalisent votre page vitrine publique (logo, couleur, description) — visibles par tous vos clients.'
+              ? 'Nom, logo, slogan, couleur et WhatsApp : ils apparaissent en haut de votre page vitrine et dans vos reçus.'
               : 'These settings personalize your public storefront page (logo, color, description) — visible to all your customers.'}
           </p>
           <form onSubmit={handleSaveShop} className="settings-form">
@@ -344,6 +344,48 @@ export default function SettingsPage() {
               </span>
             </div>
 
+            <button type="submit" className="btn btn-primary" disabled={isSavingShop}>
+              <Save size={16} /> {isSavingShop ? (fr ? 'Enregistrement…' : 'Saving…') : (fr ? 'Enregistrer' : 'Save')}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {isOwner && (
+        <div className="card settings-card">
+          <div className="settings-card-head">
+            <Globe size={18} />
+            <h2>{fr ? 'Ma page vitrine' : 'My storefront page'}</h2>
+          </div>
+          <p className="settings-hint">
+            {fr
+              ? 'Ce lien affiche automatiquement tous vos produits marqués "visibles sur la vitrine publique". Partagez-le une fois : il n\'a jamais besoin d\'être recopié à chaque nouveau produit.'
+              : 'This link automatically shows every product you mark "visible on the public shop". Share it once — no need to retype it for every new product.'}
+          </p>
+          <form onSubmit={handleSaveShop} className="settings-form">
+            <div className="input-group">
+              <label className="form-label">{fr ? 'Lien de ma boutique' : 'My shop link'}</label>
+              <div className="store-link-row">
+                <input className="input" value={storeUrl} disabled />
+                <button type="button" className="btn btn-secondary btn-sm" onClick={handleCopyStoreLink}>
+                  <Copy size={14} /> {fr ? 'Copier' : 'Copy'}
+                </button>
+              </div>
+              <a href={storeUrl} target="_blank" rel="noopener noreferrer" className="store-link-preview">
+                <ExternalLink size={13} /> {fr ? 'Voir ma boutique' : 'View my shop'}
+              </a>
+            </div>
+            <div className="store-qr-actions">
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setIsQrModalOpen(true)}>
+                <Printer size={14} /> {fr ? 'Imprimer le QR code' : 'Print QR code'}
+              </button>
+            </div>
+
+            <div className="settings-subhead">
+              <span>{fr ? 'Contenu affiché sur la vitrine' : 'Content shown on the storefront'}</span>
+              <p>{fr ? 'Chaque champ rempli apparaît sur votre page vitrine ; un champ vide masque simplement la section correspondante.' : 'Each filled field appears on your storefront; an empty field simply hides the matching section.'}</p>
+            </div>
+
             <div className="input-group">
               <label className="form-label">{fr ? 'À propos de la boutique' : 'About the shop'}</label>
               <textarea
@@ -354,7 +396,7 @@ export default function SettingsPage() {
                 onChange={e => setShopAbout(e.target.value)}
                 placeholder={fr ? 'Qui êtes-vous, depuis quand, ce qui vous distingue…' : 'Who you are, since when, what sets you apart…'}
               />
-              <span className="settings-field-hint">{fr ? 'Affiché dans une section "À propos" sur la vitrine — plus détaillé que le slogan court ci-dessus.' : 'Shown in an "About" section on the storefront — more detailed than the short tagline above.'}</span>
+              <span className="settings-field-hint">{fr ? 'Section « À propos » de la vitrine. Laissez vide pour la masquer.' : 'Storefront « About » section. Leave empty to hide it.'}</span>
             </div>
 
             <div className="input-group">
@@ -365,6 +407,7 @@ export default function SettingsPage() {
                 onChange={e => setShopOpeningHours(e.target.value)}
                 placeholder={fr ? 'Ex : Lun-Sam 8h-19h, Dim fermé' : 'E.g. Mon-Sat 8am-7pm, Closed Sun'}
               />
+              <span className="settings-field-hint">{fr ? 'Affiché dans « Horaires » et « Commander facilement ».' : 'Shown under « Hours » and « Order easily ».'}</span>
             </div>
 
             <div className="input-group">
@@ -375,6 +418,7 @@ export default function SettingsPage() {
                 onChange={e => setShopDeliveryInfo(e.target.value)}
                 placeholder={fr ? 'Ex : Livraison à Conakry sous 24h, 20 000 GNF' : 'E.g. Delivery in Conakry within 24h, 20,000 GNF'}
               />
+              <span className="settings-field-hint">{fr ? 'Affiché dans « Livraison » et « Commander facilement ».' : 'Shown under « Delivery » and « Order easily ».'}</span>
             </div>
 
             <div className="input-group">
@@ -394,42 +438,9 @@ export default function SettingsPage() {
             </div>
 
             <button type="submit" className="btn btn-primary" disabled={isSavingShop}>
-              <Save size={16} /> {isSavingShop ? (fr ? 'Enregistrement…' : 'Saving…') : (fr ? 'Enregistrer' : 'Save')}
+              <Save size={16} /> {isSavingShop ? (fr ? 'Enregistrement…' : 'Saving…') : (fr ? 'Enregistrer la vitrine' : 'Save storefront')}
             </button>
           </form>
-        </div>
-      )}
-
-      {isOwner && (
-        <div className="card settings-card">
-          <div className="settings-card-head">
-            <Store size={18} />
-            <h2>{fr ? 'Ma boutique en ligne' : 'My online shop'}</h2>
-          </div>
-          <p className="settings-hint">
-            {fr
-              ? 'Ce lien affiche automatiquement tous vos produits marqués "visibles sur la vitrine publique". Partagez-le une fois : il n\'a jamais besoin d\'être recopié à chaque nouveau produit.'
-              : 'This link automatically shows every product you mark "visible on the public shop". Share it once — no need to retype it for every new product.'}
-          </p>
-          <div className="settings-form">
-            <div className="input-group">
-              <label className="form-label">{fr ? 'Lien de ma boutique' : 'My shop link'}</label>
-              <div className="store-link-row">
-                <input className="input" value={storeUrl} disabled />
-                <button type="button" className="btn btn-secondary btn-sm" onClick={handleCopyStoreLink}>
-                  <Copy size={14} /> {fr ? 'Copier' : 'Copy'}
-                </button>
-              </div>
-              <a href={storeUrl} target="_blank" rel="noopener noreferrer" className="store-link-preview">
-                <ExternalLink size={13} /> {fr ? 'Voir ma boutique' : 'View my shop'}
-              </a>
-            </div>
-            <div className="store-qr-actions">
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setIsQrModalOpen(true)}>
-                <Printer size={14} /> {fr ? 'Imprimer le QR code' : 'Print QR code'}
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
@@ -538,16 +549,27 @@ export default function SettingsPage() {
       </div>
 
       <style jsx>{`
-        .settings-page { display: flex; flex-direction: column; gap: 1.25rem; max-width: 560px; }
+        .settings-page { display: flex; flex-direction: column; gap: 1.25rem; max-width: 720px; }
         .page-header { margin-bottom: 0.25rem; }
         .page-title { font-size: 1.75rem; margin-bottom: 0.25rem; }
         .page-subtitle { color: var(--text-muted); font-size: 0.9rem; }
-        .settings-card { padding: 1.5rem; }
+        .settings-card { padding: 1.5rem; border-radius: 22px; }
         .settings-card-head {
-          display: flex; align-items: center; gap: 0.6rem;
+          display: flex; align-items: center; gap: 0.7rem;
           margin-bottom: 1.25rem; color: var(--text-primary);
         }
-        .settings-card-head h2 { font-size: 1.05rem; font-weight: 700; margin: 0; }
+        .settings-card-head :global(svg) {
+          width: 36px; height: 36px; padding: 8px; border-radius: 11px; flex-shrink: 0;
+          color: #ffffff; background: linear-gradient(145deg, var(--color-brand-400), var(--color-brand-600));
+          box-shadow: 0 6px 14px rgba(49, 162, 146, 0.3);
+        }
+        .settings-card-head h2 { font-family: var(--font-display); font-size: 1.1rem; font-weight: 800; margin: 0; }
+        .settings-subhead {
+          margin-top: 0.5rem; padding-top: 1.1rem;
+          border-top: 1px dashed var(--border-default);
+        }
+        .settings-subhead span { font-family: var(--font-display); font-weight: 800; font-size: 0.98rem; color: var(--text-primary); }
+        .settings-subhead p { margin: 0.25rem 0 0; font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; }
         .settings-hint { color: var(--text-muted); font-size: 0.85rem; margin: -0.5rem 0 1rem; line-height: 1.5; }
         .settings-form { display: flex; flex-direction: column; gap: 1rem; }
         .settings-form .btn { align-self: flex-start; display: flex; align-items: center; gap: 0.5rem; }
