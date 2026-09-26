@@ -17,906 +17,400 @@ import {
   ArrowRight,
   ChevronDown,
   ScanBarcode,
+  Check,
+  X,
+  CloudOff,
+  TrendingUp,
+  MessageCircle,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import s from './landing.module.css';
 
 function FAQItem({ question, answer }: { question: string; answer: string }) {
   const [isOpen, setIsOpen] = useState(false);
   return (
-    <div className={`faq-item ${isOpen ? 'faq-open' : ''}`} onClick={() => setIsOpen(!isOpen)}>
-      <div className="faq-question">
+    <div className={`${s.faqItem} ${isOpen ? s.faqOpen : ''}`}>
+      <button type="button" className={s.faqQ} onClick={() => setIsOpen(!isOpen)} aria-expanded={isOpen}>
         <span>{question}</span>
-        <ChevronDown size={18} className="faq-arrow" />
+        <span className={s.faqArrow}><ChevronDown size={18} /></span>
+      </button>
+      <div className={s.faqA}>
+        <div><p>{answer}</p></div>
       </div>
-      <div className="faq-answer">
-        <p>{answer}</p>
-      </div>
-      <style jsx>{`
-        .faq-item {
-          background: rgba(255, 255, 255, 0.01);
-          border: 1px solid var(--border-subtle);
-          border-radius: 12px;
-          padding: 1.25rem;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          margin-bottom: 0.75rem;
-        }
-        .faq-item:hover {
-          background: rgba(255, 255, 255, 0.03);
-          border-color: var(--color-brand-400);
-        }
-        .faq-question {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          font-weight: 600;
-          color: var(--text-primary);
-          font-size: 1rem;
-        }
-        .faq-arrow {
-          transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          color: var(--text-muted);
-        }
-        .faq-open .faq-arrow {
-          transform: rotate(180deg);
-          color: var(--color-brand-400);
-        }
-        .faq-answer {
-          max-height: 0;
-          overflow: hidden;
-          transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), margin-top 0.3s ease;
-        }
-        .faq-open .faq-answer {
-          max-height: 200px;
-          margin-top: 0.75rem;
-        }
-        .faq-answer p {
-          font-size: 0.9rem;
-          color: var(--text-secondary);
-          line-height: 1.6;
-        }
-      `}</style>
     </div>
   );
 }
 
+const PROBLEMS = [
+  "Le stock affiché ne correspond jamais à ce qu'il reste vraiment en rayon.",
+  "Deux vendeurs encaissent le même dernier article, et vous le découvrez trop tard.",
+  "Une vente se perd parce que la connexion a coupé au mauvais moment.",
+  "Des clients potentiels ne savent même pas ce que vous vendez, faute de vitrine en ligne.",
+  "Vous ne savez plus qui, dans l'équipe, a vraiment vendu quoi.",
+  "Un employé voit vos marges et votre chiffre d'affaires alors que ça ne le regarde pas.",
+];
+
+const FEATURES = [
+  {
+    icon: Users, c1: '#6366f1', c2: '#4338ca',
+    title: 'CRM Clients & Dettes',
+    desc: "Retrouvez l'historique de chaque client, organisez-les par segments, et suivez précisément qui vous doit quoi.",
+  },
+  {
+    icon: Package, c1: '#f59e0b', c2: '#d97706',
+    title: 'Stock sans erreur',
+    desc: "Chaque vente verrouille la ligne de stock concernée avant de la débiter : impossible de vendre deux fois le même dernier article, même avec plusieurs vendeurs en même temps.",
+  },
+  {
+    icon: BarChart3, c1: '#0ea5e9', c2: '#0369a1',
+    title: 'Tableau de bord de performance',
+    desc: "Suivez votre chiffre d'affaires, vos produits qui se vendent le mieux et l'activité de votre équipe — masquable par rôle si vous ne voulez pas que tout le monde voie les chiffres.",
+  },
+  {
+    icon: UserCog, c1: '#8b5cf6', c2: '#6d28d9',
+    title: 'Équipe & permissions',
+    desc: "Vendeur, gestionnaire de stock, gérant : chacun a exactement les droits nécessaires, ni plus ni moins. Vous décidez qui fait quoi.",
+  },
+  {
+    icon: ScanBarcode, c1: '#ec4899', c2: '#be185d',
+    title: 'Scanner code-barres intégré',
+    desc: "Enregistrez vos ventes en scannant le code-barres ou le SKU directement depuis l'appareil photo de votre téléphone.",
+  },
+];
+
+const ASSETS = [
+  { icon: Smartphone, title: '100% Mobile & Rapide', desc: 'Pilotez votre boutique directement depuis votre téléphone ou votre tablette, où que vous soyez.' },
+  { icon: ShieldCheck, title: 'Données Sécurisées', desc: 'Vos conversations, fiches clients et historiques de ventes sont cryptés et stockés en toute sécurité.' },
+  { icon: WifiOff, title: 'Fonctionne hors-ligne', desc: "Une coupure réseau n'arrête jamais une vente : elle s'enregistre localement et se synchronise dès que la connexion revient." },
+  { icon: EyeOff, title: 'Vos chiffres, vos règles', desc: "Choisissez qui voit la marge et le chiffre d'affaires — pour les autres, ces chiffres ne sont même pas envoyés à leur appareil." },
+];
+
+const WHY = [
+  { title: 'Fiable même sans réseau stable', desc: "Pensé pour des connexions qui coupent : vos ventes ne dépendent jamais d'Internet pour être enregistrées." },
+  { title: 'Zéro formation requise', desc: 'Une interface claire, ergonomique et épurée que vous et vos employés prendrez en main en moins de 10 minutes.' },
+  { title: 'Vous gardez le contact direct', desc: "Pas de robot entre vous et vos clients : la vitrine les amène jusqu'à votre WhatsApp habituel, c'est vous qui répondez." },
+];
+
+const FAQ = [
+  { q: 'Comment mes clients me contactent-ils depuis ma vitrine ?', a: 'Un bouton « Discuter sur WhatsApp » ouvre directement une conversation avec vous, sur votre numéro WhatsApp habituel — pas de nouvelle carte SIM ni de compte professionnel requis.' },
+  { q: 'Ma vitrine en ligne est-elle automatique ?', a: "Oui : dès qu'un produit est marqué visible, il apparaît sur votre page publique avec catégories et recherche. Vous partagez le lien ou le QR code une seule fois, jamais besoin de le refaire à chaque nouveau produit." },
+  { q: 'Que se passe-t-il si ma connexion coupe pendant une vente ?', a: "La vente s'enregistre quand même sur l'appareil et se synchronise automatiquement dès que le réseau revient — aucune vente perdue." },
+  { q: 'Mes données et celles de mes clients sont-elles sécurisées ?', a: "Chaque boutique est isolée : les données d'une boutique ne sont jamais visibles par une autre, et l'accès de chaque membre de votre équipe est limité à son rôle." },
+  { q: "Puis-je masquer les chiffres sensibles (marge, chiffre d'affaires) à certains employés ?", a: "Oui, depuis les réglages vous choisissez quels rôles ne voient ni la marge, ni le prix d'achat, ni le chiffre d'affaires — ces chiffres ne sont alors même pas envoyés à leur appareil." },
+  { q: "L'application fonctionne-t-elle correctement sur mobile ?", a: "Oui, toute l'interface est pensée mobile d'abord — vous pouvez l'installer comme une application sur votre téléphone et gérer votre boutique en déplacement." },
+];
+
+// Commerces illustrés dans le bandeau défilant (décoratif).
+const TRADES = [
+  ['👗', 'Mode & prêt-à-porter'], ['👟', 'Chaussures'], ['💄', 'Cosmétiques'], ['📱', 'Téléphonie'],
+  ['🛒', 'Alimentation'], ['💍', 'Bijoux & accessoires'], ['🛋️', 'Maison & déco'], ['📚', 'Librairie'],
+];
+
+// Hauteurs des barres du graphique de l'aperçu (décoratif).
+const BARS = [38, 52, 44, 66, 58, 72, 61, 84, 70, 92, 78, 100];
+
 export default function HomePage() {
   return (
-    <main className="landing">
-      {/* Background elements */}
-      <div className="landing-bg-grid" />
-      <div className="landing-glow-top" />
-      <div className="landing-glow-bottom" />
+    <main className={s.page}>
+      <div className={s.bg} aria-hidden="true" />
 
-      {/* Navbar */}
-      <nav className="landing-nav glass">
-        <div className="nav-logo">
-          <div className="nav-logo-icon" style={{ background: 'transparent', border: 'none', width: 'auto', height: 'auto' }}>
+      {/* ── Navigation ── */}
+      <nav className={s.nav}>
+        <div className={`${s.container} ${s.navInner}`}>
+          <Link href="/" className={s.brand}>
             <BrandMark size={36} />
-          </div>
-          <span className="nav-logo-text">BoutikFlow</span>
-        </div>
-        <div className="nav-actions">
-          <ThemeToggle />
-          <Link href="/login" className="btn btn-ghost hide-on-xs" id="btn-nav-login">Se connecter</Link>
-          <Link href="/register" className="btn btn-primary nav-cta-btn" id="btn-nav-register">
-            <span className="hide-on-xs-btn">Essayer BoutikFlow</span>
-            <span className="show-on-xs-btn">Essayer</span>
+            <span className={s.brandText}>BoutikFlow</span>
           </Link>
+          <div className={s.navLinks}>
+            <a href="#fonctionnalites">Fonctionnalités</a>
+            <a href="#pourquoi">Pourquoi nous</a>
+            <a href="#tarif">Tarif</a>
+            <a href="#faq">FAQ</a>
+          </div>
+          <div className={s.navActions}>
+            <ThemeToggle />
+            <Link href="/login" className={`${s.btn} ${s.btnGhost} ${s.btnSm} ${s.hideXs}`} id="btn-nav-login">Se connecter</Link>
+            <Link href="/register" className={`${s.btn} ${s.btnPrimary} ${s.btnSm}`} id="btn-nav-register">
+              Essayer<span className={s.hideXs}>gratuitement</span>
+            </Link>
+          </div>
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="hero">
-        <div className="hero-badge">
-          <span className="badge badge-success"><MapPin size={14} className="mr-1" /> Conçu pour les commerçants africains</span>
+      {/* ── Hero ── */}
+      <section className={`${s.container} ${s.hero}`}>
+        <div className={s.heroText}>
+          <span className={s.pill}>
+            <span className={s.pillIcon}><MapPin size={13} /></span>
+            Conçu pour les commerçants africains
+          </span>
+          <h1 className={s.title}>
+            Ne perdez plus une <span className={s.highlight}>seule vente</span>{' '}à cause d&apos;une erreur évitable
+          </h1>
+          <p className={s.subtitle}>
+            Un stock mal compté, une connexion qui coupe en pleine vente, une boutique invisible en dehors du quartier — BoutikFlow règle ces problèmes-là. Caisse fiable, stock verrouillé contre les erreurs, et une vraie vitrine en ligne que vos clients trouvent et vous contactent directement sur WhatsApp.
+          </p>
+          <div className={s.ctas}>
+            <Link href="/register" className={`${s.btn} ${s.btnPrimary} ${s.btnLg}`} id="btn-hero-start">
+              Créer ma boutique <ArrowRight size={18} />
+            </Link>
+            <Link href="/login" className={`${s.btn} ${s.btnGhost} ${s.btnLg}`} id="btn-hero-login">
+              Accéder à mon espace
+            </Link>
+          </div>
+          <div className={s.checks}>
+            {[
+              'Hors-ligne : la caisse marche sans Internet',
+              'Vitrine en ligne incluse',
+              "Toute l'équipe, un accès chacun",
+            ].map(item => (
+              <span key={item} className={s.check}><span className={s.checkIcon}><Check size={13} strokeWidth={3} /></span>{item}</span>
+            ))}
+          </div>
         </div>
-        <h1 className="hero-title">
-          Ne perdez plus une <span className="text-gradient">seule vente</span> à cause d&apos;une erreur évitable
-        </h1>
-        <p className="hero-subtitle">
-          Un stock mal compté, une connexion qui coupe en pleine vente, une boutique invisible en dehors du quartier — BoutikFlow règle ces problèmes-là. Caisse fiable, stock verrouillé contre les erreurs, et une vraie vitrine en ligne que vos clients trouvent et vous contactent directement sur WhatsApp.
-        </p>
-        <div className="hero-actions">
-          <Link href="/register" className="btn btn-primary hero-cta animate-pulse-light" id="btn-hero-start">
-            Créer ma boutique
-            <ArrowRight size={16} />
-          </Link>
-          <Link href="/login" className="btn btn-ghost hero-cta-secondary" id="btn-hero-login">
-            Accéder à mon espace
-          </Link>
-        </div>
-        <div className="hero-stats">
-          {[
-            { value: 'Hors-ligne', label: 'La caisse marche sans Internet' },
-            { value: 'Vitrine incluse', label: 'Une page publique par boutique' },
-            { value: 'Multi-rôles', label: "Toute l'équipe, un accès chacun" },
-          ].map(stat => (
-            <div key={stat.label} className="hero-stat">
-              <span className="hero-stat-value">{stat.value}</span>
-              <span className="hero-stat-label">{stat.label}</span>
+
+        {/* Aperçu décoratif de l'application (HTML/CSS, aucune image) */}
+        <div className={s.visual} aria-hidden="true">
+          <div className={s.window}>
+            <div className={s.windowBar}>
+              <i /><i /><i />
+              <span className={s.windowUrl}>boutikflow.app/dashboard</span>
             </div>
-          ))}
+            <div className={s.windowBody}>
+              <div className={s.mockSide}>
+                {Array.from({ length: 7 }).map((_, i) => <span key={i} />)}
+              </div>
+              <div className={s.mockMain}>
+                <div className={s.mockHero}>
+                  <div className={s.mockLabel}>CHIFFRE D&apos;AFFAIRES</div>
+                  <div className={s.mockValue}>98 185 000<small>GNF</small></div>
+                  <svg viewBox="0 0 300 40" preserveAspectRatio="none">
+                    <path d="M0 34 C 20 30, 30 18, 50 22 S 80 36, 100 24 S 130 8, 150 18 S 185 30, 205 14 S 240 4, 260 12 S 290 6, 300 2 L300 40 L0 40 Z" fill="rgba(255,255,255,0.18)" />
+                    <path d="M0 34 C 20 30, 30 18, 50 22 S 80 36, 100 24 S 130 8, 150 18 S 185 30, 205 14 S 240 4, 260 12 S 290 6, 300 2" fill="none" stroke="#fff" strokeWidth="2" />
+                  </svg>
+                </div>
+                <div className={s.mockKpis}>
+                  <div className={s.mockKpi}><b>218</b><span>Ventes</span></div>
+                  <div className={s.mockKpi}><b>450 k</b><span>Panier moyen</span></div>
+                  <div className={s.mockKpi}><b>30</b><span>Clients</span></div>
+                </div>
+                <div className={s.mockChart}>
+                  {BARS.map((h, i) => <i key={i} style={{ height: `${h}%`, animationDelay: `${i * 60}ms` }} />)}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className={s.phone}>
+            <div className={s.phoneScreen}>
+              <div className={s.phoneCover}><span className={s.phoneLogo}>🛍️</span></div>
+              <div className={s.phoneName}>Ma Boutique</div>
+              <div className={s.phoneGrid}>
+                {[['👟', '#fde2cf'], ['👜', '#e7defc'], ['⌚', '#d6ecfb'], ['💄', '#fbd9e8']].map(([e, bg]) => (
+                  <div key={e} className={s.phoneTile}>
+                    <div style={{ background: bg }}>{e}</div>
+                    <span>150 000 GNF</span>
+                  </div>
+                ))}
+              </div>
+              <div className={s.phoneWa}><MessageCircle size={10} fill="white" strokeWidth={0} /> Commander</div>
+            </div>
+          </div>
+
+          <div className={`${s.toast} ${s.toastA}`}>
+            <span className={s.toastIcon} style={{ background: '#10b981' }}><CloudOff size={15} /></span>
+            Vente enregistrée hors-ligne
+          </div>
+          <div className={`${s.toast} ${s.toastB}`}>
+            <span className={s.toastIcon} style={{ background: '#f59e0b' }}><TrendingUp size={15} /></span>
+            Stock verrouillé, zéro erreur
+          </div>
         </div>
       </section>
 
-      {/* Problems Section */}
-      <section className="problems">
-        <div className="section-header">
-          <h2>Ça vous parle ?</h2>
+      {/* ── Bandeau des commerces ── */}
+      <div className={s.marquee} aria-hidden="true">
+        <div className={s.marqueeTrack}>
+          {[...TRADES, ...TRADES].map(([emoji, label], i) => (
+            <span key={i} className={s.marqueeItem}><span>{emoji}</span>{label}</span>
+          ))}
         </div>
-        <div className="problems-grid">
-          {[
-            "Le stock affiché ne correspond jamais à ce qu'il reste vraiment en rayon.",
-            "Deux vendeurs encaissent le même dernier article, et vous le découvrez trop tard.",
-            "Une vente se perd parce que la connexion a coupé au mauvais moment.",
-            "Des clients potentiels ne savent même pas ce que vous vendez, faute de vitrine en ligne.",
-            "Vous ne savez plus qui, dans l'équipe, a vraiment vendu quoi.",
-            "Un employé voit vos marges et votre chiffre d'affaires alors que ça ne le regarde pas.",
-          ].map(p => (
-            <div key={p} className="problem-item">
-              <span className="problem-mark">✕</span>
+      </div>
+
+      {/* ── Problèmes ── */}
+      <section className={`${s.container} ${s.section}`}>
+        <div className={s.sectionHead}>
+          <span className={s.eyebrow}>Le quotidien d&apos;un commerçant</span>
+          <h2 className={s.h2}>Ça vous parle ?</h2>
+        </div>
+        <div className={s.problems}>
+          {PROBLEMS.map(p => (
+            <div key={p} className={s.problem}>
+              <span className={s.problemMark}><X size={17} strokeWidth={3} /></span>
               <p>{p}</p>
             </div>
           ))}
         </div>
-        <p className="problems-transition">BoutikFlow règle ces six problèmes. Concrètement, pas en promesse.</p>
+        <p className={s.transition}>BoutikFlow règle ces six problèmes. Concrètement, pas en promesse. <ArrowRight size={17} /></p>
       </section>
 
-      {/* Credibility section */}
-      <section className="credibility-section">
-        <div className="cred-grid">
-          <div className="cred-card">
-            <Smartphone size={24} className="text-brand-400" />
-            <h3>100% Mobile & Rapide</h3>
-            <p>Pilotez votre boutique directement depuis votre téléphone ou votre tablette, où que vous soyez.</p>
-          </div>
-          <div className="cred-card">
-            <ShieldCheck size={24} className="text-brand-400" />
-            <h3>Données Sécurisées</h3>
-            <p>Vos conversations, fiches clients et historiques de ventes sont cryptés et stockés en toute sécurité.</p>
-          </div>
-          <div className="cred-card">
-            <WifiOff size={24} className="text-brand-400" />
-            <h3>Fonctionne hors-ligne</h3>
-            <p>Une coupure réseau n'arrête jamais une vente : elle s'enregistre localement et se synchronise dès que la connexion revient.</p>
-          </div>
-          <div className="cred-card">
-            <EyeOff size={24} className="text-brand-400" />
-            <h3>Vos chiffres, vos règles</h3>
-            <p>Choisissez qui voit la marge et le chiffre d'affaires — pour les autres, ces chiffres ne sont même pas envoyés à leur appareil.</p>
-          </div>
+      {/* ── Fonctionnalités ── */}
+      <section id="fonctionnalites" className={`${s.container} ${s.section}`}>
+        <div className={s.sectionHead}>
+          <span className={s.eyebrow}>Fonctionnalités</span>
+          <h2 className={s.h2}>Faites grandir votre boutique simplement</h2>
+          <p className={s.lead}>Toutes les fonctionnalités pensées pour maximiser la satisfaction client et simplifier votre quotidien.</p>
         </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="features">
-        <div className="section-header">
-          <h2>Faites grandir votre boutique simplement</h2>
-          <p>Toutes les fonctionnalités pensées pour maximiser la satisfaction client et simplifier votre quotidien.</p>
-        </div>
-        <div className="features-grid">
-          {[
-            {
-              icon: <Store size={32} className="text-brand-500" />,
-              title: 'Vitrine publique incluse',
-              desc: "Chaque boutique a sa propre page en ligne — catégories, recherche, fiches produits avec photo — partageable en un lien ou un QR code. Un bouton WhatsApp laisse vos clients vous écrire directement.",
-            },
-            {
-              icon: <Users size={32} className="text-brand-500" />,
-              title: 'CRM Clients & Dettes',
-              desc: "Retrouvez l'historique de chaque client, organisez-les par segments, et suivez précisément qui vous doit quoi.",
-            },
-            {
-              icon: <Package size={32} className="text-brand-500" />,
-              title: 'Stock sans erreur',
-              desc: "Chaque vente verrouille la ligne de stock concernée avant de la débiter : impossible de vendre deux fois le même dernier article, même avec plusieurs vendeurs en même temps.",
-            },
-            {
-              icon: <BarChart3 size={32} className="text-brand-500" />,
-              title: 'Tableau de bord de performance',
-              desc: "Suivez votre chiffre d'affaires, vos produits qui se vendent le mieux et l'activité de votre équipe — masquable par rôle si vous ne voulez pas que tout le monde voie les chiffres.",
-            },
-            {
-              icon: <UserCog size={32} className="text-brand-500" />,
-              title: 'Équipe & permissions',
-              desc: "Vendeur, gestionnaire de stock, gérant : chacun a exactement les droits nécessaires, ni plus ni moins. Vous décidez qui fait quoi.",
-            },
-            {
-              icon: <ScanBarcode size={32} className="text-brand-500" />,
-              title: 'Scanner code-barres intégré',
-              desc: "Enregistrez vos ventes en scannant le code-barres ou le SKU directement depuis l'appareil photo de votre téléphone.",
-            },
-          ].map(f => (
-            <div key={f.title} className="feature-card card">
-              <div className="feature-icon">{f.icon}</div>
-              <h3 className="feature-title">{f.title}</h3>
-              <p className="feature-desc">{f.desc}</p>
+        <div className={s.bento}>
+          <article className={`${s.feature} ${s.featureWide}`}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <span className={s.featureIcon} style={{ '--c1': '#10b981', '--c2': '#0b7a63' } as React.CSSProperties}><Store size={24} /></span>
+              <h3 className={s.featureTitle}>Vitrine publique incluse</h3>
+              <p className={s.featureDesc}>
+                Chaque boutique a sa propre page en ligne — catégories, recherche, fiches produits avec photo — partageable en un lien ou un QR code. Un bouton WhatsApp laisse vos clients vous écrire directement.
+              </p>
             </div>
-          ))}
+            <div className={s.featureDemo} aria-hidden="true">
+              {[['👗', '#d9f5ea', 'Robe wax'], ['👟', '#fde2cf', 'Sneakers'], ['👜', '#e7defc', 'Sac à main'], ['⌚', '#d6ecfb', 'Montre'], ['🧴', '#fbd9e8', 'Crème'], ['🎧', '#e0e7ff', 'Écouteurs']].map(([e, bg, n]) => (
+                <div key={n} className={s.demoTile}>
+                  <div style={{ background: bg }}>{e}</div>
+                  <span>{n}</span>
+                </div>
+              ))}
+            </div>
+          </article>
+          {FEATURES.map(({ icon: Icon, c1, c2, title, desc }, i) => {
+            const isLast = i === FEATURES.length - 1;
+            return (
+              <article key={title} className={`${s.feature} ${isLast ? s.featureFull : ''}`}>
+                <span className={s.featureIcon} style={{ '--c1': c1, '--c2': c2, flexShrink: 0 } as React.CSSProperties}><Icon size={24} /></span>
+                <div style={isLast ? undefined : { display: 'contents' }}>
+                  <h3 className={s.featureTitle}>{title}</h3>
+                  <p className={s.featureDesc}>{desc}</p>
+                </div>
+              </article>
+            );
+          })}
         </div>
-        <p className="features-footnote">
+        <p className={s.footnote}>
           Aussi inclus : prenez une photo d&apos;un produit, l&apos;IA propose un nom et une description — pratique, jamais indispensable.
         </p>
       </section>
 
-      {/* Why Choose BoutikFlow Section */}
-      <section className="why-choose">
-        <div className="section-header">
-          <h2>Pourquoi choisir BoutikFlow ?</h2>
-          <p>Le meilleur allié pour digitaliser votre activité et accélérer votre croissance commerciale.</p>
+      {/* ── Pourquoi BoutikFlow ── */}
+      <section id="pourquoi" className={`${s.container} ${s.section}`}>
+        <div className={s.sectionHead}>
+          <span className={s.eyebrow}>Pourquoi BoutikFlow</span>
+          <h2 className={s.h2}>Pourquoi choisir BoutikFlow ?</h2>
+          <p className={s.lead}>Le meilleur allié pour digitaliser votre activité et accélérer votre croissance commerciale.</p>
         </div>
-        <div className="why-grid">
-          <div className="why-item">
-            <div className="why-num">1</div>
-            <div>
-              <h3>Fiable même sans réseau stable</h3>
-              <p>Pensé pour des connexions qui coupent : vos ventes ne dépendent jamais d'Internet pour être enregistrées.</p>
-            </div>
-          </div>
-          <div className="why-item">
-            <div className="why-num">2</div>
-            <div>
-              <h3>Zéro formation requise</h3>
-              <p>Une interface claire, ergonomique et épurée que vous et vos employés prendrez en main en moins de 10 minutes.</p>
-            </div>
-          </div>
-          <div className="why-item">
-            <div className="why-num">3</div>
-            <div>
-              <h3>Vous gardez le contact direct</h3>
-              <p>Pas de robot entre vous et vos clients : la vitrine les amène jusqu'à votre WhatsApp habituel, c'est vous qui répondez.</p>
-            </div>
-          </div>
+        <div className={s.assets}>
+          {ASSETS.map(({ icon: Icon, title, desc }) => (
+            <article key={title} className={s.asset}>
+              <span className={s.assetIcon}><Icon size={22} /></span>
+              <h3>{title}</h3>
+              <p>{desc}</p>
+            </article>
+          ))}
+        </div>
+        <div className={s.why}>
+          {WHY.map((w, i) => (
+            <article key={w.title} className={s.whyItem}>
+              <span className={s.whyNum}>0{i + 1}</span>
+              <h3>{w.title}</h3>
+              <p>{w.desc}</p>
+            </article>
+          ))}
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section className="pricing">
-        <div className="section-header">
-          <h2>Commencez gratuitement</h2>
-          <p>Créez votre boutique, ajoutez vos produits et testez la caisse sans engagement. Pour un accompagnement ou des besoins spécifiques, contactez-nous directement.</p>
-        </div>
-
-        <div className="pricing-single">
-          <ul className="pricing-features">
+      {/* ── Tarif ── */}
+      <section id="tarif" className={`${s.container} ${s.section}`}>
+        <div className={s.pricing}>
+          <div className={s.price}>
+            <span className={s.eyebrow}>Tarif</span>
+            <h2 className={s.h2} style={{ textAlign: 'left' }}>Commencez gratuitement</h2>
+            <p className={s.lead}>
+              Créez votre boutique, ajoutez vos produits et testez la caisse sans engagement. Pour un accompagnement ou des besoins spécifiques, contactez-nous directement.
+            </p>
+            <div className={s.ctas} style={{ marginTop: '0.5rem' }}>
+              <Link href="/register" className={`${s.btn} ${s.btnPrimary}`} id="btn-pricing-start">Créer ma boutique <ArrowRight size={17} /></Link>
+              <a href="mailto:trillionnx@gmail.com" className={`${s.btn} ${s.btnGhost}`} id="btn-pricing-contact">Nous contacter</a>
+            </div>
+          </div>
+          <ul className={s.priceList}>
             {[
               'Caisse, stock et suivi des ventes',
               'Vitrine publique en ligne, incluse',
               'Gestion clients, dettes et équipe',
               'Fonctionne hors-ligne, sur mobile',
             ].map(f => (
-              <li key={f} className="pricing-feature">
-                <span className="pricing-check">✓</span>
-                {f}
-              </li>
+              <li key={f}><span className={s.checkIcon} style={{ width: 28, height: 28 }}><Check size={15} strokeWidth={3} /></span>{f}</li>
             ))}
           </ul>
-          <div className="pricing-single-actions">
-            <Link href="/register" className="btn btn-primary pricing-cta" id="btn-pricing-start">
-              Créer ma boutique
-            </Link>
-            <a href="mailto:trillionnx@gmail.com" className="btn btn-ghost pricing-cta" id="btn-pricing-contact">
-              Nous contacter
-            </a>
+        </div>
+      </section>
+
+      {/* ── FAQ ── */}
+      <section id="faq" className={`${s.container} ${s.section}`}>
+        <div className={s.sectionHead}>
+          <span className={s.eyebrow}>FAQ</span>
+          <h2 className={s.h2}>Questions fréquentes</h2>
+          <p className={s.lead}>Toutes les réponses à vos interrogations pour démarrer sereinement.</p>
+        </div>
+        <div className={s.faq}>
+          {FAQ.map(f => <FAQItem key={f.q} question={f.q} answer={f.a} />)}
+        </div>
+      </section>
+
+      {/* ── Appel final ── */}
+      <section className={`${s.container} ${s.section}`}>
+        <div className={s.finalCta}>
+          <h2>Prêt à ne plus perdre une seule vente ?</h2>
+          <p>Créez votre boutique en quelques minutes : caisse, stock, clients et vitrine en ligne, même sans connexion.</p>
+          <div className={s.ctas} style={{ justifyContent: 'center' }}>
+            <Link href="/register" className={`${s.btn} ${s.btnWhite} ${s.btnLg}`}>Créer ma boutique <ArrowRight size={18} /></Link>
+            <Link href="/login" className={`${s.btn} ${s.btnOutlineWhite} ${s.btnLg}`}>Se connecter</Link>
           </div>
         </div>
       </section>
 
-      {/* FAQ Section */}
-      <section className="faq-section">
-        <div className="section-header">
-          <h2>Questions fréquentes</h2>
-          <p>Toutes les réponses à vos interrogations pour démarrer sereinement.</p>
-        </div>
-        <div className="faq-grid">
-          <FAQItem
-            question="Comment mes clients me contactent-ils depuis ma vitrine ?"
-            answer="Un bouton « Discuter sur WhatsApp » ouvre directement une conversation avec vous, sur votre numéro WhatsApp habituel — pas de nouvelle carte SIM ni de compte professionnel requis."
-          />
-          <FAQItem
-            question="Ma vitrine en ligne est-elle automatique ?"
-            answer="Oui : dès qu'un produit est marqué visible, il apparaît sur votre page publique avec catégories et recherche. Vous partagez le lien ou le QR code une seule fois, jamais besoin de le refaire à chaque nouveau produit."
-          />
-          <FAQItem
-            question="Que se passe-t-il si ma connexion coupe pendant une vente ?"
-            answer="La vente s'enregistre quand même sur l'appareil et se synchronise automatiquement dès que le réseau revient — aucune vente perdue."
-          />
-          <FAQItem
-            question="Mes données et celles de mes clients sont-elles sécurisées ?"
-            answer="Chaque boutique est isolée : les données d'une boutique ne sont jamais visibles par une autre, et l'accès de chaque membre de votre équipe est limité à son rôle."
-          />
-          <FAQItem
-            question="Puis-je masquer les chiffres sensibles (marge, chiffre d'affaires) à certains employés ?"
-            answer="Oui, depuis les réglages vous choisissez quels rôles ne voient ni la marge, ni le prix d'achat, ni le chiffre d'affaires — ces chiffres ne sont alors même pas envoyés à leur appareil."
-          />
-          <FAQItem
-            question="L'application fonctionne-t-elle correctement sur mobile ?"
-            answer="Oui, toute l'interface est pensée mobile d'abord — vous pouvez l'installer comme une application sur votre téléphone et gérer votre boutique en déplacement."
-          />
-        </div>
-      </section>
-
-      {/* Footer Overhaul */}
-      <footer className="landing-footer-premium">
-        <div className="footer-cols">
-          <div className="footer-brand-col">
-            <span className="text-gradient brand-title-footer">BoutikFlow</span>
-            <p className="brand-subtitle-footer">La caisse, le stock et la vitrine en ligne des commerçants, dans une seule application — même sans connexion.</p>
+      {/* ── Pied de page ── */}
+      <footer className={s.footer}>
+        <div className={s.container}>
+          <div className={s.footerCols}>
+            <div className={s.footerBrand}>
+              <Link href="/" className={s.brand}>
+                <BrandMark size={32} />
+                <span className={s.brandText}>BoutikFlow</span>
+              </Link>
+              <p>La caisse, le stock et la vitrine en ligne des commerçants, dans une seule application — même sans connexion.</p>
+            </div>
+            <div className={s.footerCol}>
+              <h4>Produit</h4>
+              <a href="#fonctionnalites">Fonctionnalités</a>
+              <a href="#tarif">Tarification</a>
+              <Link href="/login">Espace Client</Link>
+            </div>
+            <div className={s.footerCol}>
+              <h4>Support & Contact</h4>
+              <a href="mailto:trillionnx@gmail.com">trillionnx@gmail.com</a>
+              <a href="tel:+224627171397">+224 627 17 13 97</a>
+              <a href="tel:+224610935524">+224 610 93 55 24</a>
+              <a href="#faq">Centre d&apos;aide</a>
+            </div>
+            <div className={s.footerCol}>
+              <h4>Légal</h4>
+              <Link href="/privacy">Politique de confidentialité</Link>
+              <Link href="/terms">Conditions d&apos;utilisation</Link>
+            </div>
           </div>
-          <div className="footer-links-col">
-            <h4>Produit</h4>
-            <Link href="#features">Fonctionnalités</Link>
-            <Link href="#pricing">Tarification</Link>
-            <Link href="/login">Espace Client</Link>
+          <div className={s.footerBottom}>
+            <p>© 2026 BoutikFlow. Tous droits réservés.</p>
+            <p>Conçu pour le commerce de demain.</p>
           </div>
-          <div className="footer-links-col">
-            <h4>Support & Contact</h4>
-            <a href="mailto:trillionnx@gmail.com">trillionnx@gmail.com</a>
-            <a href="tel:+224627171397">+224 627 17 13 97</a>
-            <a href="tel:+224610935524">+224 610 93 55 24</a>
-            <Link href="#faq">Centre d'aide</Link>
-          </div>
-          <div className="footer-links-col">
-            <h4>Légal</h4>
-            <Link href="/privacy">Politique de confidentialité</Link>
-            <Link href="/terms">Conditions d'utilisation</Link>
-          </div>
-        </div>
-        <div className="footer-bottom">
-          <p>© 2026 BoutikFlow. Tous droits réservés. Conçu pour le commerce de demain.</p>
         </div>
       </footer>
-
-      <style jsx>{`
-        .landing {
-          min-height: 100vh;
-          background: var(--surface-0);
-          position: relative;
-          overflow: hidden;
-        }
-        .landing-bg-grid {
-          position: fixed;
-          inset: 0;
-          background-image:
-            linear-gradient(rgba(16,185,129,0.02) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(16,185,129,0.02) 1px, transparent 1px);
-          background-size: 50px 50px;
-          pointer-events: none;
-        }
-        .landing-glow-top {
-          position: fixed;
-          top: -300px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 1000px;
-          height: 800px;
-          background: radial-gradient(ellipse, rgba(16,185,129,0.06) 0%, transparent 70%);
-          pointer-events: none;
-        }
-        .landing-glow-bottom {
-          position: fixed;
-          bottom: -300px;
-          right: -200px;
-          width: 600px;
-          height: 600px;
-          background: radial-gradient(ellipse, rgba(16,185,129,0.03) 0%, transparent 70%);
-          pointer-events: none;
-        }
-
-        /* Navbar */
-        .landing-nav {
-          position: sticky;
-          top: 0;
-          z-index: 100;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          /* Filet de sécurité si jamais le bouton ne se compacte pas
-             (par ex. un navigateur qui rapporte mal la largeur de
-             viewport) : plutôt que de déborder hors écran, la ligne
-             d'actions passe à la ligne suivante au lieu d'être coupée. */
-          flex-wrap: wrap;
-          row-gap: 0.5rem;
-          padding: max(1rem, env(safe-area-inset-top, 0px)) max(2.5rem, env(safe-area-inset-right, 0px))
-                   1rem max(2.5rem, env(safe-area-inset-left, 0px));
-          border-bottom: 1px solid var(--border-subtle);
-        }
-        .nav-logo {
-          display: flex;
-          align-items: center;
-          gap: 0.625rem;
-          flex-shrink: 0;
-        }
-        .nav-logo-icon {
-          width: 36px;
-          height: 36px;
-          border-radius: 10px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: var(--surface-2);
-          border: 1px solid var(--border-default);
-        }
-        .nav-logo-text {
-          font-family: var(--font-display);
-          font-size: 1.15rem;
-          font-weight: 800;
-          background: linear-gradient(135deg, var(--logo-gradient-from), var(--logo-gradient-to));
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-        .nav-actions {
-          display: flex;
-          gap: 0.75rem;
-          align-items: center;
-          margin-left: auto;
-        }
-
-        /* Hero */
-        .hero {
-          position: relative;
-          max-width: 900px;
-          margin: 0 auto;
-          padding: 6.5rem 2rem 4.5rem;
-          text-align: center;
-          animation: fadeIn 0.6s ease forwards;
-        }
-        .hero-badge { margin-bottom: 1.75rem; }
-        .hero-title {
-          font-family: var(--font-display);
-          font-size: clamp(2.25rem, 6.5vw, 4rem);
-          line-height: 1.15;
-          margin-bottom: 1.5rem;
-          letter-spacing: -0.03em;
-          font-weight: 800;
-          color: var(--text-primary);
-        }
-        .hero-subtitle {
-          font-size: 1.15rem;
-          color: var(--text-secondary);
-          line-height: 1.75;
-          max-width: 680px;
-          margin: 0 auto 2.75rem;
-        }
-        .hero-actions {
-          display: flex;
-          gap: 1rem;
-          justify-content: center;
-          flex-wrap: wrap;
-          margin-bottom: 3.5rem;
-        }
-        .hero-cta {
-          padding: 0.875rem 2rem;
-          font-size: 1.05rem;
-          gap: 0.625rem;
-          font-weight: 800;
-          color: #ffffff;
-          /* Dégradé volontairement plus sombre que le bleu turquoise clair
-             utilisé ailleurs dans l'app : sur fond clair comme sur fond
-             sombre, le texte blanc y garde un contraste ≥ 4.5:1 (WCAG AA),
-             ce qui n'était pas le cas du dégradé brand-500→600 d'origine. */
-          background: linear-gradient(135deg, var(--color-brand-700) 0%, var(--color-brand-900) 100%);
-          border: 1.5px solid rgba(255,255,255,0.25);
-          box-shadow:
-            0 12px 32px rgba(24,87,80,0.5),
-            0 4px 12px rgba(0,0,0,0.3),
-            inset 0 1px 0 rgba(255,255,255,0.3);
-          text-shadow: 0 1px 2px rgba(0,0,0,0.25);
-        }
-        .hero-cta:hover {
-          filter: brightness(1.12);
-          transform: translateY(-2px);
-          box-shadow:
-            0 16px 40px rgba(24,87,80,0.6),
-            0 6px 16px rgba(0,0,0,0.35),
-            inset 0 1px 0 rgba(255,255,255,0.35);
-        }
-        .hero-cta-secondary { padding: 0.875rem 1.75rem; font-size: 1.05rem; }
-        
-        .hero-stats {
-          display: flex;
-          justify-content: center;
-          gap: 4rem;
-          flex-wrap: wrap;
-          padding-top: 1.5rem;
-          border-top: 1px solid var(--border-subtle);
-          max-width: 600px;
-          margin: 0 auto;
-        }
-        .hero-stat {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-          align-items: center;
-        }
-        .hero-stat-value {
-          font-family: var(--font-display);
-          font-size: 1.4rem;
-          font-weight: 800;
-          color: var(--color-brand-400);
-        }
-        .hero-stat-label {
-          font-size: 0.825rem;
-          color: var(--text-muted);
-        }
-
-        /* Problems */
-        .problems {
-          max-width: 900px;
-          margin: 0 auto;
-          padding: 3rem 2rem 1rem;
-        }
-        .problems .section-header { margin-bottom: 2rem; }
-        .problems-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-          gap: 0.9rem;
-          margin-bottom: 2rem;
-        }
-        .problem-item {
-          display: flex;
-          align-items: flex-start;
-          gap: 0.7rem;
-          background: rgba(244, 63, 94, 0.03);
-          border: 1px solid rgba(244, 63, 94, 0.12);
-          border-radius: 12px;
-          padding: 1rem 1.1rem;
-        }
-        .problem-mark {
-          color: #fb7185;
-          font-weight: 800;
-          font-size: 0.85rem;
-          flex-shrink: 0;
-          margin-top: 0.15rem;
-        }
-        .problem-item p {
-          font-size: 0.9rem;
-          color: var(--text-secondary);
-          line-height: 1.5;
-          margin: 0;
-        }
-        .problems-transition {
-          text-align: center;
-          font-family: var(--font-display);
-          font-size: 1.15rem;
-          font-weight: 700;
-          color: var(--text-primary);
-        }
-
-        /* Credibility cards */
-        .credibility-section {
-          max-width: 1100px;
-          margin: 0 auto;
-          padding: 2rem;
-        }
-        .cred-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-          gap: 1.25rem;
-        }
-        .cred-card {
-          background: rgba(255, 255, 255, 0.01);
-          border: 1px solid var(--border-subtle);
-          border-radius: 16px;
-          padding: 1.5rem;
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-          transition: transform 0.2s ease;
-        }
-        .cred-card:hover {
-          transform: translateY(-2px);
-          border-color: rgba(52, 211, 153, 0.2);
-        }
-        .cred-card h3 {
-          font-size: 1rem;
-          font-weight: 700;
-          color: var(--text-primary);
-        }
-        .cred-card p {
-          font-size: 0.85rem;
-          color: var(--text-secondary);
-          line-height: 1.5;
-        }
-
-        /* Features */
-        .features {
-          position: relative;
-          max-width: 1100px;
-          margin: 0 auto;
-          padding: 5rem 2rem;
-        }
-        .section-header {
-          text-align: center;
-          margin-bottom: 3.5rem;
-        }
-        .section-header h2 { 
-          font-family: var(--font-display);
-          font-size: 2.25rem;
-          font-weight: 800;
-          margin-bottom: 0.75rem; 
-        }
-        .section-header p { color: var(--text-secondary); font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
-        
-        .features-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-          gap: 1.5rem;
-        }
-        .feature-card { 
-          cursor: default; 
-          transition: all 0.3s ease;
-          border: 1px solid var(--border-subtle);
-          padding: 2.25rem 2rem;
-        }
-        .feature-card:hover {
-          transform: translateY(-4px);
-          border-color: rgba(52, 211, 153, 0.25);
-          box-shadow: var(--shadow-md);
-        }
-        .feature-icon { font-size: 2rem; margin-bottom: 1.25rem; }
-        .feature-title {
-          font-size: 1.15rem;
-          font-weight: 700;
-          margin-bottom: 0.75rem;
-          color: var(--text-primary);
-        }
-        .feature-desc {
-          font-size: 0.925rem;
-          color: var(--text-secondary);
-          line-height: 1.65;
-        }
-        .features-footnote {
-          text-align: center;
-          font-size: 0.85rem;
-          color: var(--text-muted);
-          margin: 2.5rem auto 0;
-          max-width: 500px;
-        }
-
-        /* Why Choose Section */
-        .why-choose {
-          max-width: 900px;
-          margin: 0 auto;
-          padding: 4rem 2rem;
-        }
-        .why-grid {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-        .why-item {
-          display: flex;
-          gap: 1.25rem;
-          align-items: flex-start;
-          background: rgba(255, 255, 255, 0.01);
-          border: 1px solid var(--border-subtle);
-          padding: 1.5rem;
-          border-radius: 16px;
-          transition: all 0.25s ease;
-        }
-        .why-item:hover {
-          background: rgba(255, 255, 255, 0.02);
-          border-color: rgba(52, 211, 153, 0.2);
-        }
-        .why-num {
-          background: var(--color-brand-600);
-          color: white;
-          width: 32px; height: 32px;
-          border-radius: 50%;
-          display: flex; align-items: center; justify-content: center;
-          font-weight: 700;
-          font-size: 0.9rem;
-          flex-shrink: 0;
-        }
-        .why-item h3 {
-          font-size: 1.05rem;
-          font-weight: 700;
-          margin-bottom: 0.375rem;
-          color: var(--text-primary);
-        }
-        .why-item p {
-          font-size: 0.9rem;
-          color: var(--text-secondary);
-          line-height: 1.5;
-        }
-
-        /* Pricing */
-        .pricing {
-          position: relative;
-          max-width: 700px;
-          margin: 0 auto;
-          padding: 4rem 2rem;
-        }
-        .pricing-single {
-          border-radius: var(--radius-xl);
-          padding: 2.5rem 2rem;
-          background: var(--surface-1);
-          border: 1px solid var(--border-subtle);
-          box-shadow: var(--shadow-brand);
-        }
-        .pricing-features {
-          list-style: none;
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-          margin: 0 0 2rem;
-          padding: 0;
-        }
-        .pricing-feature {
-          display: flex;
-          align-items: flex-start;
-          gap: 0.625rem;
-          font-size: 0.95rem;
-          color: var(--text-secondary);
-          line-height: 1.4;
-        }
-        .pricing-check {
-          color: var(--color-brand-400);
-          font-weight: 700;
-        }
-        .pricing-single-actions {
-          display: flex;
-          gap: 0.75rem;
-          flex-wrap: wrap;
-        }
-        .pricing-cta {
-          flex: 1;
-          justify-content: center;
-          padding: 0.875rem;
-          font-weight: 600;
-          min-width: 180px;
-        }
-
-        /* FAQ */
-        .faq-section {
-          max-width: 800px;
-          margin: 0 auto;
-          padding: 5rem 2rem;
-        }
-        .faq-grid {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
-
-        /* Premium Footer */
-        .landing-footer-premium {
-          padding: 5rem 2rem 3rem;
-          border-top: 1px solid var(--border-subtle);
-          background: rgba(255, 255, 255, 0.005);
-          position: relative;
-        }
-        .footer-cols {
-          max-width: 1100px;
-          margin: 0 auto;
-          display: grid;
-          grid-template-columns: 2fr 1fr 1fr 1fr;
-          gap: 3rem;
-          margin-bottom: 4rem;
-        }
-        @media (max-width: 768px) {
-          .footer-cols {
-            grid-template-columns: 1fr;
-            gap: 2rem;
-          }
-          .landing-nav {
-            padding: max(0.75rem, env(safe-area-inset-top, 0px)) max(1rem, env(safe-area-inset-right, 0px))
-                     0.75rem max(1rem, env(safe-area-inset-left, 0px)) !important;
-          }
-          .nav-logo-text {
-            font-size: 1rem !important;
-          }
-          .nav-actions {
-            gap: 0.5rem !important;
-            flex-shrink: 0;
-          }
-          .nav-actions .btn {
-            padding: 0.45rem 0.75rem !important;
-            font-size: 0.8rem !important;
-            height: auto !important;
-            white-space: nowrap !important;
-          }
-        }
-        .show-on-xs-btn { display: none; }
-
-        /* Même correction de contraste que le CTA du hero : le bouton de la
-           barre de navigation doit rester lisible sur toutes les tailles
-           d'écran, y compris une fois réduit à "Essayer" en mobile. */
-        .nav-cta-btn {
-          color: #ffffff;
-          font-weight: 800;
-          background: linear-gradient(135deg, var(--color-brand-700) 0%, var(--color-brand-900) 100%);
-          border: 1.5px solid rgba(255,255,255,0.25);
-          box-shadow:
-            0 4px 16px rgba(24,87,80,0.45),
-            0 1px 4px rgba(0,0,0,0.25),
-            inset 0 1px 0 rgba(255,255,255,0.28);
-          text-shadow: 0 1px 2px rgba(0,0,0,0.25);
-        }
-        .nav-cta-btn:hover {
-          filter: brightness(1.12);
-          box-shadow:
-            0 6px 20px rgba(24,87,80,0.55),
-            0 2px 6px rgba(0,0,0,0.3),
-            inset 0 1px 0 rgba(255,255,255,0.32);
-        }
-
-        @media (max-width: 640px) {
-          #btn-nav-login, .hide-on-xs, .hide-on-xs-btn { display: none !important; }
-          .show-on-xs-btn { display: inline !important; }
-          .nav-cta-btn {
-            padding: 0.45rem 0.8rem !important;
-            font-size: 0.82rem !important;
-            font-weight: 700 !important;
-            white-space: nowrap !important;
-          }
-        }
-        .footer-brand-col {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-        .brand-title-footer {
-          font-family: var(--font-display);
-          font-size: 1.5rem;
-          font-weight: 800;
-        }
-        .brand-subtitle-footer {
-          font-size: 0.9rem;
-          color: var(--text-muted);
-          line-height: 1.6;
-          max-width: 320px;
-        }
-        .footer-links-col {
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-        }
-        .footer-links-col h4 {
-          font-size: 0.9rem;
-          font-weight: 700;
-          color: var(--text-primary);
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          margin-bottom: 0.25rem;
-        }
-        .footer-links-col a {
-          font-size: 0.9rem;
-          color: var(--text-secondary);
-          text-decoration: none;
-          transition: color 0.2s ease;
-        }
-        .footer-links-col a:hover {
-          color: var(--color-brand-400);
-        }
-        .footer-bottom {
-          border-top: 1px solid var(--border-subtle);
-          padding-top: 2rem;
-          text-align: center;
-          max-width: 1100px;
-          margin: 0 auto;
-        }
-        .footer-bottom p {
-          font-size: 0.825rem;
-          color: var(--text-disabled);
-        }
-
-        /* Pulsing light effect */
-        .animate-pulse-light {
-          animation: pulse-light 2s infinite;
-        }
-        @keyframes pulse-light {
-          0%, 100% {
-            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
-          }
-          50% {
-            box-shadow: 0 0 15px 4px rgba(16, 185, 129, 0.25);
-          }
-        }
-      `}</style>
     </main>
   );
 }
