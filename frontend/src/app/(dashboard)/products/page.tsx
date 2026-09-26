@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, Suspense } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Search, ImageIcon, Pencil, Trash2, Eye, Plus, Download, Printer, Camera, Layers, Wallet, Package, PackagePlus, Share2, MessageCircle, Globe, Link as LinkIcon } from 'lucide-react';
+import { Search, ImageIcon, Pencil, Trash2, Eye, Plus, Download, Printer, Camera, Layers, Wallet, Package, PackagePlus, Share2, MessageCircle, Globe, Link as LinkIcon, AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, X, PackageSearch } from 'lucide-react';
 import type { Product } from '@/types';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
@@ -17,10 +17,10 @@ import { compressImage } from '@/lib/utils/imageCompressor';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useProductsQuery, useCategoriesQuery, useProductStatsQuery, useTenantQuery, queryKeys } from '@/lib/queries';
 import { usePermission } from '@/lib/permissions';
+import { PageHeader, StatTile } from '@/components/ui/PageHeader';
+import { formatGNF, formatNumber, LOW_STOCK_THRESHOLD } from '@/lib/format';
 
-function formatGNF(amount: number) {
-  return new Intl.NumberFormat('fr-FR').format(amount) + ' GNF';
-}
+type StockFilter = 'all' | 'in' | 'low' | 'out';
 
 
 
@@ -45,6 +45,7 @@ function ProductsContent() {
   const products = productsData?.items ?? [];
   const categories = categoriesData?.items ?? [];
   const [searchQuery, setSearchQuery] = useState('');
+  const [stockFilter, setStockFilter] = useState<StockFilter>('all');
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [activeScanField, setActiveScanField] = useState<'search' | 'add' | 'edit'>('search');
 
@@ -294,8 +295,26 @@ function ProductsContent() {
       (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (p.barcode && p.barcode.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesCategory = !categoryIdFromUrl || p.category_id === categoryIdFromUrl;
-    return matchesSearch && matchesCategory;
-  }), [products, searchQuery, categoryIdFromUrl]);
+    const matchesStock = stockFilter === 'all'
+      || (stockFilter === 'out' && p.stock <= 0)
+      || (stockFilter === 'low' && p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD)
+      || (stockFilter === 'in' && p.stock > LOW_STOCK_THRESHOLD);
+    return matchesSearch && matchesCategory && matchesStock;
+  }), [products, searchQuery, categoryIdFromUrl, stockFilter]);
+
+  // Compteurs d'alerte et de catégories — dérivés de la liste chargée
+  // (le cache partagé, jusqu'à 500 produits), comme le filtre ci-dessus.
+  const { availableCount, lowStockCount, outOfStockCount, categoryCounts } = useMemo(() => {
+    const counts = new Map<string, number>();
+    let available = 0, low = 0, out = 0;
+    for (const p of products) {
+      if (p.is_available) available++;
+      if (p.stock <= 0) out++;
+      else if (p.stock <= LOW_STOCK_THRESHOLD) low++;
+      if (p.category_id) counts.set(p.category_id, (counts.get(p.category_id) ?? 0) + 1);
+    }
+    return { availableCount: available, lowStockCount: low, outOfStockCount: out, categoryCounts: counts };
+  }, [products]);
 
   // Un catalogue important rendu d'un coup dans le tableau ralentissait la
   // page (et rejoue le même problème déjà rencontré sur la grille Vendre).
@@ -312,7 +331,7 @@ function ProductsContent() {
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [currentPage, totalPages]);
 
-  useEffect(() => { setCurrentPage(1); }, [searchQuery, categoryIdFromUrl, perPage]);
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, categoryIdFromUrl, perPage, stockFilter]);
 
   // Indicateurs de catalogue — calculés côté serveur sur TOUT le catalogue
   // (voir GET /products/stats), jamais en additionnant `products` : cette
@@ -482,112 +501,181 @@ function ProductsContent() {
     );
   };
 
+  const fr = language === 'fr';
+  const stockTone = (stock: number) => (stock <= 0 ? 'rose' : stock <= LOW_STOCK_THRESHOLD ? 'amber' : 'emerald');
+  const stockLabel = (stock: number) =>
+    stock <= 0 ? (fr ? 'Rupture' : 'Out of stock') : `${formatNumber(stock)} ${t('prod.in_stock')}`;
+
+  const exportCsv = () => {
+    const headers = ['Nom', 'Catégorie', 'Prix (GNF)', 'Stock', 'SKU', 'Code-barres', 'Statut'];
+    const csvRows = [headers.join(',')];
+    products.forEach(p => {
+      csvRows.push([
+        `"${p.name.replace(/"/g, '""')}"`,
+        `"${p.category_rel?.name || ''}"`,
+        p.price,
+        p.stock,
+        `"${p.sku || ''}"`,
+        `"${p.barcode || ''}"`,
+        p.is_available ? 'Disponible' : 'Indisponible'
+      ].join(','));
+    });
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `catalogue_produits_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const productActions = (product: Product) => (
+    <div className="bf-row-actions">
+      <button type="button" className="bf-icon-btn" title="Imprimer / Télécharger Étiquette SKU" aria-label="Étiquette SKU" onClick={() => setSkuPrintProduct(product)}>
+        <Printer size={16} />
+      </button>
+      <button type="button" className="bf-icon-btn" title="Voir" aria-label="Voir" onClick={() => setViewProduct(product)}>
+        <Eye size={16} />
+      </button>
+      {canWrite && (
+        <button type="button" className="bf-icon-btn" title="Modifier" aria-label="Modifier" onClick={() => openEdit(product)}>
+          <Pencil size={16} />
+        </button>
+      )}
+      {canDelete && (
+        <button type="button" className="bf-icon-btn bf-icon-btn--danger" title="Supprimer" aria-label="Supprimer" onClick={() => setDeleteTarget(product)}>
+          <Trash2 size={16} />
+        </button>
+      )}
+    </div>
+  );
+
+  const productThumb = (product: Product) => (
+    product.thumbnail
+      ? <img src={product.thumbnail} alt={product.name} className="bf-thumb" />
+      : <span className="bf-thumb"><ImageIcon size={18} /></span>
+  );
+
+  const availabilityBadge = (product: Product) => (
+    <span className="bf-badge" data-tone={product.is_available ? 'emerald' : 'slate'}>
+      <span className="bf-badge__dot" />
+      {product.is_available ? t('prod.available') : t('prod.unavailable')}
+    </span>
+  );
+
   return (
-    <div className="page">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">{t('prod.title')}</h1>
-          <p className="page-subtitle">{t('prod.subtitle')}</p>
+    <div className="bf-page">
+      <PageHeader
+        icon={Package}
+        title={t('prod.title')}
+        subtitle={t('prod.subtitle')}
+        actions={
+          <>
+            <button className="btn btn-secondary" onClick={exportCsv} title={t('common.download')}>
+              <Download size={16} /> {t('common.download')}
+            </button>
+            {canWriteStock && (
+              <button className="btn btn-secondary" id="btn-bulk-stock-in" onClick={() => setIsBulkStockInOpen(true)}>
+                <PackagePlus size={16} /> {fr ? 'Entrée de stock' : 'Stock-in'}
+              </button>
+            )}
+            {canWrite && (
+              <button className="btn btn-secondary" id="btn-bulk-add-products" onClick={() => setIsBulkAddOpen(true)}>
+                <Layers size={16} /> {fr ? 'Créer en groupe' : 'Bulk create'}
+              </button>
+            )}
+            {canWrite && (
+              <button className="btn btn-primary" id="btn-add-product" onClick={() => setIsAddOpen(true)}>
+                <Plus size={16} /> {t('prod.add')}
+              </button>
+            )}
+          </>
+        }
+      />
+
+      <section className="bf-stats">
+        <StatTile
+          tone="emerald" icon={Wallet} label={fr ? 'Valeur du stock' : 'Stock value'}
+          value={stockValueHidden ? (fr ? 'Masqué' : 'Hidden') : formatNumber(totalStockValue)}
+          suffix={stockValueHidden ? undefined : 'GNF'}
+          hint={fr ? 'Au prix de vente' : 'At selling price'}
+        />
+        <StatTile
+          tone="sky" icon={Package} label={fr ? 'Produits en catalogue' : 'Products in catalog'}
+          value={formatNumber(totalProducts)}
+          hint={<><strong>{formatNumber(availableCount)}</strong> {fr ? 'disponibles à la vente' : 'available for sale'}</>}
+        />
+        <StatTile
+          tone="amber" icon={Layers} label={fr ? 'Unités en stock' : 'Units in stock'}
+          value={formatNumber(totalStockUnits)}
+          hint={fr ? 'Toutes références confondues' : 'Across all products'}
+        />
+        <StatTile
+          tone="rose" icon={AlertTriangle} label={fr ? 'Alertes stock' : 'Stock alerts'}
+          value={formatNumber(lowStockCount + outOfStockCount)}
+          hint={<><strong>{formatNumber(outOfStockCount)}</strong> {fr ? 'en rupture' : 'out of stock'} · {formatNumber(lowStockCount)} {fr ? 'faibles' : 'low'}</>}
+        />
+      </section>
+
+      <section className="bf-toolbar">
+        <div className="bf-search">
+          <Search size={18} />
+          <input
+            type="text"
+            placeholder={t('prod.search')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
-        <div className="header-actions" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <button
-            className="btn btn-secondary" 
-            onClick={() => {
-              const headers = ['Nom', 'Catégorie', 'Prix (GNF)', 'Stock', 'SKU', 'Code-barres', 'Statut'];
-              const csvRows = [headers.join(',')];
-              products.forEach(p => {
-                csvRows.push([
-                  `"${p.name.replace(/"/g, '""')}"`,
-                  `"${p.category_rel?.name || ''}"`,
-                  p.price,
-                  p.stock,
-                  `"${p.sku || ''}"`,
-                  `"${p.barcode || ''}"`,
-                  p.is_available ? 'Disponible' : 'Indisponible'
-                ].join(','));
-              });
-              const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-              const url = URL.createObjectURL(blob);
-              const link = document.createElement('a');
-              link.setAttribute('href', url);
-              link.setAttribute('download', `catalogue_produits_${new Date().toISOString().slice(0, 10)}.csv`);
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-            }}
-            title={t('common.download')}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+        <div className="bf-select-wrap">
+          <select
+            className={`bf-select ${stockFilter !== 'all' ? 'bf-select--active' : ''}`}
+            value={stockFilter}
+            onChange={(e) => setStockFilter(e.target.value as StockFilter)}
+            aria-label={fr ? 'Filtrer par stock' : 'Filter by stock'}
           >
-            <Download size={16} />
-            <span>{t('common.download')}</span>
-          </button>
-
-          {canWriteStock && (
-            <button className="btn btn-ghost" id="btn-bulk-stock-in" onClick={() => setIsBulkStockInOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <PackagePlus size={16} />
-              <span>{language === 'fr' ? 'Entrée de stock' : 'Stock-in'}</span>
-            </button>
-          )}
-
-          {canWrite && (
-            <button className="btn btn-ghost" id="btn-bulk-add-products" onClick={() => setIsBulkAddOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <Layers size={16} />
-              <span>{language === 'fr' ? 'Créer en groupe' : 'Bulk create'}</span>
-            </button>
-          )}
-
-          {canWrite && (
-            <button className="btn btn-primary" id="btn-add-product" onClick={() => setIsAddOpen(true)}>
-              <Plus size={16} /> {t('prod.add')}
-            </button>
-          )}
+            <option value="all">{fr ? 'Tous les stocks' : 'All stock levels'}</option>
+            <option value="in">{fr ? 'En stock' : 'In stock'}</option>
+            <option value="low">{fr ? 'Stock faible' : 'Low stock'}</option>
+            <option value="out">{fr ? 'En rupture' : 'Out of stock'}</option>
+          </select>
+          <ChevronDown size={15} />
         </div>
-      </div>
-
-      <div className="kpi-grid" style={{ marginBottom: '1.25rem' }}>
-        <div className="kpi-card">
-          <div className="kpi-icon-wrap kpi-icon-green"><Wallet size={20} /></div>
-          <span className="kpi-label">{language === 'fr' ? 'Valeur du stock' : 'Stock value'}</span>
-          <span className="kpi-value">{stockValueHidden ? (language === 'fr' ? 'Masqué' : 'Hidden') : formatGNF(totalStockValue)}</span>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-icon-wrap kpi-icon-indigo"><Package size={20} /></div>
-          <span className="kpi-label">{language === 'fr' ? 'Produits en catalogue' : 'Products in catalog'}</span>
-          <span className="kpi-value">{totalProducts.toLocaleString('fr-FR')}</span>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-icon-wrap kpi-icon-amber"><Layers size={20} /></div>
-          <span className="kpi-label">{language === 'fr' ? 'Unités en stock' : 'Units in stock'}</span>
-          <span className="kpi-value">{totalStockUnits.toLocaleString('fr-FR')}</span>
-        </div>
-      </div>
-
-      <div className="filters card" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-        <div className="search-box" style={{ flex: 1 }}>
-          <span className="search-icon"><Search size={18} /></span>
-          <input type="text" className="input search-input" placeholder={t('prod.search')}
-            value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-        </div>
-        {categoryIdFromUrl && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0.75rem', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '8px', fontSize: '0.8rem', color: '#10b981' }}>
-            <span>Filtré par catégorie</span>
-            <button 
-              onClick={() => router.push('/products')} 
-              style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', lineHeight: 1, padding: '0 0.2rem' }}
-              title="Supprimer le filtre"
-            >×</button>
-          </div>
-        )}
-        <button 
-          className="btn btn-secondary" 
+        <button
+          type="button"
+          className="btn btn-secondary"
           onClick={() => { setActiveScanField('search'); setIsScannerOpen(true); }}
           title={t('prod.scan_camera')}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
         >
-          <Camera size={18} />
-          <span>{t('prod.scan_camera')}</span>
+          <Camera size={17} /> {t('prod.scan_camera')}
         </button>
-      </div>
+        {categories.length > 0 && (
+          <div className="bf-chips" style={{ flexBasis: '100%' }} role="tablist" aria-label={fr ? 'Catégories' : 'Categories'}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={!categoryIdFromUrl}
+              className={`bf-chip ${!categoryIdFromUrl ? 'bf-chip--active' : ''}`}
+              onClick={() => router.push('/products')}
+            >
+              {fr ? 'Toutes' : 'All'} <span className="bf-chip__count">{formatNumber(products.length)}</span>
+            </button>
+            {categories.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                role="tab"
+                aria-selected={categoryIdFromUrl === c.id}
+                className={`bf-chip ${categoryIdFromUrl === c.id ? 'bf-chip--active' : ''}`}
+                onClick={() => router.push(`/products?category_id=${c.id}`)}
+              >
+                {c.name} <span className="bf-chip__count">{formatNumber(categoryCounts.get(c.id) ?? 0)}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
 
       <BarcodeScannerModal
         isOpen={isScannerOpen}
@@ -607,95 +695,139 @@ function ProductsContent() {
         }}
       />
 
-      <div className="table-container card">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>{t('prod.name')}</th>
-              <th>{t('prod.category')}</th>
-              <th>{t('prod.price')}</th>
-              <th>{t('prod.stock')}</th>
-              <th>{t('prod.sku')}</th>
-              <th>{t('prod.status')}</th>
-              <th className="text-right">{t('prod.actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedProducts.map(product => (
-              <tr key={product.id} className={!product.is_available ? 'row-disabled' : ''}>
-                <td>
-                  <div className="product-cell">
-                    {product.thumbnail ? (
-                      <img src={product.thumbnail} alt={product.name} className="product-list-img" />
-                    ) : (
-                      <div className="product-img-placeholder"><ImageIcon size={20} /></div>
-                    )}
-                    <span className="product-name">{product.name}</span>
-                  </div>
-                </td>
-                <td><span className="tag-pill">{product.category_rel?.name || 'Uncategorized'}</span></td>
-                <td><span className="product-price">{formatGNF(product.price)}</span></td>
-                <td>
-                  <span className={`stock-badge ${product.stock > 10 ? 'stock-high' : product.stock > 0 ? 'stock-low' : 'stock-out'}`}>
-                    {product.stock} {t('prod.in_stock')}
-                  </span>
-                </td>
-                <td><span className="sku-text">{product.sku || '—'}</span></td>
-                <td>
-                  {product.is_available
-                    ? <span className="badge badge-success">{t('prod.available')}</span>
-                    : <span className="badge badge-error">{t('prod.unavailable')}</span>}
-                </td>
-                <td className="text-right">
-                  <div className="actions-flex">
-                    <button className="btn btn-ghost btn-icon" title="Imprimer / Télécharger Étiquette SKU" onClick={() => setSkuPrintProduct(product)}>
-                      <Printer size={16} />
-                    </button>
-                    <button className="btn btn-ghost btn-icon" title="Voir" onClick={() => setViewProduct(product)}>
-                      <Eye size={16} />
-                    </button>
-                    {canWrite && (
-                      <button className="btn btn-ghost btn-icon" title="Modifier" onClick={() => openEdit(product)}>
-                        <Pencil size={16} />
-                      </button>
-                    )}
-                    {canDelete && (
-                      <button className="btn btn-ghost btn-icon btn-danger-icon" title="Supprimer" onClick={() => setDeleteTarget(product)}>
-                        <Trash2 size={16} />
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {isLoading && (
-              <tr><td colSpan={7} className="text-center py-8"><div className="spinner"></div></td></tr>
-            )}
-            {!isLoading && filteredProducts.length === 0 && (
-              <tr><td colSpan={7} className="text-center py-8 text-muted">Aucun produit trouvé.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {totalPages > 1 && (
-        <div className="pagination-bar">
-          <div className="per-page-wrap">
-            <span className="per-page-label">{language === 'fr' ? 'Par page' : 'Per page'} :</span>
-            <select className="input" style={{ width: '80px' }} value={perPage} onChange={e => setPerPage(Number(e.target.value))}>
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-          </div>
-          <div className="page-nav">
-            <button className="btn btn-ghost btn-sm" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>{language === 'fr' ? 'Précédent' : 'Previous'}</button>
-            <span className="page-indicator">{language === 'fr' ? 'Page' : 'Page'} {currentPage} {language === 'fr' ? 'sur' : 'of'} {totalPages}</span>
-            <button className="btn btn-ghost btn-sm" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>{language === 'fr' ? 'Suivant' : 'Next'}</button>
-          </div>
+      <section className="bf-panel">
+        <div className="bf-panel__head">
+          <span className="bf-panel__title">
+            {fr ? 'Catalogue' : 'Catalog'} <span className="bf-count">{formatNumber(filteredProducts.length)}</span>
+          </span>
+          {(searchQuery || stockFilter !== 'all' || categoryIdFromUrl) && (
+            <button
+              type="button"
+              className="bf-chip"
+              onClick={() => { setSearchQuery(''); setStockFilter('all'); if (categoryIdFromUrl) router.push('/products'); }}
+            >
+              <X size={14} /> {fr ? 'Effacer les filtres' : 'Clear filters'}
+            </button>
+          )}
         </div>
-      )}
+
+        {isLoading && products.length === 0 ? (
+          <div style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            {[1, 2, 3, 4, 5].map(i => <div key={i} className="bf-skeleton" style={{ height: 56 }} />)}
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="bf-empty">
+            <span className="bf-empty__icon"><PackageSearch size={24} /></span>
+            <strong>{products.length === 0 ? (fr ? 'Votre catalogue est vide' : 'Your catalog is empty') : (fr ? 'Aucun produit trouvé' : 'No product found')}</strong>
+            <span>{products.length === 0
+              ? (fr ? 'Ajoutez votre premier produit pour commencer à vendre.' : 'Add your first product to start selling.')
+              : (fr ? 'Essayez une autre recherche ou un autre filtre.' : 'Try another search or filter.')}</span>
+            {products.length === 0 && canWrite && (
+              <button className="btn btn-primary btn-sm" onClick={() => setIsAddOpen(true)}><Plus size={15} /> {t('prod.add')}</button>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="bf-table-wrap bf-desktop-only">
+              <table className="bf-table">
+                <thead>
+                  <tr>
+                    <th>{t('prod.name')}</th>
+                    <th>{t('prod.category')}</th>
+                    <th className="bf-right">{t('prod.price')}</th>
+                    <th>{t('prod.stock')}</th>
+                    <th>{t('prod.status')}</th>
+                    <th className="bf-right">{t('prod.actions')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedProducts.map(product => (
+                    <tr key={product.id} className={!product.is_available ? 'bf-row--muted' : ''}>
+                      <td>
+                        <div className="bf-cell">
+                          {productThumb(product)}
+                          <span className="bf-cell__text">
+                            <span className="bf-name">{product.name}</span>
+                            <span className="bf-sub bf-mono">{product.sku || '—'}</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        {product.category_rel?.name
+                          ? <span className="bf-badge">{product.category_rel.name}</span>
+                          : <span className="bf-muted">{fr ? 'Sans catégorie' : 'Uncategorized'}</span>}
+                      </td>
+                      <td className="bf-right"><span className="bf-money">{formatGNF(product.price)}</span></td>
+                      <td>
+                        <span className="bf-badge" data-tone={stockTone(product.stock)}>
+                          <span className="bf-badge__dot" />{stockLabel(product.stock)}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                          {availabilityBadge(product)}
+                          {product.is_public && (
+                            <span className="bf-muted" title={fr ? 'Visible sur la vitrine publique' : 'Visible on the public storefront'}>
+                              <Globe size={14} />
+                            </span>
+                          )}
+                        </span>
+                      </td>
+                      <td className="bf-right">{productActions(product)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="bf-mlist">
+              {paginatedProducts.map(product => (
+                <article key={product.id} className="bf-mcard" style={!product.is_available ? { opacity: 0.6 } : undefined}>
+                  {productThumb(product)}
+                  <div className="bf-mcard__main">
+                    <span className="bf-name">{product.name}</span>
+                    <span className="bf-sub">{product.category_rel?.name || (fr ? 'Sans catégorie' : 'Uncategorized')}</span>
+                  </div>
+                  <div className="bf-mcard__side">
+                    <span className="bf-money">{formatGNF(product.price)}</span>
+                  </div>
+                  <div className="bf-mcard__foot">
+                    <div className="bf-mcard__meta">
+                      <span className="bf-badge" data-tone={stockTone(product.stock)}>
+                        <span className="bf-badge__dot" />{stockLabel(product.stock)}
+                      </span>
+                      {availabilityBadge(product)}
+                    </div>
+                    {productActions(product)}
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            <div className="bf-pager">
+              <span className="bf-pager__info">
+                <strong>{(currentPage - 1) * perPage + 1}–{Math.min(currentPage * perPage, filteredProducts.length)}</strong>
+                {fr ? ' sur ' : ' of '}<strong>{formatNumber(filteredProducts.length)}</strong> {fr ? 'produits' : 'products'}
+              </span>
+              <div className="bf-pager__controls">
+                <select value={perPage} onChange={e => setPerPage(Number(e.target.value))} aria-label={fr ? 'Produits par page' : 'Products per page'}>
+                  <option value={10}>10 / page</option>
+                  <option value={25}>25 / page</option>
+                  <option value={50}>50 / page</option>
+                  <option value={100}>100 / page</option>
+                </select>
+                <button type="button" className="bf-icon-btn" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)} aria-label={fr ? 'Page précédente' : 'Previous page'}>
+                  <ChevronLeft size={16} />
+                </button>
+                <span className="bf-pager__page">{currentPage} / {totalPages}</span>
+                <button type="button" className="bf-icon-btn" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)} aria-label={fr ? 'Page suivante' : 'Next page'}>
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </section>
 
       {/* Modal Ajouter */}
       <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Nouveau produit">
@@ -800,52 +932,8 @@ function ProductsContent() {
       </Modal>
 
       <style jsx>{`
-        .page { display: flex; flex-direction: column; gap: 1.5rem; }
-        .page-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; }
-        .page-title { font-size: 1.75rem; margin-bottom: 0.25rem; }
-        .page-subtitle { color: var(--text-muted); font-size: 0.9rem; }
-
-        .filters { padding: 1rem; }
-        .search-box { position: relative; max-width: 400px; }
-        .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
-        .search-input { padding-left: 2.5rem; }
-
-        .table-container { padding: 0; overflow-x: auto; }
-        .data-table { width: 100%; border-collapse: collapse; text-align: left; }
-        .data-table th, .data-table td { padding: 0.875rem 1.25rem; border-bottom: 1px solid var(--border-subtle); }
-        .data-table th { font-weight: 600; color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
-
-        /* Pagination */
-        .pagination-bar { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; gap: 1rem; flex-wrap: wrap; }
-        .per-page-wrap { display: flex; align-items: center; gap: 0.5rem; }
-        .per-page-label { font-size: 0.85rem; color: var(--text-muted); }
-        .page-nav { display: flex; align-items: center; gap: 0.75rem; }
-        .page-indicator { font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; }
-        .data-table tr:hover td { background: var(--surface-hover); }
-        .data-table tr:last-child td { border-bottom: none; }
-        .row-disabled td { opacity: 0.6; }
-
-        .product-cell { display: flex; align-items: center; gap: 0.75rem; }
-        .product-img-placeholder { width: 40px; height: 40px; border-radius: 8px; background: var(--surface-3); display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid var(--border-default); color: var(--text-muted); }
-        .product-list-img { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border-default); flex-shrink: 0; }
-        .product-name { font-weight: 600; }
-        .product-price { font-weight: 600; color: var(--color-brand-400); font-family: var(--font-display); }
-        .tag-pill { background: var(--surface-3); color: var(--text-secondary); padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; border: 1px solid var(--border-default); }
-        .sku-text { font-family: monospace; font-size: 0.8rem; color: var(--text-secondary); }
-
-        .stock-badge { font-size: 0.8rem; font-weight: 600; padding: 0.2rem 0.5rem; border-radius: 4px; }
-        .stock-high { color: var(--color-brand-500); background: var(--brand-alpha-10); }
-        .stock-low { color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
-        .stock-out { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
-
-        .actions-flex { display: flex; gap: 0.25rem; justify-content: flex-end; }
+        .product-price { font-weight: 700; color: var(--color-brand-500); font-family: var(--font-display); }
         .btn-icon { padding: 0.4rem; border-radius: 6px; }
-        .btn-danger-icon:hover { color: var(--color-error); background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.2); }
-
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
-        .text-muted { color: var(--text-muted); font-size: 0.85rem; }
-        .py-8 { padding: 2rem 0; }
 
         .modal-form { display: flex; flex-direction: column; gap: 1rem; }
         .form-group { display: flex; flex-direction: column; gap: 0.375rem; }
@@ -983,36 +1071,14 @@ function ProductsContent() {
             background: white !important;
             color: black !important;
           }
-          .sidebar, .mobile-bar, .header-actions, .filters, .modal, .btn, button, .text-right, th:last-child, td:last-child {
+          :global(.sidebar), :global(.mobile-bar), :global(.bf-actions), :global(.bf-toolbar), :global(.bf-stats), :global(.bf-pager),
+          :global(.bf-mlist), :global(.modal), :global(.btn), button, :global(.bf-table th:last-child), :global(.bf-table td:last-child) {
             display: none !important;
           }
-          .page {
-            padding: 0 !important;
-            margin: 0 !important;
-          }
-          .page-title {
-            color: black !important;
-            font-size: 1.8rem !important;
-          }
-          .page-subtitle {
-            color: #4b5563 !important;
-            font-size: 0.9rem !important;
-          }
-          .data-table {
-            border: 1px solid #d1d5db !important;
-            width: 100% !important;
-          }
-          .data-table th {
-            background: #f3f4f6 !important;
-            color: black !important;
-            border-bottom: 2px solid #9ca3af !important;
-          }
-          .data-table td {
-            border-bottom: 1px solid #e5e7eb !important;
-            color: black !important;
-          }
-          .badge-success { background: #dcfce7 !important; color: #166534 !important; border: 1px solid #86efac !important; }
-          .badge-error { background: #fee2e2 !important; color: #991b1b !important; border: 1px solid #fca5a5 !important; }
+          :global(.bf-title) { color: black !important; }
+          :global(.bf-table) { border: 1px solid #d1d5db !important; }
+          :global(.bf-table th) { background: #f3f4f6 !important; color: black !important; }
+          :global(.bf-table td) { color: black !important; border-bottom: 1px solid #e5e7eb !important; }
         }
       `}</style>
 
