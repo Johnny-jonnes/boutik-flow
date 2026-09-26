@@ -1337,8 +1337,12 @@ async function request<T>(
     // on redonne sa chance au délai généreux pour la prochaine tentative.
     consecutiveNetworkFailures = 0;
 
-    // Pour TOUT GET échouant (offline, timeout, 5xx, 404, 422) → fallback offline immédiat
-    if (method === 'GET' && !res.ok) {
+    // Pour TOUT GET échouant (offline, timeout, 5xx, 404, 422) → fallback offline immédiat.
+    // Sauf 401 : la session a simplement expiré (access token de 30 min) — le
+    // fallback renvoyait alors des données vides (tableaux vides, stats admin
+    // sans champs → "NaN") sans jamais atteindre le rafraîchissement du token
+    // plus bas. On laisse le 401 suivre ce chemin normal (refresh + nouvel essai).
+    if (method === 'GET' && !res.ok && res.status !== 401) {
       return handleOfflineRequestAndQueue<T>(path, options);
     }
   } catch {
