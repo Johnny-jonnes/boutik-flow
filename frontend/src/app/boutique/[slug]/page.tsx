@@ -255,10 +255,11 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
 
       <footer className="sf-footer">
         <div className="sf-container sf-footer__inner">
-          <Link href="/" className="sf-footer__brand">
+          {/* Page destinée aux clients de la boutique : aucun lien vers
+              l'application (accueil, connexion, inscription), simple mention. */}
+          <span className="sf-footer__brand">
             <BrandMark size={26} /> Propulsé par <b>BoutikFlow</b>
-          </Link>
-          <Link href="/register" className="sf-footer__cta">Créer ma boutique gratuitement →</Link>
+          </span>
         </div>
       </footer>
 
