@@ -6,6 +6,8 @@ import { useLanguage } from '@/context/LanguageContext';
 import { Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import { extractPaymentMethod, extractDiscount } from '@/lib/saleNotes';
+import { useTenantQuery } from '@/lib/queries';
+import { initials } from '@/lib/format';
 import './ReceiptModal.css';
 
 interface ReceiptModalProps {
@@ -46,6 +48,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 }) => {
   const { language } = useLanguage();
   const [format, setFormat] = useState<'thermal' | 'a4'>('thermal');
+  // Logo de la boutique (Paramètres) — cache partagé avec le menu latéral.
+  const { data: tenant } = useTenantQuery();
+  const shopLogo = tenant?.logo || null;
 
   const formatGNF = (amount: number, compact = false) => {
     const num = new Intl.NumberFormat('fr-FR').format(amount);
@@ -160,6 +165,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             .thanks-sub { font-size: 0.78em; color: #6b7280; margin: 0.08rem 0 0.35rem 0; }
             .powered-by { font-size: 0.68em; color: #9ca3af; margin: 0.15rem 0 0 0; font-weight: 600; }
             .powered-url { font-size: 0.62em; color: #9ca3af; margin: 0; }
+            .shop-logo-img { display: block; width: 18mm; height: 18mm; object-fit: contain; margin: 0 auto 0.35rem auto; }
+            .receipt-paper.a4 .shop-logo-img { width: 26mm; height: 26mm; }
             .shop-logo-placeholder { width: 28px; height: 28px; margin: 0 auto 0.35rem auto; background: #047857; color: white; font-weight: 800; font-size: 0.75rem; border-radius: 5px; display: flex; align-items: center; justify-content: center; }
             .strong { font-weight: 700; }
             .items-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
@@ -247,7 +254,12 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           <div className={`receipt-paper ${format}`}>
             {/* ===== En-tête Boutique ===== */}
             <div className="receipt-header">
-              <div className="shop-logo-placeholder">BF</div>
+              {shopLogo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={shopLogo} alt={shopName} className="shop-logo-img" />
+              ) : (
+                <div className="shop-logo-placeholder">{initials(shopName)}</div>
+              )}
               <h2 className="shop-name">{shopName}</h2>
               <div className="receipt-line-solid" />
               <p className="receipt-title">{language === 'fr' ? 'REÇU DE VENTE' : 'SALES RECEIPT'}</p>
