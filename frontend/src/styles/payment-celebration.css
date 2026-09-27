@@ -1,0 +1,327 @@
+/* Animation de fin de vente (caisse) : scène du moyen de paiement
+   (espèces / Orange Money / carte / virement) × type de paiement
+   (total / partiel / différé), puis finale, puis le reçu. */
+
+.pc {
+  --pc: #10b981;
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(3, 12, 10, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: pc-fade 0.25s ease both;
+  cursor: pointer;
+}
+.pc--orange_money { --pc: #f97316; }
+.pc--card { --pc: #3b82f6; }
+.pc--transfer { --pc: #8b5cf6; }
+
+.pc-card {
+  position: relative;
+  width: min(360px, 100%);
+  padding: 1.75rem 1.5rem 1.4rem;
+  border-radius: 28px;
+  text-align: center;
+  color: var(--text-primary);
+  background: var(--surface-1);
+  border: 1px solid color-mix(in srgb, var(--pc) 30%, var(--border-default));
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), 0 0 0 6px color-mix(in srgb, var(--pc) 10%, transparent);
+  overflow: hidden;
+  animation: pc-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.pc-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 190px;
+  background: radial-gradient(60% 100% at 50% 0%, color-mix(in srgb, var(--pc) 22%, transparent), transparent 75%);
+  pointer-events: none;
+}
+
+/* Zone de scène (méthode) puis finale (anneau), superposées */
+.pc-stage { position: relative; height: 170px; margin: 0 auto 0.9rem; width: 220px; }
+.pc-scene { position: absolute; inset: 0; animation: pc-scene-out 0.35s ease 1.45s both; }
+.pc-final { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0; animation: pc-final-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 1.5s both; }
+
+/* ── Espèces : billets qui tombent dans le tiroir-caisse ── */
+.pc-drawer {
+  position: absolute;
+  left: 30px; right: 30px; bottom: 8px;
+  height: 58px;
+  border-radius: 14px 14px 18px 18px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--pc) 70%, #000) 0%, color-mix(in srgb, var(--pc) 45%, #000) 100%);
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.18), 0 12px 24px rgba(0, 0, 0, 0.3);
+  z-index: 2;
+}
+.pc-drawer::before {
+  content: '';
+  position: absolute;
+  left: 18px; right: 18px; top: 10px;
+  height: 6px;
+  border-radius: 99px;
+  background: rgba(0, 0, 0, 0.35);
+}
+.pc-note {
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  width: 104px; height: 52px;
+  margin-left: -52px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.92);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.28) 0 14px, transparent 15px),
+    linear-gradient(135deg, #34d399, #059669);
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
+  z-index: 1;
+  animation: pc-note-drop 0.75s cubic-bezier(0.5, 0, 0.75, 0) both;
+}
+.pc-note:nth-child(2) { animation-delay: 0.22s; }
+.pc-note:nth-child(3) { animation-delay: 0.44s; }
+.pc-coin {
+  position: absolute;
+  bottom: 70px;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fde68a, #f59e0b 70%);
+  border: 2px solid #fbbf24;
+  z-index: 3;
+  animation: pc-coin 0.9s ease-out 0.5s both;
+}
+.pc-coin--l { left: 44px; }
+.pc-coin--r { right: 44px; animation-delay: 0.7s; }
+
+/* ── Orange Money : téléphone qui émet le transfert ── */
+.pc-phone {
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  width: 78px; height: 140px;
+  margin-left: -39px;
+  border-radius: 18px;
+  padding: 7px;
+  background: #0f1716;
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.35);
+  animation: pc-phone-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.pc-phone__screen {
+  position: relative;
+  height: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  color: #ffffff;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--pc) 85%, #fff) 0%, var(--pc) 60%, color-mix(in srgb, var(--pc) 70%, #000) 100%);
+}
+.pc-phone__label { font-size: 0.55rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.9; }
+.pc-phone__bar { width: 70%; height: 6px; border-radius: 99px; background: rgba(255, 255, 255, 0.3); overflow: hidden; }
+.pc-phone__bar i { display: block; height: 100%; width: 100%; border-radius: inherit; background: #ffffff; transform-origin: left; animation: pc-fill 0.9s ease 0.35s both; }
+.pc-wave {
+  position: absolute;
+  left: 50%; top: 40px;
+  width: 60px; height: 60px;
+  margin-left: -30px;
+  border-radius: 50%;
+  border: 3px solid var(--pc);
+  opacity: 0;
+  animation: pc-wave 1.2s ease-out infinite;
+}
+.pc-wave:nth-of-type(2) { animation-delay: 0.4s; }
+.pc-wave:nth-of-type(3) { animation-delay: 0.8s; }
+
+/* ── Carte : carte posée sur le terminal (sans contact) ── */
+.pc-terminal {
+  position: absolute;
+  right: 30px; bottom: 6px;
+  width: 92px; height: 132px;
+  border-radius: 16px;
+  padding: 9px;
+  background: linear-gradient(180deg, #1f2937, #0b1220);
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.35);
+}
+.pc-terminal__screen {
+  height: 46px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  color: #ffffff;
+  background: #111827;
+  animation: pc-screen-ok 0.3s ease 1.05s both;
+}
+.pc-terminal__keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 10px; }
+.pc-terminal__keys i { height: 11px; border-radius: 3px; background: rgba(255, 255, 255, 0.14); }
+.pc-bank-card {
+  position: absolute;
+  left: 18px; top: 30px;
+  width: 104px; height: 66px;
+  border-radius: 10px;
+  padding: 10px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--pc) 75%, #fff), var(--pc) 45%, color-mix(in srgb, var(--pc) 60%, #000));
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+  z-index: 2;
+  animation: pc-card-tap 1.1s cubic-bezier(0.45, 0, 0.2, 1) both;
+}
+.pc-bank-card__chip { width: 20px; height: 15px; border-radius: 4px; background: linear-gradient(135deg, #fde68a, #d97706); }
+.pc-bank-card__num { margin-top: 12px; height: 5px; width: 70%; border-radius: 99px; background: rgba(255, 255, 255, 0.55); }
+.pc-contactless {
+  position: absolute;
+  right: 52px; top: 8px;
+  color: var(--pc);
+  opacity: 0;
+  animation: pc-blink 0.5s ease 0.6s 3 both;
+}
+
+/* ── Virement : banque et flèche de transfert ── */
+.pc-bank {
+  position: absolute; left: 50%; top: 20px; margin-left: -46px;
+  width: 92px; height: 92px; border-radius: 24px;
+  display: flex; align-items: center; justify-content: center;
+  color: #ffffff;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--pc) 75%, #fff), var(--pc));
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.3);
+  animation: pc-phone-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.pc-dots { position: absolute; left: 20px; right: 20px; bottom: 26px; display: flex; justify-content: space-between; }
+.pc-dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--pc); opacity: 0.2; animation: pc-dot 0.9s ease infinite; }
+.pc-dots i:nth-child(2) { animation-delay: 0.15s; } .pc-dots i:nth-child(3) { animation-delay: 0.3s; }
+.pc-dots i:nth-child(4) { animation-delay: 0.45s; } .pc-dots i:nth-child(5) { animation-delay: 0.6s; }
+
+/* ── Variantes par type de paiement ── */
+/* Partiel : seule une partie de l'argent arrive */
+.pc--partial .pc-note:nth-child(n + 2) { animation: pc-ghost 0.5s ease both; }
+.pc--partial .pc-coin--r { display: none; }
+.pc--partial .pc-phone__bar i { animation-name: pc-fill-half; }
+.pc--partial .pc-terminal__screen { animation-name: pc-screen-partial; }
+/* Différé : rien n'est encaissé — argent en pointillés + horloge */
+.pc--deferred .pc-note,
+.pc--deferred .pc-bank-card,
+.pc--deferred .pc-phone__screen,
+.pc--deferred .pc-bank { animation: pc-ghost 0.5s ease both; }
+.pc--deferred .pc-coin, .pc--deferred .pc-wave, .pc--deferred .pc-contactless, .pc--deferred .pc-dots { display: none; }
+.pc--deferred .pc-phone__bar i { animation: none; transform: scaleX(0); }
+.pc--deferred .pc-terminal__screen { animation: none; }
+.pc-clock {
+  position: absolute;
+  right: 26px; top: 0;
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #ffffff;
+  background: linear-gradient(145deg, #a78bfa, #7c3aed);
+  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.45);
+  z-index: 5;
+  animation: pc-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.35s both;
+}
+.pc-clock svg { animation: pc-tick 1.2s steps(4) 0.6s infinite; }
+
+/* ── Finale : anneau de paiement ── */
+.pc-ring { position: absolute; width: 150px; height: 150px; transform: rotate(-90deg); }
+.pc-ring__track { fill: none; stroke: var(--progress-track-bg); stroke-width: 10; }
+.pc-ring__paid {
+  fill: none;
+  stroke: var(--pc);
+  stroke-width: 10;
+  stroke-linecap: round;
+  stroke-dasharray: 402;
+  stroke-dashoffset: 402;
+  animation: pc-ring 0.9s cubic-bezier(0.4, 0, 0.2, 1) 1.65s forwards;
+}
+.pc--partial .pc-ring__track { stroke: rgba(245, 158, 11, 0.35); stroke-dasharray: 8 7; }
+.pc--deferred .pc-ring__track { stroke: rgba(139, 92, 246, 0.45); stroke-dasharray: 8 7; animation: pc-spin 6s linear infinite; transform-origin: 75px 75px; }
+.pc-final__icon {
+  position: relative;
+  width: 86px; height: 86px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #ffffff;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--pc) 75%, #fff), var(--pc));
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--pc) 45%, transparent);
+}
+.pc--deferred .pc-final__icon { background: linear-gradient(145deg, #a78bfa, #7c3aed); box-shadow: 0 14px 30px rgba(124, 58, 237, 0.45); }
+.pc--deferred .pc-final__icon svg { animation: pc-hourglass 1.6s ease-in-out 1.8s infinite; }
+.pc-final__pct { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; }
+.pc-check path { stroke-dasharray: 40; stroke-dashoffset: 40; animation: pc-draw 0.4s ease 2.05s forwards; }
+
+/* Confettis (paiement total) */
+.pc-confetti { position: absolute; left: 50%; top: 50%; width: 8px; height: 12px; border-radius: 2px; opacity: 0; animation: pc-confetti 1.1s cubic-bezier(0.15, 0.6, 0.35, 1) 2s forwards; }
+
+/* Textes */
+.pc-title { position: relative; font-family: var(--font-display); font-size: 1.45rem; font-weight: 800; letter-spacing: -0.03em; margin: 0; animation: pc-rise 0.4s ease 1.7s both; }
+.pc-sub { position: relative; margin: 0.35rem 0 0; color: var(--text-secondary); font-size: 0.95rem; animation: pc-rise 0.4s ease 1.8s both; }
+.pc-sub b { color: var(--text-primary); }
+.pc-chips { position: relative; display: flex; justify-content: center; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.85rem; animation: pc-rise 0.4s ease 1.9s both; }
+.pc-chip { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.3rem 0.7rem; border-radius: 99px; font-size: 0.78rem; font-weight: 800; }
+.pc-chip--paid { color: color-mix(in srgb, var(--pc) 80%, #000); background: color-mix(in srgb, var(--pc) 15%, transparent); }
+.dark .pc-chip--paid { color: color-mix(in srgb, var(--pc) 70%, #fff); }
+.pc-chip--debt { color: #b45309; background: rgba(245, 158, 11, 0.16); }
+.dark .pc-chip--debt { color: #fbbf24; }
+.pc-chip--deferred { color: #6d28d9; background: rgba(139, 92, 246, 0.16); }
+.dark .pc-chip--deferred { color: #c4b5fd; }
+.pc-skip {
+  position: relative;
+  margin-top: 1.1rem;
+  border: none; background: none;
+  color: var(--text-muted);
+  font-family: inherit; font-size: 0.8rem; font-weight: 700;
+  cursor: pointer;
+  animation: pc-rise 0.4s ease 2s both;
+}
+.pc-progress { position: absolute; left: 0; bottom: 0; height: 4px; width: 100%; background: var(--pc); transform-origin: left; animation: pc-fill var(--pc-duration, 3000ms) linear both; opacity: 0.8; }
+
+/* ── Images clés ── */
+@keyframes pc-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pc-pop { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: scale(1); } }
+@keyframes pc-scene-out { to { opacity: 0; transform: scale(0.85); } }
+@keyframes pc-final-in { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
+@keyframes pc-note-drop {
+  0% { opacity: 0; transform: translateY(-40px) rotate(-8deg); }
+  20% { opacity: 1; }
+  100% { opacity: 1; transform: translateY(78px) rotate(0deg) scaleY(0.4); }
+}
+@keyframes pc-ghost { to { opacity: 0.35; filter: grayscale(1); border-style: dashed; } }
+@keyframes pc-coin {
+  0% { opacity: 0; transform: translateY(-30px); }
+  40% { opacity: 1; transform: translateY(8px); }
+  60% { transform: translateY(-6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes pc-phone-in { from { opacity: 0; transform: translateY(20px) scale(0.8); } to { opacity: 1; transform: none; } }
+@keyframes pc-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes pc-fill-half { from { transform: scaleX(0); } to { transform: scaleX(0.45); } }
+@keyframes pc-wave { 0% { opacity: 0.8; transform: scale(0.8); } 100% { opacity: 0; transform: scale(2.4); } }
+@keyframes pc-card-tap {
+  0% { opacity: 0; transform: translate(-30px, -10px) rotate(-10deg); }
+  45% { opacity: 1; transform: translate(40px, 24px) rotate(6deg); }
+  70% { transform: translate(34px, 20px) rotate(6deg); }
+  100% { opacity: 1; transform: translate(-6px, 4px) rotate(-4deg); }
+}
+@keyframes pc-screen-ok { to { background: #059669; } }
+@keyframes pc-screen-partial { to { background: #d97706; } }
+@keyframes pc-blink { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
+@keyframes pc-dot { 0%, 100% { opacity: 0.2; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
+@keyframes pc-tick { to { transform: rotate(360deg); } }
+@keyframes pc-ring { to { stroke-dashoffset: var(--pc-offset, 0); } }
+@keyframes pc-spin { to { transform: rotate(360deg); } }
+@keyframes pc-hourglass { 0%, 40% { transform: rotate(0); } 50%, 90% { transform: rotate(180deg); } 100% { transform: rotate(180deg); } }
+@keyframes pc-draw { to { stroke-dashoffset: 0; } }
+@keyframes pc-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes pc-confetti {
+  0% { opacity: 1; transform: translate(-50%, -50%) rotate(0); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) rotate(var(--r)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pc *, .pc { animation-duration: 0.01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; }
+  .pc-scene { display: none; }
+  .pc-final { opacity: 1; }
+}

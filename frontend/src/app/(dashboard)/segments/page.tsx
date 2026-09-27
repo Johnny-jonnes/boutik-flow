@@ -6,10 +6,13 @@ import type { Segment } from '@/types';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDeleteDialog } from '@/components/ui/ConfirmDeleteDialog';
+import { celebrate } from '@/lib/celebrate';
 import { useLanguage } from '@/context/LanguageContext';
 
 export default function SegmentsPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const fr = language === 'fr';
   const [segments, setSegments] = useState<Segment[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -131,7 +134,12 @@ export default function SegmentsPage() {
     setIsDeleting(true);
     try {
       await api.deleteSegment(deleteTarget.id);
-      toast.success('Segment supprimé');
+      celebrate({
+        kind: 'deleted',
+        title: fr ? 'Segment supprimé' : 'Segment deleted',
+        subtitle: deleteTarget.name,
+        chips: [fr ? 'Clients conservés' : 'Customers kept'],
+      });
       setDeleteTarget(null);
       fetchSegments();
     } catch (err: any) {
@@ -322,18 +330,18 @@ export default function SegmentsPage() {
         </form>
       </Modal>
 
-      {/* Modal Supprimer */}
-      <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title={t('seg.confirm_delete')}>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-          Êtes-vous sûr de vouloir supprimer le segment <strong>{deleteTarget?.name}</strong> ? Les clients associés ne seront pas supprimés.
-        </p>
-        <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={() => setDeleteTarget(null)}>{t('common.cancel')}</button>
-          <button className="btn btn-danger" onClick={handleDelete} disabled={isDeleting}>
-            {isDeleting ? 'Suppression...' : t('common.delete')}
-          </button>
-        </div>
-      </Modal>
+      {/* Confirmation de suppression animée */}
+      <ConfirmDeleteDialog
+        open={!!deleteTarget}
+        fr={fr}
+        title={fr ? 'Supprimer ce segment ?' : 'Delete this segment?'}
+        name={deleteTarget?.name}
+        icon={<Tags size={17} />}
+        message={fr ? "Les clients associés ne seront pas supprimés." : "Linked customers will not be deleted."}
+        isDeleting={isDeleting}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
 
       <style jsx>{`
         .btn-icon { padding: 0.4rem; border-radius: 6px; }

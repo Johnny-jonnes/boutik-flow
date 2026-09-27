@@ -2,18 +2,21 @@
 
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { UserPlus, Pencil, Trash2, Shield, AlertTriangle, Eye, EyeOff, KeyRound, UsersRound, UserCheck, UserX, Crown, Mail, Phone } from 'lucide-react';
+import { UserPlus, Pencil, Trash2, Shield, Eye, EyeOff, KeyRound, UsersRound, UserCheck, UserX, Crown, Mail, Phone } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDeleteDialog } from '@/components/ui/ConfirmDeleteDialog';
 import { useLanguage } from '@/context/LanguageContext';
 import { useTeamQuery } from '@/lib/queries';
 import type { TeamMember } from '@/types';
 import { PageHeader, StatTile, type StatTone } from '@/components/ui/PageHeader';
 import { hueFromString, initials } from '@/lib/format';
+import { celebrate } from '@/lib/celebrate';
 
 export default function TeamPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const fr = language === 'fr';
   const queryClient = useQueryClient();
   // Couche mémoire partagée, comme Produits/Vendre/Clients : revalidée
   // silencieusement en arrière-plan après chaque action (invitation,
@@ -57,7 +60,13 @@ export default function TeamPage() {
         phone: inviteForm.phone || undefined,
         role: inviteForm.role
       });
-      toast.success(t('team.invite_success'));
+      celebrate({
+        kind: 'team',
+        title: t('team.invite_success'),
+        subtitle: inviteForm.full_name,
+        initials: initials(inviteForm.full_name),
+        chips: [getRoleLabel(inviteForm.role)],
+      });
       setIsInviteOpen(false);
       setInviteForm({ full_name: '', email: '', password: '', phone: '', role: 'staff' });
       queryClient.invalidateQueries({ queryKey: ['team'] });
@@ -99,7 +108,13 @@ export default function TeamPage() {
     setIsDeleting(true);
     try {
       await api.deleteTeamMember(deleteTarget.id);
-      toast.success(t('common.deleting'));
+      celebrate({
+        kind: 'deleted',
+        title: fr ? 'Membre retiré' : 'Member removed',
+        subtitle: deleteTarget.full_name || deleteTarget.email,
+        initials: initials(deleteTarget.full_name || deleteTarget.email),
+        chips: [fr ? 'Accès retiré' : 'Access revoked'],
+      });
       setDeleteTarget(null);
       queryClient.invalidateQueries({ queryKey: ['team'] });
     } catch (err: any) {
@@ -344,19 +359,18 @@ export default function TeamPage() {
         </form>
       </Modal>
 
-      {/* Delete Modal */}
-      <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title={t('team.confirm_delete')}>
-        <div className="warning-box">
-          <AlertTriangle size={24} className="warning-icon" />
-          <p>{t('team.delete_msg')}</p>
-        </div>
-        <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={() => setDeleteTarget(null)}>{t('common.cancel')}</button>
-          <button className="btn btn-danger" onClick={handleDelete} disabled={isDeleting}>
-            {isDeleting ? t('common.deleting') : t('common.delete')}
-          </button>
-        </div>
-      </Modal>
+      {/* Confirmation de suppression animée */}
+      <ConfirmDeleteDialog
+        open={!!deleteTarget}
+        fr={fr}
+        title={fr ? 'Retirer ce membre ?' : 'Remove this member?'}
+        name={deleteTarget ? (deleteTarget.full_name || deleteTarget.email) : undefined}
+        initials={deleteTarget ? initials(deleteTarget.full_name || deleteTarget.email) : undefined}
+        message={fr ? "Il ne pourra plus se connecter à votre boutique." : "They will no longer be able to sign in to your shop."}
+        isDeleting={isDeleting}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
 
       {/* Change Password Modal */}
       <Modal 
@@ -447,10 +461,6 @@ export default function TeamPage() {
         .form-group { display: flex; flex-direction: column; gap: 0.375rem; }
         .form-label { font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); }
         .modal-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem; }
-        
-        .warning-box { display: flex; gap: 1rem; align-items: flex-start; padding: 1rem; background: rgba(239, 68, 68, 0.1); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2); color: var(--text-primary); margin-bottom: 1.5rem; }
-        .warning-icon { color: var(--color-error); flex-shrink: 0; }
-
       `}</style>
     </div>
   );

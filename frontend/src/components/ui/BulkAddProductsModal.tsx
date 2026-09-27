@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Plus, Trash2, Layers, CheckCircle, AlertTriangle } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
+import { celebrate } from '@/lib/celebrate';
 import { Modal } from '@/components/ui/Modal';
 import { useLanguage } from '@/context/LanguageContext';
 import type { Category, ProductCreate } from '@/types';
@@ -78,9 +79,12 @@ export function BulkAddProductsModal({ isOpen, onClose, categories, onCreated }:
       const res = await api.createProductsBulk(payload);
       setResult({ createdCount: res.created.length, errors: res.errors });
       if (res.errors.length === 0) {
-        toast.success(
-          fr ? `${res.created.length} produit(s) créé(s) avec succès` : `${res.created.length} product(s) created successfully`
-        );
+        celebrate({
+          kind: 'products',
+          title: fr ? `${res.created.length} produit${res.created.length > 1 ? 's' : ''} créé${res.created.length > 1 ? 's' : ''}` : `${res.created.length} product(s) created`,
+          subtitle: fr ? 'Ajoutés à votre catalogue en une fois' : 'Added to your catalog in one go',
+          count: res.created.length,
+        });
         onCreated();
         reset();
         onClose();

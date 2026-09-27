@@ -5,6 +5,9 @@ import { Search, Eye, Pencil, Trash2, Plus } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDeleteDialog } from '@/components/ui/ConfirmDeleteDialog';
+import { celebrate } from '@/lib/celebrate';
+import { initials } from '@/lib/format';
 import { useLanguage } from '@/context/LanguageContext';
 import { usePermission } from '@/lib/permissions';
 
@@ -25,7 +28,8 @@ interface Supplier {
 }
 
 export default function SuppliersPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const fr = language === 'fr';
   const canWrite = usePermission('suppliers', 'write');
   const canDelete = usePermission('suppliers', 'delete');
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -153,7 +157,13 @@ export default function SuppliersPage() {
     setIsDeleting(true);
     try {
       await api.deleteSupplier(deleteTarget.id);
-      toast.success(t('common.deleting'));
+      celebrate({
+        kind: 'deleted',
+        title: fr ? 'Fournisseur supprimé' : 'Supplier deleted',
+        subtitle: deleteTarget.name,
+        initials: initials(deleteTarget.name),
+        chips: [fr ? 'Retiré de vos fournisseurs' : 'Removed from suppliers'],
+      });
       setDeleteTarget(null);
       fetchSuppliers();
     } catch (err: any) {
@@ -383,19 +393,18 @@ export default function SuppliersPage() {
         )}
       </Modal>
 
-      {/* Modal Delete */}
-      <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title={t('sup.confirm_delete')}>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-          {t('sup.delete_msg')} <br/><br/>
-          <strong>{deleteTarget?.name}</strong>
-        </p>
-        <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={() => setDeleteTarget(null)}>{t('common.cancel')}</button>
-          <button className="btn btn-danger" onClick={handleDelete} disabled={isDeleting}>
-            {isDeleting ? t('common.deleting') : t('common.delete')}
-          </button>
-        </div>
-      </Modal>
+      {/* Confirmation de suppression animée */}
+      <ConfirmDeleteDialog
+        open={!!deleteTarget}
+        fr={fr}
+        title={fr ? 'Supprimer ce fournisseur ?' : 'Delete this supplier?'}
+        name={deleteTarget?.name}
+        initials={deleteTarget ? initials(deleteTarget.name) : undefined}
+        message={fr ? "Sa fiche fournisseur sera retirée de votre liste." : "Their supplier record will be removed from your list."}
+        isDeleting={isDeleting}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
 
       <style jsx>{`
         .page { display: flex; flex-direction: column; gap: 1.5rem; }

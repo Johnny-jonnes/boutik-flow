@@ -6,12 +6,14 @@ import type { Category } from '@/types';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDeleteDialog } from '@/components/ui/ConfirmDeleteDialog';
 import Link from 'next/link';
 import { useLanguage } from '@/context/LanguageContext';
 import { usePermission } from '@/lib/permissions';
 import { useProductsQuery } from '@/lib/queries';
 import { PageHeader, StatTile } from '@/components/ui/PageHeader';
 import { formatNumber, hueFromString } from '@/lib/format';
+import { celebrate } from '@/lib/celebrate';
 
 export default function CategoriesPage() {
   const { t, language } = useLanguage();
@@ -75,7 +77,12 @@ export default function CategoriesPage() {
         description: addForm.description || undefined,
         image_url: addForm.image_url || undefined,
       });
-      toast.success('Catégorie ajoutée avec succès');
+      celebrate({
+        kind: 'category',
+        title: fr ? 'Catégorie créée' : 'Category created',
+        subtitle: addForm.name,
+        chips: [fr ? 'Nouveau rayon' : 'New aisle'],
+      });
       setIsAddOpen(false);
       setAddForm({ name: '', description: '', image_url: '' });
       fetchCategories();
@@ -120,7 +127,12 @@ export default function CategoriesPage() {
     setIsDeleting(true);
     try {
       await api.deleteCategory(deleteTarget.id);
-      toast.success('Catégorie supprimée');
+      celebrate({
+        kind: 'deleted',
+        title: fr ? 'Catégorie supprimée' : 'Category deleted',
+        subtitle: deleteTarget.name,
+        chips: [fr ? 'Produits conservés' : 'Products kept'],
+      });
       setDeleteTarget(null);
       fetchCategories();
     } catch (err) {
@@ -293,17 +305,18 @@ export default function CategoriesPage() {
         {renderForm(editForm, setEditForm, handleEdit, isEditing, t('common.save'), () => setEditCategory(null))}
       </Modal>
 
-      <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title={t('cat.confirm_delete')}>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-          Êtes-vous sûr de vouloir supprimer la catégorie <strong>{deleteTarget?.name}</strong> ? Les produits associés ne seront pas supprimés mais perdront cette catégorie.
-        </p>
-        <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={() => setDeleteTarget(null)}>{t('common.cancel')}</button>
-          <button className="btn btn-danger" onClick={handleDelete} disabled={isDeleting}>
-            {isDeleting ? 'Suppression...' : t('common.delete')}
-          </button>
-        </div>
-      </Modal>
+      {/* Confirmation de suppression animée */}
+      <ConfirmDeleteDialog
+        open={!!deleteTarget}
+        fr={fr}
+        title={fr ? 'Supprimer cette catégorie ?' : 'Delete this category?'}
+        name={deleteTarget?.name}
+        icon={<FolderTree size={17} />}
+        message={fr ? "Les produits associés ne seront pas supprimés mais perdront cette catégorie." : "Linked products will not be deleted, they will simply lose this category."}
+        isDeleting={isDeleting}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
 
       <style jsx>{`
         .cat-top { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.85rem; align-items: center; }

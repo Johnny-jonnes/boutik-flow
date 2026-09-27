@@ -11,6 +11,7 @@ import type { Order, OrderStatus } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { BarcodeScannerModal } from '@/components/ui/BarcodeScannerModal';
 import { ReceiptModal } from '@/components/ui/ReceiptModal';
+import { celebrate } from '@/lib/celebrate';
 import { useLanguage } from '@/context/LanguageContext';
 import { isWithinPeriod } from '@/lib/period';
 import { useClientsQuery, useProductsQuery } from '@/lib/queries';
@@ -290,7 +291,7 @@ export default function OrdersPage() {
     toast.success(language === 'fr' ? `${matched.name} ajouté` : `${matched.name} added`);
   };
 
-  const handleScannerSubmit = (e: React.FormEvent) => {
+  const handleScannerSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault();
     addProductByCode(scannerInput);
     setScannerInput('');
@@ -338,10 +339,20 @@ export default function OrdersPage() {
           description: debtDescription || undefined,
           due_date: debtDueDate ? new Date(debtDueDate).toISOString() : undefined,
         });
-        toast.success(language === 'fr' ? 'Commande et dette créées avec succès' : 'Order and debt created successfully');
-      } else {
-        toast.success(language === 'fr' ? 'Commande créée avec succès' : 'Order created successfully');
       }
+      const orderClient = clients.find(c => c.id === createForm.client_id);
+      const itemCount = createForm.items.reduce((acc, it) => acc + (Number(it.quantity) || 0), 0);
+      celebrate({
+        kind: 'order',
+        title: isDebt && finalDebtAmount > 0
+          ? (language === 'fr' ? 'Commande et dette créées' : 'Order and debt created')
+          : (language === 'fr' ? 'Commande créée' : 'Order created'),
+        subtitle: orderClient?.name,
+        chips: [
+          `${itemCount} ${language === 'fr' ? (itemCount > 1 ? 'articles' : 'article') : (itemCount > 1 ? 'items' : 'item')}`,
+          formatGNF(Number(order.total) || 0),
+        ],
+      });
 
       setIsCreateOpen(false);
       setCreateForm({ client_id: '', items: [{ product_id: '', quantity: 1 }], notes: '' });
@@ -636,7 +647,10 @@ export default function OrdersPage() {
           </div>
 
           <div className="scanner-row">
-            <form onSubmit={handleScannerSubmit} className="scanner-input-wrap">
+            {/* Pas de <form> imbriqué dans celui de la commande (HTML invalide,
+                erreur d'hydratation) : Entrée ajoute le produit scanné sans
+                soumettre la commande. */}
+            <div className="scanner-input-wrap">
               <ScanLine size={16} className="scanner-icon" />
               <input
                 type="text"
@@ -644,9 +658,11 @@ export default function OrdersPage() {
                 placeholder={t('ord.scan_placeholder')}
                 value={scannerInput}
                 onChange={e => setScannerInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleScannerSubmit(e); }}
                 autoComplete="off"
+                enterKeyHint="done"
               />
-            </form>
+            </div>
             <button type="button" className="btn btn-ghost btn-icon" onClick={() => setIsCameraScanOpen(true)} title={t('ord.scan_camera')}>
               <Camera size={18} />
             </button>
