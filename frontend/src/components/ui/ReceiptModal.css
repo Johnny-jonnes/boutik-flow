@@ -122,6 +122,17 @@
   flex-shrink: 0;
 }
 
+/* Logo de la boutique (Paramètres → Identité de la boutique) */
+.shop-logo-img {
+  display: block;
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  margin: 0 auto 0.45rem auto;
+  border-radius: 10px;
+}
+.receipt-paper.thermal .shop-logo-img { width: 52px; height: 52px; }
+
 .receipt-paper.thermal .shop-logo-placeholder {
   width: 28px;
   height: 28px;

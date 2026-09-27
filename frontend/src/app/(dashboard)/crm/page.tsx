@@ -7,10 +7,12 @@ import type { Client, ClientStatus, ClientDebt } from '@/types';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDeleteDialog } from '@/components/ui/ConfirmDeleteDialog';
 import { useLanguage } from '@/context/LanguageContext';
 import { useClientsQuery, useOrdersQuery, queryKeys } from '@/lib/queries';
 import { PageHeader, StatTile, type StatTone } from '@/components/ui/PageHeader';
 import { formatGNF, formatNumber, formatRelativeDay, hueFromString, initials } from '@/lib/format';
+import { celebrate } from '@/lib/celebrate';
 import { usePermission } from '@/lib/permissions';
 import { DebtCard } from '@/components/debts/DebtCard';
 import { DebtPaymentModal } from '@/components/debts/DebtPaymentModal';
@@ -104,7 +106,13 @@ export default function CRMPage() {
         email: addForm.email || undefined,
         notes: addForm.notes || undefined,
       });
-      toast.success('Client ajouté avec succès');
+      celebrate({
+        kind: 'client',
+        title: language === 'fr' ? 'Client ajouté' : 'Customer added',
+        subtitle: created.name,
+        initials: initials(created.name),
+        chips: [created.phone, language === 'fr' ? STATUS_CONFIG[created.status]?.fr ?? created.status : STATUS_CONFIG[created.status]?.en ?? created.status].filter(Boolean),
+      });
       setIsAddOpen(false);
       setAddForm({ name: '', phone: '', email: '', status: 'nouveau', notes: '' });
       queryClient.setQueryData(queryKeys.clients(), (old: typeof clientsData) =>
@@ -159,7 +167,13 @@ export default function CRMPage() {
     setIsDeleting(true);
     try {
       await api.deleteClient(deleteTarget.id);
-      toast.success('Client supprimé');
+      celebrate({
+        kind: 'deleted',
+        title: fr ? 'Client supprimé' : 'Customer deleted',
+        subtitle: deleteTarget.name,
+        initials: initials(deleteTarget.name),
+        chips: [fr ? 'Retiré de vos clients' : 'Removed from customers'],
+      });
       const deletedId = deleteTarget.id;
       setDeleteTarget(null);
       queryClient.setQueryData(queryKeys.clients(), (old: typeof clientsData) =>
@@ -574,18 +588,18 @@ export default function CRMPage() {
         </form>
       </Modal>
 
-      {/* Modal Supprimer */}
-      <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Confirmer la suppression">
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-          Êtes-vous sûr de vouloir supprimer le client <strong>{deleteTarget?.name}</strong> ? Cette action est irréversible.
-        </p>
-        <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={() => setDeleteTarget(null)}>Annuler</button>
-          <button className="btn btn-danger" onClick={handleDelete} disabled={isDeleting}>
-            {isDeleting ? 'Suppression...' : 'Supprimer'}
-          </button>
-        </div>
-      </Modal>
+      {/* Confirmation de suppression animée */}
+      <ConfirmDeleteDialog
+        open={!!deleteTarget}
+        fr={fr}
+        title={fr ? 'Supprimer ce client ?' : 'Delete this customer?'}
+        name={deleteTarget?.name}
+        initials={deleteTarget ? initials(deleteTarget.name) : undefined}
+        message={fr ? "Sa fiche client sera retirée de votre liste." : "Their customer record will be removed from your list."}
+        isDeleting={isDeleting}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
 
       <style jsx>{`
         .modal-form { display: flex; flex-direction: column; gap: 1rem; }

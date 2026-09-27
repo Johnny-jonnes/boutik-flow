@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { api } from '@/lib/api/client';
 import { Modal } from '@/components/ui/Modal';
 import type { ClientDebt } from '@/types';
+import { celebrate } from '@/lib/celebrate';
+import { formatGNF } from '@/lib/format';
 
 /**
  * Extrait du modal de règlement autrefois dupliqué en dur dans crm/page.tsx
@@ -63,7 +65,25 @@ export function DebtPaymentModal({
         payment_method: paymentMethod,
         notes: notes || undefined,
       });
-      toast.success(language === 'fr' ? 'Règlement enregistré avec succès !' : 'Payment recorded successfully!');
+      const fr = language === 'fr';
+      const remaining = Math.max(0, Number(debt.remaining_amount) - amountNum);
+      const original = Number(debt.original_amount) || 0;
+      const progress = original > 0 ? Math.round(((original - remaining) / original) * 100) : 100;
+      celebrate(remaining <= 0
+        ? {
+            kind: 'debt-paid',
+            title: fr ? 'Dette soldée !' : 'Debt fully paid!',
+            subtitle: fr ? `${debt.client_name} a tout réglé` : `${debt.client_name} paid in full`,
+            chips: [formatGNF(original)],
+            progress: 100,
+          }
+        : {
+            kind: 'debt',
+            title: fr ? 'Versement enregistré' : 'Payment recorded',
+            subtitle: fr ? `${formatGNF(amountNum)} de ${debt.client_name}` : `${formatGNF(amountNum)} from ${debt.client_name}`,
+            chips: [fr ? `${progress} % réglé` : `${progress}% paid`, fr ? `Reste ${formatGNF(remaining)}` : `Left ${formatGNF(remaining)}`],
+            progress,
+          });
       // Signal explicite, sur le même modèle que boutikflow:order-created —
       // permet à QueryProvider d'invalider les caches Dettes/Finance/
       // Dashboard immédiatement, sans attendre une synchronisation.

@@ -24,6 +24,7 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { SplashLink, useSplashNavigation } from '@/components/SplashScreen';
 import s from './landing.module.css';
 
 function FAQItem({ question, answer }: { question: string; answer: string }) {
@@ -110,8 +111,12 @@ const TRADES = [
 const BARS = [38, 52, 44, 66, 58, 72, 61, 84, 70, 92, 78, 100];
 
 export default function HomePage() {
+  // Connexion / inscription : écran de chargement BoutikFlow avant la page cible.
+  const { splash, navigate } = useSplashNavigation();
+
   return (
     <main className={s.page}>
+      {splash}
       <div className={s.bg} aria-hidden="true" />
 
       {/* ── Navigation ── */}
@@ -129,10 +134,10 @@ export default function HomePage() {
           </div>
           <div className={s.navActions}>
             <ThemeToggle />
-            <Link href="/login" className={`${s.btn} ${s.btnGhost} ${s.btnSm} ${s.hideXs}`} id="btn-nav-login">Se connecter</Link>
-            <Link href="/register" className={`${s.btn} ${s.btnPrimary} ${s.btnSm}`} id="btn-nav-register">
+            <SplashLink href="/login" message="Ouverture de votre espace…" go={navigate} className={`${s.btn} ${s.btnGhost} ${s.btnSm} ${s.hideXs}`} id="btn-nav-login">Se connecter</SplashLink>
+            <SplashLink href="/register" message="Préparation de votre boutique…" go={navigate} className={`${s.btn} ${s.btnPrimary} ${s.btnSm}`} id="btn-nav-register">
               Essayer<span className={s.hideXs}>gratuitement</span>
-            </Link>
+            </SplashLink>
           </div>
         </div>
       </nav>
@@ -151,12 +156,12 @@ export default function HomePage() {
             Un stock mal compté, une connexion qui coupe en pleine vente, une boutique invisible en dehors du quartier — BoutikFlow règle ces problèmes-là. Caisse fiable, stock verrouillé contre les erreurs, et une vraie vitrine en ligne que vos clients trouvent et vous contactent directement sur WhatsApp.
           </p>
           <div className={s.ctas}>
-            <Link href="/register" className={`${s.btn} ${s.btnPrimary} ${s.btnLg}`} id="btn-hero-start">
+            <SplashLink href="/register" message="Préparation de votre boutique…" go={navigate} className={`${s.btn} ${s.btnPrimary} ${s.btnLg}`} id="btn-hero-start">
               Créer ma boutique <ArrowRight size={18} />
-            </Link>
-            <Link href="/login" className={`${s.btn} ${s.btnGhost} ${s.btnLg}`} id="btn-hero-login">
+            </SplashLink>
+            <SplashLink href="/login" message="Ouverture de votre espace…" go={navigate} className={`${s.btn} ${s.btnGhost} ${s.btnLg}`} id="btn-hero-login">
               Accéder à mon espace
-            </Link>
+            </SplashLink>
           </div>
           <div className={s.checks}>
             {[
@@ -334,7 +339,7 @@ export default function HomePage() {
               Créez votre boutique, ajoutez vos produits et testez la caisse sans engagement. Pour un accompagnement ou des besoins spécifiques, contactez-nous directement.
             </p>
             <div className={s.ctas} style={{ marginTop: '0.5rem' }}>
-              <Link href="/register" className={`${s.btn} ${s.btnPrimary}`} id="btn-pricing-start">Créer ma boutique <ArrowRight size={17} /></Link>
+              <SplashLink href="/register" message="Préparation de votre boutique…" go={navigate} className={`${s.btn} ${s.btnPrimary}`} id="btn-pricing-start">Créer ma boutique <ArrowRight size={17} /></SplashLink>
               <a href="mailto:trillionnx@gmail.com" className={`${s.btn} ${s.btnGhost}`} id="btn-pricing-contact">Nous contacter</a>
             </div>
           </div>
@@ -369,8 +374,8 @@ export default function HomePage() {
           <h2>Prêt à ne plus perdre une seule vente ?</h2>
           <p>Créez votre boutique en quelques minutes : caisse, stock, clients et vitrine en ligne, même sans connexion.</p>
           <div className={s.ctas} style={{ justifyContent: 'center' }}>
-            <Link href="/register" className={`${s.btn} ${s.btnWhite} ${s.btnLg}`}>Créer ma boutique <ArrowRight size={18} /></Link>
-            <Link href="/login" className={`${s.btn} ${s.btnOutlineWhite} ${s.btnLg}`}>Se connecter</Link>
+            <SplashLink href="/register" message="Préparation de votre boutique…" go={navigate} className={`${s.btn} ${s.btnWhite} ${s.btnLg}`}>Créer ma boutique <ArrowRight size={18} /></SplashLink>
+            <SplashLink href="/login" message="Ouverture de votre espace…" go={navigate} className={`${s.btn} ${s.btnOutlineWhite} ${s.btnLg}`}>Se connecter</SplashLink>
           </div>
         </div>
       </section>
@@ -390,7 +395,7 @@ export default function HomePage() {
               <h4>Produit</h4>
               <a href="#fonctionnalites">Fonctionnalités</a>
               <a href="#tarif">Tarification</a>
-              <Link href="/login">Espace Client</Link>
+              <SplashLink href="/login" message="Ouverture de votre espace…" go={navigate}>Espace Client</SplashLink>
             </div>
             <div className={s.footerCol}>
               <h4>Support & Contact</h4>

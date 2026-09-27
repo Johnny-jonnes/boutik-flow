@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Search, PackagePlus, CheckCircle, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
+import { celebrate } from '@/lib/celebrate';
 import { Modal } from '@/components/ui/Modal';
 import { useLanguage } from '@/context/LanguageContext';
 import type { Product } from '@/types';
@@ -81,9 +82,14 @@ export function BulkStockInModal({ isOpen, onClose, products, onUpdated }: BulkS
       const res = await api.bulkStockIn(items, reason.trim() || undefined);
       setResult({ updatedCount: res.updated.length, errors: res.errors });
       if (res.errors.length === 0) {
-        toast.success(
-          fr ? `Stock mis à jour pour ${res.updated.length} produit(s)` : `Stock updated for ${res.updated.length} product(s)`
-        );
+        const units = items.reduce((acc, it) => acc + it.quantity, 0);
+        celebrate({
+          kind: 'stock',
+          title: fr ? 'Stock mis à jour' : 'Stock updated',
+          subtitle: fr ? `${res.updated.length} produit(s) réapprovisionné(s)` : `${res.updated.length} product(s) restocked`,
+          count: units,
+          chips: [fr ? `+${units} unités` : `+${units} units`],
+        });
         onUpdated();
         reset();
         onClose();

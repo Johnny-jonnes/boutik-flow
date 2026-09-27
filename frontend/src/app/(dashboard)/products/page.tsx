@@ -7,6 +7,7 @@ import type { Product } from '@/types';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDeleteDialog } from '@/components/ui/ConfirmDeleteDialog';
 import { BarcodeScannerModal } from '@/components/ui/BarcodeScannerModal';
 import { SKUPrintModal } from '@/components/ui/SKUPrintModal';
 import { QRCodeModal } from '@/components/ui/QRCodeModal';
@@ -19,6 +20,7 @@ import { useProductsQuery, useCategoriesQuery, useProductStatsQuery, useTenantQu
 import { usePermission } from '@/lib/permissions';
 import { PageHeader, StatTile } from '@/components/ui/PageHeader';
 import { formatGNF, formatNumber, LOW_STOCK_THRESHOLD } from '@/lib/format';
+import { celebrate } from '@/lib/celebrate';
 
 type StockFilter = 'all' | 'in' | 'low' | 'out';
 
@@ -128,7 +130,12 @@ function ProductsContent() {
         barcode: addForm.barcode || undefined,
         images: addImagePreview ? [addImagePreview] : [],
       });
-      toast.success('Produit ajouté avec succès');
+      celebrate({
+        kind: 'product',
+        title: language === 'fr' ? 'Produit ajouté' : 'Product added',
+        subtitle: created.name,
+        chips: [formatGNF(Number(created.price)), `${formatNumber(created.stock)} ${language === 'fr' ? 'en stock' : 'in stock'}`],
+      });
       setIsAddOpen(false);
       setAddForm({ name: '', price: '', cost_price: '', stock: '', category_id: '', description: '', is_available: true, is_public: true, sku: '', barcode: '' });
       setAddImagePreview(null);
@@ -224,7 +231,12 @@ function ProductsContent() {
     setIsDeleting(true);
     try {
       await api.deleteProduct(deleteTarget.id);
-      toast.success('Produit supprimé');
+      celebrate({
+        kind: 'deleted',
+        title: fr ? 'Produit supprimé' : 'Product deleted',
+        subtitle: deleteTarget.name,
+        chips: [fr ? 'Retiré du catalogue' : 'Removed from catalog'],
+      });
       const deletedId = deleteTarget.id;
       setDeleteTarget(null);
       queryClient.setQueryData(queryKeys.products(), (old: typeof productsData) =>
@@ -918,18 +930,17 @@ function ProductsContent() {
         {renderProductForm(editForm, setEditForm, handleEdit, isEditing, 'Enregistrer', () => setEditProduct(null), true)}
       </Modal>
 
-      {/* Modal Supprimer */}
-      <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Confirmer la suppression">
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-          Êtes-vous sûr de vouloir supprimer <strong>{deleteTarget?.name}</strong> ? Cette action est irréversible.
-        </p>
-        <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={() => setDeleteTarget(null)}>Annuler</button>
-          <button className="btn btn-danger" onClick={handleDelete} disabled={isDeleting}>
-            {isDeleting ? 'Suppression...' : 'Supprimer'}
-          </button>
-        </div>
-      </Modal>
+      {/* Confirmation de suppression animée */}
+      <ConfirmDeleteDialog
+        open={!!deleteTarget}
+        fr={fr}
+        title={fr ? 'Supprimer ce produit ?' : 'Delete this product?'}
+        name={deleteTarget?.name}
+        message={fr ? "Il disparaîtra du catalogue, de la caisse et de la vitrine." : "It will be removed from the catalog, the checkout and the storefront."}
+        isDeleting={isDeleting}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
 
       <style jsx>{`
         .product-price { font-weight: 700; color: var(--color-brand-500); font-family: var(--font-display); }

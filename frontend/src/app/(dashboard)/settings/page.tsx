@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Store, User, KeyRound, Eye, EyeOff, Save, Landmark, Copy, ExternalLink, Printer, ImagePlus, X, MessageCircle, Globe, Settings as SettingsIcon } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { api } from '@/lib/api/client';
@@ -54,6 +55,7 @@ const ROLE_LABELS_EN: Record<string, string> = {
 export default function SettingsPage() {
   const { language } = useLanguage();
   const fr = language === 'fr';
+  const queryClient = useQueryClient();
 
   const [isLoading, setIsLoading] = useState(true);
   const [me, setMe] = useState<Me | null>(null);
@@ -144,6 +146,8 @@ export default function SettingsPage() {
         payment_methods: shopPaymentMethods,
       });
       setTenant(updated);
+      // Cache partagé ['tenant'] : menu latéral et reçus affichent tout de suite le nouveau logo/nom.
+      queryClient.setQueryData(['tenant'], updated);
       toast.success(fr ? 'Boutique mise à jour' : 'Shop updated');
     } catch (err: any) {
       toast.error(err.message || (fr ? 'Erreur lors de la mise à jour' : 'Error updating'));

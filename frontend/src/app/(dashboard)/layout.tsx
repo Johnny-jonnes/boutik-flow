@@ -41,6 +41,9 @@ import { useRouter } from 'next/navigation';
 import { hasPermission, ROUTE_PERMISSIONS, firstAllowedRoute } from '@/lib/permissions';
 import { BrandMark } from '@/components/BrandMark';
 import '@/styles/premium-ui.css';
+import { useTenantQuery } from '@/lib/queries';
+import { CelebrationHost } from '@/components/ActionCelebration';
+import { SplashScreen, SPLASH_DURATION } from '@/components/SplashScreen';
 
 /* ─── Navigation — regroupée par sections ───────────────────────── */
 type NavGroup = 'main' | 'catalog' | 'sales' | 'manage' | 'admin';
@@ -86,8 +89,8 @@ const BOTTOM_NAV = [
   { href: '/finance',   icon: Wallet,          label: 'Finances', labelEn: 'Finances' },
 ];
 
-/* ─── Logo BF — couleurs guinéennes ─────────────────────────────── */
-function Logo({ size = 20 }: { size?: number }) {
+/* ─── Logo : celui de la boutique (Paramètres) s'il existe, sinon BF ─ */
+function Logo({ size = 20, src }: { size?: number; src?: string | null }) {
   const [isOnline, setIsOnline] = useState(true);
 
   useEffect(() => {
@@ -104,15 +107,24 @@ function Logo({ size = 20 }: { size?: number }) {
   }, []);
 
   return (
-    <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-      <BrandMark
-        size={size}
-        style={{
-          filter: `drop-shadow(0 0 ${isOnline ? '4px rgba(49,162,146,0.5)' : '4px rgba(245,158,11,0.45)'})`,
-          transition: 'filter 0.4s ease',
-          animation: 'logo-breathing 4s ease-in-out infinite',
-        }}
-      />
+    <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: src ? '100%' : undefined, height: src ? '100%' : undefined, borderRadius: 'inherit' }}>
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={src}
+          alt=""
+          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit', display: 'block' }}
+        />
+      ) : (
+        <BrandMark
+          size={size}
+          style={{
+            filter: `drop-shadow(0 0 ${isOnline ? '4px rgba(49,162,146,0.5)' : '4px rgba(245,158,11,0.45)'})`,
+            transition: 'filter 0.4s ease',
+            animation: 'logo-breathing 4s ease-in-out infinite',
+          }}
+        />
+      )}
       <span
         style={{
           position: 'absolute',
@@ -148,8 +160,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   });
   const [soundVolume, setSoundVolume] = useState<VolumeLevel>('normal');
   const [isSyncJournalOpen, setIsSyncJournalOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const { language, setLanguage } = useLanguage();
+  // Logo et nom à jour de la boutique (Paramètres) — le JWT ne porte que le
+  // nom au moment de la connexion. Le logo de l'application (icône PWA) ne change pas.
+  const { data: tenant } = useTenantQuery();
+  const shopLogo = tenant?.logo || null;
+  const shopName = tenant?.name || userInfo.boutiqueName;
 
   // Charger le volume initial
   useEffect(() => {
@@ -249,11 +267,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, []);
 
   const handleLogout = async () => {
+    if (isLoggingOut) return;
+    // Même écran de chargement qu'à la connexion, le temps de tout nettoyer.
+    setIsLoggingOut(true);
+    setIsProfileDropdownOpen(false);
     // Sur un appareil partagé entre boutiques, le cache hors-ligne (IndexedDB)
     // doit être vidé avant qu'un autre utilisateur/boutique ne se connecte —
     // sinon ses produits/clients/commandes resteraient visibles localement
     // tant qu'aucune synchronisation n'a eu lieu.
-    await clearOfflineDatabase();
+    await Promise.all([
+      clearOfflineDatabase(),
+      new Promise(resolve => setTimeout(resolve, SPLASH_DURATION)),
+    ]);
     localStorage.clear();
     window.location.href = '/login';
   };
@@ -287,12 +312,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="shell">
       {isLocked && <PinLock onVerify={verifyPin} error={pinError} onClearError={() => setPinError('')} />}
       <SyncJournalModal isOpen={isSyncJournalOpen} onClose={() => setIsSyncJournalOpen(false)} />
+      <CelebrationHost />
+      {isLoggingOut && <SplashScreen message={language === 'fr' ? 'Déconnexion… À bientôt !' : 'Signing out… See you soon!'} />}
 
       {/* ── Mobile top bar — affiche le nom de la boutique ── */}
       <header className="mobile-bar">
         <div className="mobile-brand">
-          <div className="logo-mark"><Logo size={18} /></div>
-          <span className="mobile-boutique-name">{userInfo.boutiqueName}</span>
+          <div className={`logo-mark${shopLogo ? ' logo-mark--shop' : ''}`}><Logo size={18} src={shopLogo} /></div>
+          <span className="mobile-boutique-name">{shopName}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <ThemeToggle />
@@ -328,9 +355,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* En-tête : logo + nom boutique + fermer */}
         <div className="sidebar__brand">
-          <div className="logo-mark"><Logo size={20} /></div>
+          <div className={`logo-mark${shopLogo ? ' logo-mark--shop' : ''}`}><Logo size={20} src={shopLogo} /></div>
           <div className="sidebar-brand-info">
-            <span className="sidebar-boutique-name" title={userInfo.boutiqueName}>{userInfo.boutiqueName}</span>
+            <span className="sidebar-boutique-name" title={shopName}>{shopName}</span>
             <span className="sidebar-plan-badge">
               {userInfo.plan === 'freemium' ? '✦ Freemium' : userInfo.plan === 'lifetime' ? '⚡ Lifetime' : '✓ Pro'}
             </span>
@@ -530,6 +557,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           transition: transform 0.2s var(--ease-spring);
         }
         .logo-mark:hover { transform: scale(1.06) rotate(-3deg); }
+        /* Logo de la boutique : image pleine case (fond blanc pour les logos transparents). */
+        .logo-mark--shop { padding: 0; overflow: visible; background: #ffffff; }
         @keyframes logo-breathing {
           0%, 100% { transform: scale(1); opacity: 0.92; }
           50% { transform: scale(1.06); opacity: 1; }

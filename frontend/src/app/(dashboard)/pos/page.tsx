@@ -11,7 +11,10 @@ import { useLanguage } from '@/context/LanguageContext';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { ReceiptModal } from '@/components/ui/ReceiptModal';
+import { PaymentCelebration, type CelebrationMethod, type CelebrationMode } from '@/components/pos/PaymentCelebration';
 import { Modal } from '@/components/ui/Modal';
+import { celebrate } from '@/lib/celebrate';
+import { formatGNF } from '@/lib/format';
 import { Product } from '@/types';
 import { SoundEffects, triggerHaptic } from '@/lib/audio';
 import { buildSaleNotes } from '@/lib/saleNotes';
@@ -20,6 +23,16 @@ import { useProductsQuery, useClientsQuery, queryKeys } from '@/lib/queries';
 interface CartItem extends Product { cartQuantity: number; }
 
 const fmt = (n: number) => n.toLocaleString('fr-FR') + ' GNF';
+
+/** Catégories de sortie de caisse (libellés du formulaire et de l'animation). */
+const EXPENSE_CATEGORIES: { value: string; fr: string; en: string }[] = [
+  { value: 'supplier_purchase', fr: 'Achat fournisseur', en: 'Supplier purchase' },
+  { value: 'salary', fr: 'Salaire équipe', en: 'Staff salary' },
+  { value: 'rent', fr: 'Loyer & charges', en: 'Rent & charges' },
+  { value: 'utilities', fr: 'Factures', en: 'Bills' },
+  { value: 'refund', fr: 'Remboursement client', en: 'Customer refund' },
+  { value: 'other_expense', fr: 'Autre dépense', en: 'Other expense' },
+];
 
 export default function POSPage() {
   const { language } = useLanguage();
@@ -59,6 +72,8 @@ export default function POSPage() {
   // Reçu
   const [receiptData, setReceiptData]               = useState<any>(null);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  // Animation de fin de vente (moyen × type de paiement), jouée avant le reçu.
+  const [celebration, setCelebration] = useState<{ method: CelebrationMethod; mode: CelebrationMode; total: number; paid: number } | null>(null);
   const [shopName, setShopName]   = useState('BoutikFlow');
   const [sellerName, setSellerName] = useState('');
 
@@ -248,13 +263,6 @@ export default function POSPage() {
       triggerHaptic([30, 50, 30]);
       setSuccessAnim(true);
       setTimeout(() => setSuccessAnim(false), 1400);
-      if (saleMode === 'full') {
-        toast.success(language === 'fr' ? '✓ Vente encaissée !' : '✓ Sale recorded!');
-      } else if (saleMode === 'partial') {
-        toast.success(language === 'fr' ? `📋 Paiement partiel enregistré — dette de ${fmt(remainingAmount)} créée` : `📋 Partial payment recorded — debt of ${fmt(remainingAmount)} created`);
-      } else {
-        toast.success(language === 'fr' ? '📋 Vente à crédit enregistrée' : '📋 Credit sale recorded');
-      }
 
       const client = clients.find(c => c.id === selectedClientId);
       setReceiptData({
@@ -271,7 +279,8 @@ export default function POSPage() {
         payment_method: order.payment_method ?? paymentMethod,
         amount_paid_now: order.amount_paid_now ?? amountPaidNow,
       });
-      setIsReceiptModalOpen(true);
+      // Le reçu s'ouvre à la fin de l'animation (voir PaymentCelebration plus bas).
+      setCelebration({ method: paymentMethod, mode: saleMode, total, paid: amountPaidNow });
 
       // Reset
       setCart([]); setDiscount(0); setSelectedClientId('');
@@ -299,7 +308,15 @@ export default function POSPage() {
         payment_method: 'cash',
         reference: language === 'fr' ? 'Sortie Caisse' : 'POS Outflow',
       });
-      toast.success(language === 'fr' ? 'Sortie enregistrée ✓' : 'Outflow recorded ✓');
+      const fr = language === 'fr';
+      const category = EXPENSE_CATEGORIES.find(c => c.value === expenseCategory);
+      celebrate({
+        kind: 'expense',
+        title: fr ? 'Sortie de caisse enregistrée' : 'Cash outflow recorded',
+        subtitle: expenseDescription.trim(),
+        count: Number(expenseAmount),
+        chips: [formatGNF(Number(expenseAmount)), category ? (fr ? category.fr : category.en) : expenseCategory],
+      });
       setIsExpenseModalOpen(false); setExpenseAmount(''); setExpenseDescription(''); setExpenseCategory('other_expense');
     } catch (err: any) {
       toast.error(err?.message || (language === 'fr' ? 'Erreur' : 'Error'));
@@ -633,6 +650,15 @@ export default function POSPage() {
         <div className="p-cart-backdrop" onClick={() => setIsCartSheetOpen(false)} />
       )}
 
+      {/* ── Animation d'encaissement, puis reçu ───────────────────── */}
+      {celebration && (
+        <PaymentCelebration
+          {...celebration}
+          language={language}
+          onDone={() => { setCelebration(null); setIsReceiptModalOpen(true); }}
+        />
+      )}
+
       {/* ── Reçu ─────────────────────────────────────────────────── */}
       {receiptData && (
         <ReceiptModal
@@ -650,12 +676,9 @@ export default function POSPage() {
           <div className="input-group">
             <label className="form-label">{language === 'fr' ? 'Catégorie *' : 'Category *'}</label>
             <select className="input" value={expenseCategory} onChange={e => setExpenseCategory(e.target.value)} required>
-              <option value="supplier_purchase">{language === 'fr' ? 'Achat fournisseur' : 'Supplier purchase'}</option>
-              <option value="salary">{language === 'fr' ? 'Salaire équipe' : 'Staff salary'}</option>
-              <option value="rent">{language === 'fr' ? 'Loyer & charges' : 'Rent & charges'}</option>
-              <option value="utilities">{language === 'fr' ? 'Factures' : 'Bills'}</option>
-              <option value="refund">{language === 'fr' ? 'Remboursement client' : 'Customer refund'}</option>
-              <option value="other_expense">{language === 'fr' ? 'Autre dépense' : 'Other expense'}</option>
+              {EXPENSE_CATEGORIES.map(c => (
+                <option key={c.value} value={c.value}>{language === 'fr' ? c.fr : c.en}</option>
+              ))}
             </select>
           </div>
           <div className="input-group">

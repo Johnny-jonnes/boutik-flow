@@ -1,0 +1,451 @@
+/* Animations de succès des actions (produit, stock, catégorie, client,
+   dette, équipe, commande). Même langage visuel que l'encaissement. */
+
+.ac {
+  --ac: #10b981;
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(3, 12, 10, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: ac-fade 0.2s ease both;
+  cursor: pointer;
+}
+.ac--products { --ac: #14b8a6; }
+.ac--stock { --ac: #f59e0b; }
+.ac--category { --ac: #8b5cf6; }
+.ac--client { --ac: #0ea5e9; }
+.ac--team { --ac: #6366f1; }
+.ac--order { --ac: #3b82f6; }
+.ac--deleted { --ac: #ef4444; }
+.ac--delete-cancelled { --ac: #10b981; }
+.ac--expense { --ac: #f43f5e; }
+
+.ac-card {
+  position: relative;
+  width: min(340px, 100%);
+  padding: 1.5rem 1.4rem 1.4rem;
+  border-radius: 26px;
+  text-align: center;
+  color: var(--text-primary);
+  background: var(--surface-1);
+  border: 1px solid color-mix(in srgb, var(--ac) 30%, var(--border-default));
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.4), 0 0 0 6px color-mix(in srgb, var(--ac) 10%, transparent);
+  overflow: hidden;
+  animation: ac-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.ac-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 170px;
+  background: radial-gradient(60% 100% at 50% 0%, color-mix(in srgb, var(--ac) 22%, transparent), transparent 75%);
+  pointer-events: none;
+}
+.ac-stage { position: relative; width: 200px; height: 150px; margin: 0 auto 0.6rem; }
+.ac-scene { position: absolute; inset: 0; }
+
+/* Pastille de validation commune */
+.ac-badge {
+  position: absolute;
+  right: 18px; top: 6px;
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #ffffff;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--ac) 75%, #fff), var(--ac));
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--ac) 45%, transparent);
+  z-index: 5;
+  animation: ac-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.85s both;
+}
+
+/* ── Carton (produit, stock, création groupée) ── */
+.ac-box {
+  position: absolute;
+  width: 70px; height: 62px;
+  border-radius: 10px;
+  background: linear-gradient(160deg, #fcd9a5 0%, #e9a960 55%, #c9803d 100%);
+  box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.12), 0 10px 20px rgba(0, 0, 0, 0.28);
+}
+.ac-box i {
+  position: absolute;
+  left: 50%; top: 0; bottom: 0;
+  width: 14px;
+  margin-left: -7px;
+  background: rgba(255, 255, 255, 0.45);
+}
+.ac-box--drop { left: 65px; bottom: 30px; animation: ac-drop 0.7s cubic-bezier(0.5, 0, 0.3, 1.4) both; }
+.ac-shelf {
+  position: absolute;
+  left: 30px; right: 30px; bottom: 20px;
+  height: 10px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--ac) 55%, #000);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--ac) 35%, transparent);
+}
+.ac-spark {
+  position: absolute;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--ac);
+  opacity: 0;
+  animation: ac-spark 0.7s ease-out 0.6s both;
+}
+.ac-spark--1 { left: 48px; top: 40px; }
+.ac-spark--2 { left: 145px; top: 52px; animation-delay: 0.7s; }
+.ac-spark--3 { left: 100px; top: 18px; animation-delay: 0.8s; }
+
+.ac-grid { position: absolute; left: 30px; top: 22px; display: grid; grid-template-columns: repeat(3, 44px); gap: 10px; }
+.ac-box--mini { position: relative; width: 44px; height: 40px; border-radius: 8px; animation: ac-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.ac-box--mini i { width: 9px; margin-left: -4.5px; }
+.ac-box--mini:nth-child(2) { animation-delay: 0.1s; } .ac-box--mini:nth-child(3) { animation-delay: 0.2s; }
+.ac-box--mini:nth-child(4) { animation-delay: 0.3s; } .ac-box--mini:nth-child(5) { animation-delay: 0.4s; }
+.ac-box--mini:nth-child(6) { animation-delay: 0.5s; }
+
+.ac-stack { position: absolute; left: 50px; bottom: 30px; width: 100px; height: 120px; }
+.ac-box--s1 { left: 0; bottom: 0; animation: ac-drop 0.55s cubic-bezier(0.5, 0, 0.3, 1.4) both; }
+.ac-box--s2 { left: 34px; bottom: 0; animation: ac-drop 0.55s cubic-bezier(0.5, 0, 0.3, 1.4) 0.2s both; }
+.ac-box--s3 { left: 17px; bottom: 58px; width: 64px; height: 56px; animation: ac-drop 0.55s cubic-bezier(0.5, 0, 0.3, 1.4) 0.4s both; }
+.ac-pallet {
+  position: absolute; left: 36px; right: 36px; bottom: 18px; height: 12px; border-radius: 4px;
+  background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--ac) 60%, #000) 0 18px, transparent 18px 24px);
+}
+.ac-float {
+  position: absolute;
+  left: 8px; top: 20px;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--ac);
+  animation: ac-float 1.2s ease-out 0.6s both;
+}
+
+/* ── Catégorie : fiches rangées dans un dossier ── */
+.ac-folder { position: absolute; left: 61px; bottom: 16px; color: var(--ac); filter: drop-shadow(0 10px 18px color-mix(in srgb, var(--ac) 40%, transparent)); animation: ac-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.ac-paper {
+  position: absolute;
+  left: 84px; top: 6px;
+  width: 34px; height: 42px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  border: 2px solid color-mix(in srgb, var(--ac) 45%, var(--border-default));
+  opacity: 0;
+  animation: ac-file 0.6s ease-in 0.2s both;
+}
+.ac-paper--2 { animation-delay: 0.4s; left: 70px; }
+.ac-paper--3 { animation-delay: 0.6s; left: 98px; }
+
+/* ── Client / équipe : avatar et halo ── */
+.ac-avatar {
+  position: absolute;
+  left: 60px; top: 30px;
+  width: 80px; height: 80px;
+  border-radius: 26px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #ffffff;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--ac) 70%, #fff), var(--ac));
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--ac) 40%, transparent);
+  animation: ac-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+}
+.ac-halo {
+  position: absolute;
+  left: 50px; top: 20px;
+  width: 100px; height: 100px;
+  border-radius: 32px;
+  border: 3px solid var(--ac);
+  opacity: 0;
+  animation: ac-halo 1.2s ease-out 0.3s infinite;
+}
+.ac-halo--2 { animation-delay: 0.9s; }
+.ac-plus {
+  position: absolute;
+  left: 124px; top: 92px;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800;
+  color: var(--ac);
+  background: var(--surface-1);
+  border: 2px solid var(--ac);
+  animation: ac-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s both;
+}
+.ac-avatar--side {
+  width: 54px; height: 54px;
+  top: 44px;
+  border-radius: 18px;
+  opacity: 0.4;
+  filter: grayscale(0.4);
+  animation: ac-pop 0.4s ease both;
+}
+.ac-avatar--left { left: 14px; }
+.ac-avatar--right { left: 132px; }
+.ac-avatar--join { animation: ac-join 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both; }
+
+/* ── Dette : pièces dans la tirelire ── */
+.ac-jar {
+  position: absolute;
+  left: 58px; bottom: 14px;
+  width: 84px; height: 92px;
+  border-radius: 16px 16px 26px 26px;
+  border: 3px solid color-mix(in srgb, var(--ac) 60%, var(--border-strong));
+  background: color-mix(in srgb, var(--ac) 8%, transparent);
+  overflow: hidden;
+}
+.ac-jar__fill {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: var(--ac-fill, 60%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ac) 70%, #fff), var(--ac));
+  transform-origin: bottom;
+  animation: ac-rise 0.9s cubic-bezier(0.4, 0, 0.2, 1) 0.45s both;
+}
+.ac-coin {
+  position: absolute;
+  left: 88px; top: -6px;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fde68a, #f59e0b 70%);
+  border: 2px solid #fbbf24;
+  z-index: 3;
+  animation: ac-coin 0.6s cubic-bezier(0.5, 0, 0.75, 0) both;
+}
+.ac-coin--2 { animation-delay: 0.2s; left: 78px; }
+.ac-coin--3 { animation-delay: 0.4s; left: 98px; }
+.ac-confetti { position: absolute; left: 50%; top: 50%; width: 8px; height: 12px; border-radius: 2px; opacity: 0; animation: ac-confetti 1s cubic-bezier(0.15, 0.6, 0.35, 1) 0.9s forwards; }
+
+/* ── Commande : liste cochée puis livraison ── */
+.ac-clipboard {
+  position: absolute;
+  left: 44px; top: 8px;
+  width: 104px; height: 120px;
+  padding: 18px 12px 12px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  border: 2px solid color-mix(in srgb, var(--ac) 40%, var(--border-default));
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+  display: flex; flex-direction: column; gap: 12px;
+  animation: ac-pop 0.4s ease both;
+}
+.ac-clipboard::before {
+  content: '';
+  position: absolute;
+  left: 32px; right: 32px; top: -7px;
+  height: 12px;
+  border-radius: 5px;
+  background: var(--ac);
+}
+.ac-line { display: flex; align-items: center; gap: 7px; }
+.ac-tick {
+  width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #ffffff;
+  background: var(--border-default);
+  animation: ac-tick 0.3s ease var(--d) both;
+}
+.ac-bar { height: 7px; flex: 1; border-radius: 99px; background: var(--border-default); }
+.ac-truck { position: absolute; left: 110px; bottom: 6px; color: var(--ac); animation: ac-truck 0.9s cubic-bezier(0.5, 0, 0.3, 1) 0.9s both; }
+
+/* ── Suppression : l'élément tombe dans la poubelle ── */
+.ac-bin { position: absolute; left: 66px; bottom: 10px; width: 68px; height: 76px; z-index: 2; transform-origin: bottom center; }
+.ac--deleted .ac-bin { animation: ac-bin-bump 0.4s ease 1.05s both; }
+.ac-bin__body {
+  position: absolute;
+  left: 4px; right: 4px; bottom: 0;
+  height: 60px;
+  padding: 12px 8px;
+  border-radius: 6px 6px 16px 16px;
+  display: flex; justify-content: space-evenly;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ac) 72%, #fff), var(--ac));
+  box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.14), 0 12px 24px color-mix(in srgb, var(--ac) 35%, transparent);
+}
+.ac-bin__body i { width: 5px; border-radius: 99px; background: rgba(255, 255, 255, 0.4); }
+.ac-bin__lid {
+  position: absolute;
+  left: 0; right: 0; bottom: 63px;
+  height: 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--ac) 78%, #000);
+  transform-origin: 6px 100%;
+  animation: ac-lid 1.3s ease both;
+}
+.ac-bin__lid::before {
+  content: '';
+  position: absolute;
+  left: 50%; top: -6px;
+  width: 22px; height: 7px;
+  margin-left: -11px;
+  border-radius: 5px 5px 0 0;
+  background: inherit;
+}
+.ac-bin--idle .ac-bin__body { background: linear-gradient(180deg, #cbd5e1, #94a3b8); box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.12); }
+.dark .ac-bin--idle .ac-bin__body { background: linear-gradient(180deg, #475569, #334155); }
+.ac-bin--idle .ac-bin__lid { background: #64748b; animation-name: ac-lid-rescue; animation-duration: 1.2s; }
+
+.ac-victim, .ac-rescued { left: 73px; top: 4px; width: 54px; height: 48px; z-index: 1; }
+.ac-victim { animation: ac-trash-in 1.3s cubic-bezier(0.5, 0, 0.5, 1) both; }
+.ac-rescued { animation: ac-rescue 1s cubic-bezier(0.34, 1.3, 0.64, 1) 0.2s both; }
+.ac-victim i, .ac-rescued i { width: 11px; margin-left: -5.5px; }
+.ac-item-avatar {
+  position: absolute;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 16px;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #ffffff;
+  background: linear-gradient(145deg, #94a3b8, #64748b);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+}
+.ac-rescued.ac-item-avatar { background: linear-gradient(145deg, color-mix(in srgb, var(--ac) 70%, #fff), var(--ac)); }
+.ac-dust {
+  position: absolute;
+  bottom: 78px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ac) 45%, var(--text-muted));
+  opacity: 0;
+  z-index: 3;
+  animation: ac-dust 0.6s ease-out 1.1s both;
+}
+.ac-dust--1 { left: 58px; --dx: -18px; }
+.ac-dust--2 { left: 95px; --dx: 0px; }
+.ac-dust--3 { left: 132px; --dx: 18px; }
+.ac--deleted .ac-badge { animation-delay: 1.15s; }
+
+/* ── Sortie de caisse : billets qui quittent le tiroir ── */
+.ac-drawer {
+  position: absolute;
+  left: 44px; bottom: 12px;
+  width: 112px; height: 54px;
+  z-index: 2;
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--surface-2), color-mix(in srgb, var(--ac) 12%, var(--surface-2)));
+  border: 2px solid color-mix(in srgb, var(--ac) 45%, var(--border-default));
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+  animation: ac-pop 0.4s ease both;
+}
+.ac-drawer::before {
+  content: '';
+  position: absolute;
+  left: 14px; right: 14px; top: -2px;
+  height: 6px;
+  border-radius: 0 0 6px 6px;
+  background: color-mix(in srgb, var(--ac) 30%, var(--surface-1));
+}
+.ac-drawer i {
+  position: absolute;
+  left: 50%; top: 22px;
+  width: 34px; height: 7px;
+  margin-left: -17px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--ac) 55%, var(--border-strong));
+}
+.ac-note {
+  position: absolute;
+  left: 68px; bottom: 44px;
+  width: 64px; height: 34px;
+  z-index: 1;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #6ee7b7, #10b981 60%, #059669);
+  border: 2px solid #047857;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  animation: ac-note-out 1s cubic-bezier(0.3, 0.6, 0.4, 1) both;
+}
+.ac-note::after {
+  content: '';
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 14px; height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+}
+.ac-note--1 { --nx: -28px; --nr: -16deg; animation-delay: 0.25s; }
+.ac-note--2 { --nx: 4px; --nr: 6deg; animation-delay: 0.42s; }
+.ac-note--3 { --nx: 34px; --nr: 16deg; animation-delay: 0.59s; }
+.ac-float--out { left: 0; top: 48px; z-index: 3; font-size: 1.15rem; animation-delay: 0.9s; }
+
+/* ── Textes ── */
+.ac-title { position: relative; font-family: var(--font-display); font-size: 1.35rem; font-weight: 800; letter-spacing: -0.03em; margin: 0; animation: ac-rise-text 0.35s ease 0.45s both; }
+.ac-sub { position: relative; margin: 0.3rem 0 0; color: var(--text-secondary); font-size: 0.93rem; line-height: 1.45; animation: ac-rise-text 0.35s ease 0.55s both; }
+.ac-chips { position: relative; display: flex; justify-content: center; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.8rem; animation: ac-rise-text 0.35s ease 0.65s both; }
+.ac-chip { padding: 0.28rem 0.7rem; border-radius: 99px; font-size: 0.77rem; font-weight: 800; color: color-mix(in srgb, var(--ac) 80%, #000); background: color-mix(in srgb, var(--ac) 15%, transparent); }
+.dark .ac-chip { color: color-mix(in srgb, var(--ac) 65%, #fff); }
+.ac-progress { position: absolute; left: 0; bottom: 0; height: 4px; width: 100%; background: var(--ac); transform-origin: left; animation: ac-bar-fill linear both; opacity: 0.8; }
+
+/* ── Images clés ── */
+@keyframes ac-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ac-pop { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
+@keyframes ac-drop {
+  0% { opacity: 0; transform: translateY(-90px) rotate(-8deg); }
+  60% { opacity: 1; transform: translateY(0) scale(1.05, 0.9); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes ac-spark { 0% { opacity: 0; transform: scale(0); } 50% { opacity: 1; transform: scale(1.3); } 100% { opacity: 0; transform: scale(0.4) translateY(-14px); } }
+@keyframes ac-float { 0% { opacity: 0; transform: translateY(20px); } 30% { opacity: 1; } 100% { opacity: 1; transform: translateY(-4px); } }
+@keyframes ac-file { 0% { opacity: 0; transform: translateY(-30px) rotate(-12deg); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(58px) rotate(0) scale(0.8); } }
+@keyframes ac-halo { 0% { opacity: 0.7; transform: scale(0.85); } 100% { opacity: 0; transform: scale(1.35); } }
+@keyframes ac-join { from { opacity: 0; transform: translateY(40px) scale(0.5); } to { opacity: 1; transform: none; } }
+@keyframes ac-rise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes ac-coin { 0% { opacity: 0; transform: translateY(-20px); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(70px) scale(0.7); } }
+@keyframes ac-confetti {
+  0% { opacity: 1; transform: translate(-50%, -50%) rotate(0); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) rotate(var(--r)); }
+}
+@keyframes ac-tick { from { background: var(--border-default); transform: scale(0.7); } to { background: var(--ac); transform: scale(1); } }
+@keyframes ac-truck { from { opacity: 0; transform: translateX(-60px); } 60% { opacity: 1; } to { opacity: 1; transform: translateX(8px); } }
+@keyframes ac-rise-text { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes ac-bar-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+/* Le couvercle bascule entièrement sur le côté : il ne croise jamais l'élément. */
+@keyframes ac-lid {
+  0%, 12% { transform: rotate(0); }
+  28%, 70% { transform: rotate(-105deg); }
+  82% { transform: rotate(8deg); }
+  90% { transform: rotate(-3deg); }
+  100% { transform: rotate(0); }
+}
+@keyframes ac-lid-rescue {
+  0% { transform: rotate(0); }
+  15%, 55% { transform: rotate(-105deg); }
+  72% { transform: rotate(8deg); }
+  84% { transform: rotate(-3deg); }
+  100% { transform: rotate(0); }
+}
+/* Devant la poubelle tant qu'il est au-dessus, derrière son corps en y tombant. */
+@keyframes ac-trash-in {
+  0% { opacity: 0; transform: translateY(-16px) scale(0.8); z-index: 3; }
+  15% { opacity: 1; transform: none; }
+  30% { transform: rotate(-7deg); }
+  38% { transform: rotate(6deg); }
+  46% { transform: rotate(0); z-index: 3; }
+  50% { z-index: 1; }
+  78% { opacity: 1; transform: translateY(72px) scale(0.55) rotate(18deg); }
+  86%, 100% { opacity: 0; transform: translateY(84px) scale(0.45) rotate(24deg); z-index: 1; }
+}
+@keyframes ac-rescue {
+  0% { opacity: 0; transform: translateY(80px) scale(0.5); }
+  25% { opacity: 1; }
+  60% { transform: translateY(-12px) scale(1.06) rotate(-4deg); }
+  80% { transform: translateY(2px) scale(0.98, 1.02); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes ac-bin-bump { 0%, 100% { transform: none; } 40% { transform: scale(1.06, 0.94); } 70% { transform: scale(0.98, 1.02); } }
+@keyframes ac-dust { 0% { opacity: 0; transform: scale(0.4); } 15% { opacity: 0.85; } 100% { opacity: 0; transform: translate(var(--dx), -22px) scale(1.4); } }
+@keyframes ac-note-out {
+  0% { opacity: 0; transform: translateY(26px); }
+  25%, 70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--nx), -72px) rotate(var(--nr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac, .ac * { animation-duration: 0.01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; }
+}

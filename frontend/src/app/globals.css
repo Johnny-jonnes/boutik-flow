@@ -1273,18 +1273,9 @@ body {
 }
 .summary-row span:last-child { font-weight: 600; }
 
-.total-row {
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--border-subtle);
-  font-size: 1rem;
-  color: var(--text-primary);
-  font-weight: 800;
-  font-family: var(--font-display);
-}
-.total-row span:last-child {
-  font-size: 1.1rem;
-  color: var(--color-brand-400);
-}
+/* .total-row : ancien style de la caisse, retiré — la caisse n'utilise plus
+   cette classe et il débordait sur les reçus (même nom de classe, texte
+   blanc sur ticket blanc en thème sombre, y compris à l'impression). */
 
 .discount-row { align-items: center; }
 .discount-input {
