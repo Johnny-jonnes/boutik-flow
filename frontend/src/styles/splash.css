@@ -1,0 +1,104 @@
+/* Écran de chargement BoutikFlow (connexion, accès à l'espace) —
+   identité émeraude identique en thème clair et sombre. */
+
+.bf-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.4rem;
+  padding: 2rem;
+  color: #ffffff;
+  text-align: center;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.07) 1px, transparent 0) 0 0 / 26px 26px,
+    radial-gradient(70% 55% at 50% 38%, rgba(52, 211, 153, 0.28), transparent 70%),
+    linear-gradient(160deg, #04221d 0%, #073a33 50%, #0b4a41 100%);
+  animation: bf-splash-in 0.35s ease both;
+}
+.bf-splash__mark {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 32px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  animation: bf-splash-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s both, bf-splash-float 2.6s ease-in-out 0.7s infinite;
+}
+.bf-splash__ring {
+  position: absolute;
+  inset: -14px;
+  border-radius: 40px;
+  border: 2px solid rgba(110, 231, 183, 0.55);
+  opacity: 0;
+  animation: bf-splash-ring 2s ease-out infinite;
+}
+.bf-splash__ring--2 { animation-delay: 0.65s; }
+.bf-splash__ring--3 { animation-delay: 1.3s; }
+.bf-splash__name {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 7vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin: 0;
+  background: linear-gradient(110deg, #ffffff 20%, #a7f3d0 50%, #ffffff 80%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: bf-splash-rise 0.5s ease 0.2s both, bf-splash-shine 2.4s linear 0.6s infinite;
+}
+.bf-splash__msg {
+  margin: -0.6rem 0 0;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: rgba(236, 253, 245, 0.8);
+  animation: bf-splash-rise 0.5s ease 0.35s both;
+}
+.bf-splash__bar {
+  width: min(240px, 70vw);
+  height: 5px;
+  border-radius: 99px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.14);
+  animation: bf-splash-rise 0.5s ease 0.45s both;
+}
+.bf-splash__bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #34d399, #a7f3d0, #fbbf24);
+  box-shadow: 0 0 14px rgba(52, 211, 153, 0.8);
+  transform-origin: left;
+  animation: bf-splash-progress var(--splash-duration, 2800ms) cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.bf-splash__foot {
+  position: absolute;
+  bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(236, 253, 245, 0.45);
+}
+
+@keyframes bf-splash-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bf-splash-pop { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
+@keyframes bf-splash-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes bf-splash-ring { 0% { opacity: 0.7; transform: scale(0.92); } 100% { opacity: 0; transform: scale(1.45); } }
+@keyframes bf-splash-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes bf-splash-shine { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes bf-splash-progress { from { transform: scaleX(0.04); } to { transform: scaleX(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .bf-splash, .bf-splash * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+  .bf-splash__bar span { animation: bf-splash-progress var(--splash-duration, 2800ms) linear both !important; }
+}

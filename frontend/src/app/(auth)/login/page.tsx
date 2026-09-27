@@ -2,15 +2,14 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Check, Eye, EyeOff, AlertCircle, Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { api, ApiError } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { useServerWakeup } from '@/hooks/useServerWakeup';
 import { BrandMark } from '@/components/BrandMark';
+import { useSplashNavigation } from '@/components/SplashScreen';
 
 export default function LoginPage() {
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
@@ -18,6 +17,7 @@ export default function LoginPage() {
   const [retryCountdown, setRetryCountdown] = useState(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { status: serverStatus, wakeSeconds } = useServerWakeup();
+  const { splash, navigate } = useSplashNavigation();
   const [form, setForm] = useState({
     boutique_slug: '',
     email: '',
@@ -45,11 +45,11 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       const res = await api.login(form);
-      toast.success('Connexion réussie !');
+      // Écran de chargement BoutikFlow pendant que l'espace se prépare.
       if (res.user && res.user.role && res.user.role.toLowerCase() === 'admin') {
-        router.push('/admin');
+        navigate('/admin', "Ouverture de l'espace administration…");
       } else {
-        router.push('/dashboard');
+        navigate('/dashboard', `Bienvenue${res.user?.full_name ? ', ' + res.user.full_name.split(' ')[0] : ''} !`);
       }
     } catch (err) {
       if (err instanceof ApiError && err.status === 0) {
@@ -85,11 +85,11 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       const res = await api.login(form);
-      toast.success('Connexion réussie !');
+      // Écran de chargement BoutikFlow pendant que l'espace se prépare.
       if (res.user && res.user.role && res.user.role.toLowerCase() === 'admin') {
-        router.push('/admin');
+        navigate('/admin', "Ouverture de l'espace administration…");
       } else {
-        router.push('/dashboard');
+        navigate('/dashboard', `Bienvenue${res.user?.full_name ? ', ' + res.user.full_name.split(' ')[0] : ''} !`);
       }
     } catch (err) {
       const msg = err instanceof ApiError && err.status === 0
@@ -103,6 +103,7 @@ export default function LoginPage() {
 
   return (
     <div className="auth-page">
+      {splash}
       <div className="auth-bg-grid" />
       <div className="auth-glow" />
 
