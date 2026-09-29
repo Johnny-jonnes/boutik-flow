@@ -1,8 +1,8 @@
 'use client';
 
-import { Banknote, ChevronDown, ChevronUp } from 'lucide-react';
+import { Banknote, ChevronDown, ChevronUp, Printer, ReceiptText } from 'lucide-react';
 import { useState } from 'react';
-import type { ClientDebt } from '@/types';
+import type { ClientDebt, DebtPaymentEntry } from '@/types';
 
 const STATUS_STYLE: Record<string, { bg: string; border: string; badgeBg: string; color: string }> = {
   paid:    { bg: 'rgba(16,185,129,0.07)', border: 'rgba(16,185,129,0.2)', badgeBg: 'rgba(16,185,129,0.15)', color: '#10b981' },
@@ -26,11 +26,14 @@ export function DebtCard({
   debt,
   language,
   onPay,
+  onReceipt,
   showClientName = false,
 }: {
   debt: ClientDebt;
   language: string;
   onPay?: (debt: ClientDebt) => void;
+  /** Reçu d'un versement (payment) ou récapitulatif de la dette (sans payment). */
+  onReceipt?: (debt: ClientDebt, payment?: DebtPaymentEntry) => void;
   showClientName?: boolean;
 }) {
   const [showHistory, setShowHistory] = useState(false);
@@ -89,14 +92,36 @@ export function DebtCard({
             {language === 'fr' ? `Historique (${debt.payments!.length})` : `History (${debt.payments!.length})`}
           </button>
         )}
+        {hasPayments && onReceipt && (
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ padding: '0.35rem 0.6rem', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+            onClick={() => onReceipt(debt)}
+          >
+            <ReceiptText size={13} /> {language === 'fr' ? 'Récapitulatif' : 'Statement'}
+          </button>
+        )}
       </div>
 
       {showHistory && hasPayments && (
         <div style={{ marginTop: '0.3rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', borderTop: '1px dashed var(--border-subtle)', paddingTop: '0.4rem' }}>
           {debt.payments!.map(p => (
-            <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.76rem', color: 'var(--text-muted)' }}>
-              <span>{new Date(p.paid_at).toLocaleString(language === 'fr' ? 'fr-FR' : 'en-US')} {p.paid_by_name ? `· ${p.paid_by_name}` : ''}</span>
-              <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{p.amount.toLocaleString()} GNF</span>
+            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+              <span style={{ flex: 1, minWidth: 0 }}>{new Date(p.paid_at).toLocaleString(language === 'fr' ? 'fr-FR' : 'en-US')} {p.paid_by_name ? `· ${p.paid_by_name}` : ''}</span>
+              <span style={{ fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{p.amount.toLocaleString()} GNF</span>
+              {onReceipt && (
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{ padding: '0.25rem', minHeight: 0, display: 'flex' }}
+                  onClick={() => onReceipt(debt, p)}
+                  title={language === 'fr' ? 'Imprimer le reçu de ce versement' : 'Print this payment receipt'}
+                  aria-label={language === 'fr' ? 'Imprimer le reçu de ce versement' : 'Print this payment receipt'}
+                >
+                  <Printer size={13} />
+                </button>
+              )}
             </div>
           ))}
         </div>

@@ -4,16 +4,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Search, Calendar, CreditCard, Wallet, HandCoins, Percent, AlertCircle, ChevronDown, ChevronUp,
-  ChevronLeft, ChevronRight, Banknote, UserCog, WifiOff, SearchX,
+  ChevronLeft, ChevronRight, Banknote, UserCog, WifiOff, SearchX, Printer, ReceiptText,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { useDebtsQuery, useTeamQuery, type DebtsFilters } from '@/lib/queries';
 import { api } from '@/lib/api/client';
 import { DebtPaymentModal } from '@/components/debts/DebtPaymentModal';
+import { DebtReceiptModal } from '@/components/debts/DebtReceiptModal';
 import { PageHeader, StatTile, type StatTone } from '@/components/ui/PageHeader';
 import { toDateInput, today } from '@/lib/period';
 import { formatGNF, formatNumber, formatRelativeDay, hueFromString, initials } from '@/lib/format';
-import type { ClientDebt } from '@/types';
+import type { ClientDebt, DebtPaymentEntry } from '@/types';
 
 type DatePreset = 'today' | 'yesterday' | 'week' | 'month' | 'year' | 'custom' | '';
 
@@ -55,8 +56,13 @@ const STATUS: Record<ClientDebt['status'], { fr: string; en: string; tone: StatT
   paid: { fr: 'Soldée', en: 'Paid', tone: 'emerald' },
 };
 
-/** Ligne de dette : client, progression du remboursement, montants, action d'encaissement. */
-function DebtRow({ debt, language, onPay }: { debt: ClientDebt; language: string; onPay: (d: ClientDebt) => void }) {
+/** Ligne de dette : client, progression du remboursement, montants, encaissement et reçus. */
+function DebtRow({ debt, language, onPay, onReceipt }: {
+  debt: ClientDebt;
+  language: string;
+  onPay: (d: ClientDebt) => void;
+  onReceipt: (d: ClientDebt, p?: DebtPaymentEntry) => void;
+}) {
   const fr = language === 'fr';
   const [open, setOpen] = useState(false);
   const status = STATUS[debt.status] ?? STATUS.pending;
@@ -89,6 +95,16 @@ function DebtRow({ debt, language, onPay }: { debt: ClientDebt; language: string
             {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
         )}
+        {payments.length > 0 && (debt.remaining_amount > 0 ? (
+          <button type="button" className="bf-icon-btn" onClick={() => onReceipt(debt)}
+            title={fr ? 'Récapitulatif des versements' : 'Payment statement'} aria-label={fr ? 'Récapitulatif des versements' : 'Payment statement'}>
+            <ReceiptText size={16} />
+          </button>
+        ) : (
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => onReceipt(debt)}>
+            <ReceiptText size={14} /> {fr ? 'Récapitulatif' : 'Statement'}
+          </button>
+        ))}
         {debt.remaining_amount > 0 && (
           <button type="button" className="btn btn-primary btn-sm" onClick={() => onPay(debt)}>
             <Banknote size={14} /> {fr ? 'Encaisser' : 'Collect'}
@@ -101,6 +117,10 @@ function DebtRow({ debt, language, onPay }: { debt: ClientDebt; language: string
             <div key={p.id} className="debt-history-row">
               <span>{new Date(p.paid_at).toLocaleString(fr ? 'fr-FR' : 'en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}{p.paid_by_name ? ` · ${p.paid_by_name}` : ''}</span>
               <strong>{formatGNF(p.amount)}</strong>
+              <button type="button" className="debt-history-print" onClick={() => onReceipt(debt, p)}
+                title={fr ? 'Imprimer le reçu de ce versement' : 'Print this payment receipt'} aria-label={fr ? 'Imprimer le reçu de ce versement' : 'Print this payment receipt'}>
+                <Printer size={13} />
+              </button>
             </div>
           ))}
         </div>
@@ -125,6 +145,7 @@ export default function DettesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(15);
   const [payDebt, setPayDebt] = useState<ClientDebt | null>(null);
+  const [receipt, setReceipt] = useState<{ debt: ClientDebt; payment?: DebtPaymentEntry } | null>(null);
 
   // Débounce la recherche par nom client — évite une requête serveur à
   // chaque frappe, comme le filtrage produit/client au POS.
@@ -268,7 +289,10 @@ export default function DettesPage() {
         ) : (
           <>
             <div className="debt-list">
-              {debts.map(debt => <DebtRow key={debt.id} debt={debt} language={language} onPay={setPayDebt} />)}
+              {debts.map(debt => (
+                <DebtRow key={debt.id} debt={debt} language={language} onPay={setPayDebt}
+                  onReceipt={(d, p) => setReceipt({ debt: d, payment: p })} />
+              ))}
             </div>
             <div className="bf-pager">
               <span className="bf-pager__info">
@@ -303,6 +327,17 @@ export default function DettesPage() {
         language={language}
       />
 
+      {receipt && (
+        <DebtReceiptModal
+          key={`${receipt.debt.id}-${receipt.payment?.id ?? 'recap'}`}
+          isOpen
+          onClose={() => setReceipt(null)}
+          debt={receipt.debt}
+          payment={receipt.payment}
+          language={language}
+        />
+      )}
+
       <style jsx global>{`
         .debt-list { display: flex; flex-direction: column; }
         .debt-row {
@@ -330,8 +365,20 @@ export default function DettesPage() {
           background: var(--surface-2);
           border: 1px dashed var(--border-default);
         }
-        .debt-history-row { display: flex; justify-content: space-between; gap: 0.75rem; font-size: 0.78rem; color: var(--text-muted); }
+        .debt-history-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; font-size: 0.78rem; color: var(--text-muted); }
+        .debt-history-row > span { flex: 1; min-width: 0; }
         .debt-history-row strong { color: var(--text-primary); white-space: nowrap; }
+        .debt-history-print {
+          display: inline-flex; align-items: center; justify-content: center;
+          width: 28px; height: 28px; flex-shrink: 0;
+          border-radius: 8px;
+          border: 1px solid var(--border-default);
+          background: var(--surface-1);
+          color: var(--text-secondary);
+          cursor: pointer;
+          transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+        }
+        .debt-history-print:hover { color: var(--color-brand-500); border-color: var(--color-brand-500); }
         .custom-range { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
         .custom-range input { width: auto; min-height: 42px; }
         .custom-range span { color: var(--text-muted); font-size: 0.85rem; }

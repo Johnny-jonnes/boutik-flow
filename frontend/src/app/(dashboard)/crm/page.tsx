@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Search, Eye, Pencil, Trash2, UserPlus, CreditCard, Users, Crown, UserCheck, ShoppingBag, MessageCircle, ChevronDown, ChevronLeft, ChevronRight, UserSearch } from 'lucide-react';
-import type { Client, ClientStatus, ClientDebt } from '@/types';
+import type { Client, ClientStatus, ClientDebt, DebtPaymentEntry } from '@/types';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
@@ -16,6 +16,7 @@ import { celebrate } from '@/lib/celebrate';
 import { usePermission } from '@/lib/permissions';
 import { DebtCard } from '@/components/debts/DebtCard';
 import { DebtPaymentModal } from '@/components/debts/DebtPaymentModal';
+import { DebtReceiptModal } from '@/components/debts/DebtReceiptModal';
 
 const STATUS_COLORS: Record<string, string> = {
   nouveau: 'badge-info',
@@ -63,6 +64,7 @@ export default function CRMPage() {
 
   // Payment modal
   const [payDebt, setPayDebt] = useState<ClientDebt | null>(null);
+  const [debtReceipt, setDebtReceipt] = useState<{ debt: ClientDebt; payment?: DebtPaymentEntry } | null>(null);
 
   // Edit modal
   const [editClient, setEditClient] = useState<Client | null>(null);
@@ -517,7 +519,8 @@ export default function CRMPage() {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   {clientDebts.map(debt => (
-                    <DebtCard key={debt.id} debt={debt} language={language} onPay={setPayDebt} />
+                    <DebtCard key={debt.id} debt={debt} language={language} onPay={setPayDebt}
+                      onReceipt={(d, p) => setDebtReceipt({ debt: d, payment: p })} />
                   ))}
                 </div>
               )}
@@ -546,6 +549,18 @@ export default function CRMPage() {
         }}
         language={language}
       />
+
+      {/* Reçu d'un versement ou récapitulatif, réimprimé depuis la fiche client */}
+      {debtReceipt && (
+        <DebtReceiptModal
+          key={`${debtReceipt.debt.id}-${debtReceipt.payment?.id ?? 'recap'}`}
+          isOpen
+          onClose={() => setDebtReceipt(null)}
+          debt={debtReceipt.debt}
+          payment={debtReceipt.payment}
+          language={language}
+        />
+      )}
 
       <Modal isOpen={!!editClient} onClose={() => setEditClient(null)} title="Modifier">
         <form onSubmit={handleEdit} className="modal-form">
