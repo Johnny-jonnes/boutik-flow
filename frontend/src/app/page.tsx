@@ -22,6 +22,18 @@ import {
   CloudOff,
   TrendingUp,
   MessageCircle,
+  Shirt,
+  Footprints,
+  Sparkles,
+  ShoppingBasket,
+  Gem,
+  Sofa,
+  BookOpen,
+  Handbag,
+  Watch,
+  Droplets,
+  Headphones,
+  type LucideIcon,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { SplashLink, useSplashNavigation } from '@/components/SplashScreen';
@@ -102,9 +114,26 @@ const FAQ = [
 ];
 
 // Commerces illustrés dans le bandeau défilant (décoratif).
-const TRADES = [
-  ['👗', 'Mode & prêt-à-porter'], ['👟', 'Chaussures'], ['💄', 'Cosmétiques'], ['📱', 'Téléphonie'],
-  ['🛒', 'Alimentation'], ['💍', 'Bijoux & accessoires'], ['🛋️', 'Maison & déco'], ['📚', 'Librairie'],
+const TRADES: { icon: LucideIcon; label: string; c1: string; c2: string }[] = [
+  { icon: Shirt, label: 'Mode & prêt-à-porter', c1: '#ec4899', c2: '#be185d' },
+  { icon: Footprints, label: 'Chaussures', c1: '#f97316', c2: '#c2410c' },
+  { icon: Sparkles, label: 'Cosmétiques', c1: '#d946ef', c2: '#a21caf' },
+  { icon: Smartphone, label: 'Téléphonie', c1: '#3b82f6', c2: '#1d4ed8' },
+  { icon: ShoppingBasket, label: 'Alimentation', c1: '#10b981', c2: '#047857' },
+  { icon: Gem, label: 'Bijoux & accessoires', c1: '#f59e0b', c2: '#b45309' },
+  { icon: Sofa, label: 'Maison & déco', c1: '#8b5cf6', c2: '#6d28d9' },
+  { icon: BookOpen, label: 'Librairie', c1: '#06b6d4', c2: '#0e7490' },
+];
+
+// Produits factices des aperçus de vitrine (téléphone et bloc « Vitrine ») :
+// icône sur fond pastel, teinte foncée assortie.
+const DEMO_PRODUCTS: { icon: LucideIcon; name: string; bg: string; fg: string }[] = [
+  { icon: Shirt, name: 'Robe wax', bg: '#d9f5ea', fg: '#047857' },
+  { icon: Footprints, name: 'Sneakers', bg: '#fde2cf', fg: '#c2410c' },
+  { icon: Handbag, name: 'Sac à main', bg: '#e7defc', fg: '#6d28d9' },
+  { icon: Watch, name: 'Montre', bg: '#d6ecfb', fg: '#1d4ed8' },
+  { icon: Droplets, name: 'Crème', bg: '#fbd9e8', fg: '#be185d' },
+  { icon: Headphones, name: 'Écouteurs', bg: '#e0e7ff', fg: '#4338ca' },
 ];
 
 // Hauteurs des barres du graphique de l'aperçu (décoratif).
@@ -208,12 +237,12 @@ export default function HomePage() {
 
           <div className={s.phone}>
             <div className={s.phoneScreen}>
-              <div className={s.phoneCover}><span className={s.phoneLogo}>🛍️</span></div>
+              <div className={s.phoneCover}><span className={s.phoneLogo}><Store size={17} strokeWidth={2.2} /></span></div>
               <div className={s.phoneName}>Ma Boutique</div>
               <div className={s.phoneGrid}>
-                {[['👟', '#fde2cf'], ['👜', '#e7defc'], ['⌚', '#d6ecfb'], ['💄', '#fbd9e8']].map(([e, bg]) => (
-                  <div key={e} className={s.phoneTile}>
-                    <div style={{ background: bg }}>{e}</div>
+                {DEMO_PRODUCTS.slice(1, 5).map(({ icon: Icon, name, bg, fg }) => (
+                  <div key={name} className={s.phoneTile}>
+                    <div style={{ background: bg, color: fg }}><Icon size={22} strokeWidth={1.9} /></div>
                     <span>150 000 GNF</span>
                   </div>
                 ))}
@@ -236,8 +265,11 @@ export default function HomePage() {
       {/* ── Bandeau des commerces ── */}
       <div className={s.marquee} aria-hidden="true">
         <div className={s.marqueeTrack}>
-          {[...TRADES, ...TRADES].map(([emoji, label], i) => (
-            <span key={i} className={s.marqueeItem}><span>{emoji}</span>{label}</span>
+          {[...TRADES, ...TRADES].map(({ icon: Icon, label, c1, c2 }, i) => (
+            <span key={i} className={s.marqueeItem}>
+              <span className={s.marqueeIcon} style={{ '--c1': c1, '--c2': c2 } as React.CSSProperties}><Icon size={16} strokeWidth={2.2} /></span>
+              {label}
+            </span>
           ))}
         </div>
       </div>
@@ -276,10 +308,10 @@ export default function HomePage() {
               </p>
             </div>
             <div className={s.featureDemo} aria-hidden="true">
-              {[['👗', '#d9f5ea', 'Robe wax'], ['👟', '#fde2cf', 'Sneakers'], ['👜', '#e7defc', 'Sac à main'], ['⌚', '#d6ecfb', 'Montre'], ['🧴', '#fbd9e8', 'Crème'], ['🎧', '#e0e7ff', 'Écouteurs']].map(([e, bg, n]) => (
-                <div key={n} className={s.demoTile}>
-                  <div style={{ background: bg }}>{e}</div>
-                  <span>{n}</span>
+              {DEMO_PRODUCTS.map(({ icon: Icon, name, bg, fg }) => (
+                <div key={name} className={s.demoTile}>
+                  <div style={{ background: bg, color: fg }}><Icon size={30} strokeWidth={1.8} /></div>
+                  <span>{name}</span>
                 </div>
               ))}
             </div>
