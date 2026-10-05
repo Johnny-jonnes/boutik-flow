@@ -35,6 +35,11 @@ class RegisterRequest(BaseModel):
             raise ValueError("Le mot de passe doit contenir au moins un chiffre")
         return v
 
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return v.strip().lower()
+
 
 # ──────────────────────────── Login ────────────────────────────
 
@@ -43,6 +48,15 @@ class LoginRequest(BaseModel):
     boutique_slug: str = Field(..., min_length=2, max_length=100)
     email: EmailStr
     password: str = Field(..., min_length=1, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        # La casse d'un email saisi au clavier dépend de l'auto-capitalisation
+        # du clavier mobile (iOS/Android ne se comportent pas pareil) — sans
+        # normalisation ici, le même compte devient injoignable depuis un
+        # appareil dont le clavier a capitalisé différemment la saisie.
+        return v.strip().lower()
 
 
 # ──────────────────────────── Token ────────────────────────────
@@ -131,6 +145,11 @@ class InviteUserRequest(BaseModel):
             raise ValueError(f"Rôle invalide. Rôles autorisés : {', '.join(allowed)}")
         return v
 
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return v.strip().lower()
+
 
 class UpdateUserRoleRequest(BaseModel):
     role: str = Field(...)
@@ -168,6 +187,11 @@ class UpdateMeRequest(BaseModel):
     full_name: str | None = Field(None, min_length=2, max_length=255)
     email: EmailStr | None = None
     phone: str | None = Field(None, max_length=20)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str | None) -> str | None:
+        return v.strip().lower() if v else v
 
 
 class ChangeMyPasswordRequest(BaseModel):

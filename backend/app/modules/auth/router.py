@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status, BackgroundTasks
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 
 from app.core.config import settings
 from app.core.database import get_db, get_bypass_db
@@ -111,7 +111,7 @@ def register(
     # Vérifier unicité email globalement (un email = un compte par boutique)
     existing_user = db.query(User).join(Tenant).filter(
         and_(
-            User.email == payload.email,
+            func.lower(User.email) == payload.email,
             Tenant.slug == payload.boutique_slug,
             User.deleted_at.is_(None),
         )
@@ -234,7 +234,7 @@ def login(
     user = db.query(User).filter(
         and_(
             User.tenant_id == tenant.id,
-            User.email == payload.email,
+            func.lower(User.email) == payload.email,
             User.deleted_at.is_(None),
         )
     ).first()
@@ -352,7 +352,7 @@ def update_me(
     if payload.email is not None and payload.email != user.email:
         existing = db.query(User).filter(
             and_(
-                User.email == payload.email,
+                func.lower(User.email) == payload.email,
                 User.tenant_id == current_user.tenant_id,
                 User.id != user.id,
                 User.deleted_at.is_(None),
@@ -548,7 +548,7 @@ def invite_team_member(
 ) -> TeamMemberResponse:
     # check email unique in tenant
     existing_user = db.query(User).filter(
-        and_(User.email == payload.email, User.tenant_id == current_user.tenant_id, User.deleted_at.is_(None))
+        and_(func.lower(User.email) == payload.email, User.tenant_id == current_user.tenant_id, User.deleted_at.is_(None))
     ).first()
     if existing_user:
         raise HTTPException(

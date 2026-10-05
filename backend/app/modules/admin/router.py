@@ -627,7 +627,7 @@ def create_admin_user(
     """
     # Vérifier unicité email parmi les admins
     existing = db.query(User).filter(
-        and_(User.email == payload.email, User.role == RoleEnum.admin, User.deleted_at.is_(None))
+        and_(func.lower(User.email) == payload.email, User.role == RoleEnum.admin, User.deleted_at.is_(None))
     ).first()
     if existing:
         raise HTTPException(

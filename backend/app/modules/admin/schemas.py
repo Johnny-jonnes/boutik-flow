@@ -5,7 +5,7 @@ Gestion globale des boutiques (tenants) par l'équipe d'administration.
 import uuid
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # ─── Stats globales ──────────────────────────────────────────────────────────
@@ -106,6 +106,11 @@ class CreateAdminUserRequest(BaseModel):
     email: str = Field(..., description="Email du compte admin")
     password: str = Field(..., min_length=8, max_length=128)
     full_name: Optional[str] = Field(None, max_length=255)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return v.strip().lower()
 
 
 class AdminUserResponse(BaseModel):
