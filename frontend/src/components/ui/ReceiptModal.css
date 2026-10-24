@@ -340,7 +340,23 @@
 /* ── Modal Actions ─── */
 .receipt-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.75rem;
   margin-top: 0.5rem;
+}
+
+/* Sur mobile, 4 boutons icône+texte sur une seule ligne flex-end se
+   retrouvaient écrasés/tronqués (ex: "Télécharger PDF" illisible) — on
+   empile en pleine largeur, même convention que .modal-actions en
+   globals.css. */
+@media (max-width: 768px) {
+  .receipt-actions {
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .receipt-actions .btn {
+    width: 100%;
+  }
 }

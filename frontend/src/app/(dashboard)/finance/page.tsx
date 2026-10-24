@@ -17,6 +17,7 @@ import {
   BarChart3,
   PieChart as PieIcon,
   EyeOff,
+  Eye,
 } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
@@ -28,6 +29,7 @@ import type {
   TransactionType,
   TransactionCategory,
   PaymentMethod,
+  FinancialTransaction,
 } from '@/types';
 
 import { PageHeader, StatTile } from '@/components/ui/PageHeader';
@@ -98,6 +100,7 @@ export default function FinancePage() {
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [viewTx, setViewTx] = useState<FinancialTransaction | null>(null);
   const [formData, setFormData] = useState<{
     type: TransactionType;
     category: string;
@@ -485,6 +488,7 @@ export default function FinancePage() {
                     <th>{fr ? 'Catégorie' : 'Category'}</th>
                     <th>{fr ? 'Paiement' : 'Payment'}</th>
                     <th className="bf-right">{fr ? 'Montant' : 'Amount'}</th>
+                    <th className="bf-right">{fr ? 'Détail' : 'Details'}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -510,6 +514,11 @@ export default function FinancePage() {
                         <td><span className="bf-badge">{CATEGORY_LABELS[tx.category] || tx.category}</span></td>
                         <td>{payPill(tx.payment_method)}</td>
                         <td className="bf-right">{amountText(isIncome, Number(tx.amount))}</td>
+                        <td className="bf-right">
+                          <button type="button" className="bf-icon-btn" title="Voir" aria-label="Voir" onClick={() => setViewTx(tx)}>
+                            <Eye size={16} />
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -521,7 +530,7 @@ export default function FinancePage() {
               {filteredTransactions.map((tx) => {
                 const isIncome = tx.type === 'income';
                 return (
-                  <article key={tx.id} className="bf-mcard">
+                  <article key={tx.id} className="bf-mcard" onClick={() => setViewTx(tx)} style={{ cursor: 'pointer' }}>
                     {txIcon(isIncome)}
                     <div className="bf-mcard__main">
                       <span className="bf-name">{tx.description}</span>
@@ -533,6 +542,15 @@ export default function FinancePage() {
                         {payPill(tx.payment_method)}
                         <span>{formatRelativeDay(tx.created_at, language)}</span>
                       </div>
+                      <button
+                        type="button"
+                        className="bf-icon-btn"
+                        title="Voir"
+                        aria-label="Voir"
+                        onClick={(e) => { e.stopPropagation(); setViewTx(tx); }}
+                      >
+                        <Eye size={16} />
+                      </button>
                     </div>
                   </article>
                 );
@@ -697,6 +715,71 @@ export default function FinancePage() {
         </form>
       </Modal>
 
+      <Modal
+        isOpen={!!viewTx}
+        onClose={() => setViewTx(null)}
+        title={fr ? 'Détail du mouvement' : 'Transaction details'}
+        maxWidth="480px"
+      >
+        {viewTx && (() => {
+          const isIncome = viewTx.type === 'income';
+          return (
+            <div className="tx-detail">
+              <div className="tx-detail__head">
+                {txIcon(isIncome)}
+                <div>
+                  <div className="tx-detail__amount" style={{ color: isIncome ? 'var(--color-success)' : 'var(--color-error)' }}>
+                    {isIncome ? '+' : '−'} {formatGNF(Number(viewTx.amount))}
+                  </div>
+                  <div className="bf-sub">
+                    {isIncome ? (fr ? 'Revenu' : 'Income') : (fr ? 'Dépense' : 'Expense')}
+                  </div>
+                </div>
+              </div>
+
+              <dl className="tx-detail__rows">
+                <div className="tx-detail__row">
+                  <dt>{fr ? 'Description' : 'Description'}</dt>
+                  <dd>{viewTx.description}</dd>
+                </div>
+                <div className="tx-detail__row">
+                  <dt>{fr ? 'Catégorie' : 'Category'}</dt>
+                  <dd>{CATEGORY_LABELS[viewTx.category] || viewTx.category}</dd>
+                </div>
+                <div className="tx-detail__row">
+                  <dt>{fr ? 'Paiement' : 'Payment'}</dt>
+                  <dd>{PAYMENT_METHOD_LABELS[viewTx.payment_method] || viewTx.payment_method}</dd>
+                </div>
+                <div className="tx-detail__row">
+                  <dt>{fr ? 'Date' : 'Date'}</dt>
+                  <dd>
+                    {new Date(viewTx.created_at).toLocaleDateString(fr ? 'fr-FR' : 'en-US', { day: '2-digit', month: 'long', year: 'numeric' })}
+                    {' · '}
+                    {new Date(viewTx.created_at).toLocaleTimeString(fr ? 'fr-FR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                  </dd>
+                </div>
+                {viewTx.reference && (
+                  <div className="tx-detail__row">
+                    <dt>{fr ? 'Référence' : 'Reference'}</dt>
+                    <dd className="bf-mono">{viewTx.reference}</dd>
+                  </div>
+                )}
+                <div className="tx-detail__row">
+                  <dt>{fr ? 'Identifiant' : 'ID'}</dt>
+                  <dd className="bf-mono">{viewTx.id}</dd>
+                </div>
+              </dl>
+
+              <div className="modal-actions">
+                <button type="button" className="btn btn-ghost" onClick={() => setViewTx(null)}>
+                  {fr ? 'Fermer' : 'Close'}
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+      </Modal>
+
       {/* Styled Component CSS */}
       <style jsx>{`
         .fin-charts { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 1rem; }
@@ -796,6 +879,47 @@ export default function FinancePage() {
           justify-content: flex-end;
           gap: 0.75rem;
           margin-top: 1rem;
+        }
+
+        .tx-detail__head {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding-bottom: 1rem;
+          margin-bottom: 1rem;
+          border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .tx-detail__amount {
+          font-size: 1.3rem;
+          font-weight: 700;
+        }
+
+        .tx-detail__rows {
+          display: flex;
+          flex-direction: column;
+          gap: 0.65rem;
+          margin: 0;
+        }
+
+        .tx-detail__row {
+          display: flex;
+          justify-content: space-between;
+          align-items: baseline;
+          gap: 1rem;
+        }
+
+        .tx-detail__row dt {
+          font-size: 0.8rem;
+          color: var(--text-muted);
+          flex-shrink: 0;
+        }
+
+        .tx-detail__row dd {
+          margin: 0;
+          text-align: right;
+          font-weight: 600;
+          word-break: break-word;
         }
 
         .text-right {
