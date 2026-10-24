@@ -405,6 +405,7 @@ body {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+.spin { animation: spin 0.8s linear infinite; }
 
 /* Slide in depuis la droite — notifications, drawers */
 @keyframes slideInRight {

@@ -318,8 +318,9 @@
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
-.iconBtn:hover { color: var(--text-primary); border-color: var(--border-strong); background: var(--surface-3); }
-.iconBtnDanger:hover { color: #ffffff; background: #f43f5e; border-color: #f43f5e; }
+.iconBtn:hover:not(:disabled) { color: var(--text-primary); border-color: var(--border-strong); background: var(--surface-3); }
+.iconBtnDanger:hover:not(:disabled) { color: #ffffff; background: #f43f5e; border-color: #f43f5e; }
+.iconBtn:disabled { opacity: 0.35; cursor: not-allowed; }
 
 /* Cartes (téléphone / tablette) */
 .cards { display: none; flex-direction: column; }

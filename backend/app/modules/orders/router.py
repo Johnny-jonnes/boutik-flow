@@ -217,7 +217,7 @@ def _restore_sale_transaction(db: Session, order: Order, current_user: CurrentUs
             type=TransactionTypeEnum.income,
             category=TransactionCategoryEnum.sale,
             amount=order.total,
-            description=f"Vente Magasin N°{str(order.id)[:8]} (commande réactivée)",
+            description=f"Vente en magasin — {order.client.name} (commande réactivée)",
             payment_method="cash",
             reference=str(order.id),
             user_id=current_user.user_id,
@@ -653,7 +653,7 @@ def create_order(
                 type=TransactionTypeEnum.income,
                 category=TransactionCategoryEnum.credit_sale if is_credit_sale else TransactionCategoryEnum.sale,
                 amount=amount_paid_now,
-                description=f"Vente Magasin N°{str(order.id)[:8]} ({client.name})",
+                description=f"Vente en magasin — {client.name}",
                 payment_method=payload.payment_method or "cash",
                 reference=str(order.id),
                 user_id=current_user.user_id,
@@ -670,7 +670,7 @@ def create_order(
     if is_credit_sale:
         debt = create_client_debt(
             db, current_user.tenant_id, target_client_id, order.id, remaining_amount,
-            description=f"Vente à crédit N°{str(order.id)[:8]}",
+            description=f"Vente à crédit — {client.name}",
         )
 
     # Logger l'action d'audit de la vente
@@ -840,6 +840,18 @@ def return_order_items(
     if not order:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Commande introuvable")
 
+    # Un seul retour autorisé par vente, jamais plusieurs : le contrôle
+    # précédent ne comparait chaque article qu'à sa quantité achetée
+    # d'origine, sans jamais tenir compte des retours déjà enregistrés sur
+    # cette même commande — une deuxième requête de retour repassait ce
+    # contrôle et déclenchait un second remboursement + un second
+    # réassort de stock pour la même marchandise physique.
+    if (order.returned_amount or Decimal("0")) > 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cette vente a déjà fait l'objet d'un retour. Un seul retour est autorisé par vente.",
+        )
+
     refund_amount = Decimal(0)
     returned_details = []
 
@@ -921,7 +933,7 @@ def return_order_items(
             type=TransactionTypeEnum.expense,
             category=TransactionCategoryEnum.refund,
             amount=cash_refund_amount,
-            description=f"Remboursement Retour N°{str(order.id)[:8]} : {payload.reason}",
+            description=f"Remboursement — Retour vente {order.client.name} : {payload.reason}",
             payment_method="cash",
             reference=str(order.id),
             user_id=current_user.user_id,

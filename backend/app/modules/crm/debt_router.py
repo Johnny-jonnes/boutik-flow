@@ -293,7 +293,7 @@ def record_payment(
         type=TransactionTypeEnum.income,
         category=TransactionCategoryEnum.debt_repayment,
         amount=payload.amount,
-        description=f"Remboursement dette {str(debt.id)[:8]}" + (f" — {payload.notes}" if payload.notes else ""),
+        description=f"Remboursement de dette — {debt.client.name}" + (f" ({payload.notes})" if payload.notes else ""),
         payment_method=payload.payment_method,
         reference=str(debt.id),
         user_id=current_user.user_id,

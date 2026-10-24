@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { useLanguage } from '@/context/LanguageContext';
-import { Printer } from 'lucide-react';
+import { Printer, Download, Send, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { extractPaymentMethod, extractDiscount } from '@/lib/saleNotes';
 import { useTenantQuery } from '@/lib/queries';
@@ -48,6 +48,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 }) => {
   const { language } = useLanguage();
   const [format, setFormat] = useState<'thermal' | 'a4'>('thermal');
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   // Logo de la boutique (Paramètres) — cache partagé avec le menu latéral.
   const { data: tenant } = useTenantQuery();
   const shopLogo = tenant?.logo || null;
@@ -228,6 +230,115 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   };
 
   const clientName = order.client?.name || (language === 'fr' ? 'Client passant' : 'Walk-in customer');
+  const pdfFileName = `Recu-${receiptNumber}.pdf`;
+
+  // Capture le ticket tel qu'affiché (même DOM, même CSS que l'impression)
+  // en image haute résolution puis l'intègre dans un vrai PDF — garantit
+  // une fidélité visuelle totale avec le design du reçu sans dupliquer sa
+  // mise en page dans un second moteur de rendu. Le format A4 est découpé
+  // sur plusieurs pages si la vente compte trop d'articles pour tenir sur
+  // une seule page.
+  const buildReceiptPdf = async () => {
+    const paperElement = document.querySelector(`.receipt-paper.${format}`) as HTMLElement | null;
+    if (!paperElement) {
+      throw new Error('receipt-paper introuvable');
+    }
+    const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+      import('jspdf'),
+      import('html2canvas'),
+    ]);
+
+    const canvas = await html2canvas(paperElement, {
+      scale: 3,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+    });
+    const imgData = canvas.toDataURL('image/png');
+
+    if (format === 'thermal') {
+      const pageWidthMm = 80;
+      const pageHeightMm = (canvas.height / canvas.width) * pageWidthMm;
+      const doc = new jsPDF({ unit: 'mm', format: [pageWidthMm, pageHeightMm] });
+      doc.addImage(imgData, 'PNG', 0, 0, pageWidthMm, pageHeightMm);
+      return doc;
+    }
+
+    // A4 : image mise à l'échelle sur la largeur de page, découpée sur
+    // plusieurs pages verticalement si elle dépasse une page.
+    const pageWidthMm = 210;
+    const pageHeightMm = 297;
+    const imgHeightMm = (canvas.height / canvas.width) * pageWidthMm;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    let remainingHeight = imgHeightMm;
+    let offsetMm = 0;
+    let first = true;
+    while (remainingHeight > 0) {
+      if (!first) doc.addPage();
+      doc.addImage(imgData, 'PNG', 0, -offsetMm, pageWidthMm, imgHeightMm);
+      remainingHeight -= pageHeightMm;
+      offsetMm += pageHeightMm;
+      first = false;
+    }
+    return doc;
+  };
+
+  const handleExportPdf = async () => {
+    setIsExportingPdf(true);
+    try {
+      const doc = await buildReceiptPdf();
+      doc.save(pdfFileName);
+    } catch {
+      toast.error(language === 'fr' ? 'Impossible de générer le PDF.' : 'Could not generate the PDF.');
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
+  const handleSendToClient = async () => {
+    setIsSending(true);
+    try {
+      const doc = await buildReceiptPdf();
+      const blob = doc.output('blob');
+      const file = new File([blob], pdfFileName, { type: 'application/pdf' });
+      const shareText = language === 'fr'
+        ? `Voici votre reçu ${shopName} (${receiptNumber}) — Total : ${formatGNF(order.total)}.`
+        : `Here is your ${shopName} receipt (${receiptNumber}) — Total: ${formatGNF(order.total)}.`;
+
+      const nav = navigator as Navigator & { canShare?: (data?: ShareData) => boolean; share?: (data: ShareData) => Promise<void> };
+      if (nav.canShare && nav.share && nav.canShare({ files: [file] })) {
+        await nav.share({
+          files: [file],
+          title: language === 'fr' ? 'Reçu de vente' : 'Sales receipt',
+          text: shareText,
+        });
+        return;
+      }
+
+      // Repli (bureau / navigateur sans partage de fichier) : on télécharge
+      // le PDF puis, si le téléphone du client est connu, on ouvre WhatsApp
+      // avec un message prêt — il ne reste qu'à joindre le fichier déjà
+      // téléchargé, WhatsApp Web ne permettant pas de pré-attacher un
+      // fichier depuis un lien.
+      doc.save(pdfFileName);
+      if (order.client?.phone) {
+        const phoneDigits = order.client.phone.replace(/[^\d+]/g, '');
+        const waText = encodeURIComponent(
+          shareText + (language === 'fr'
+            ? ' (PDF téléchargé — à joindre à ce message)'
+            : ' (PDF downloaded — attach it to this message)')
+        );
+        window.open(`https://wa.me/${phoneDigits}?text=${waText}`, '_blank');
+      } else {
+        toast.success(language === 'fr' ? 'PDF téléchargé.' : 'PDF downloaded.');
+      }
+    } catch (err) {
+      if ((err as Error)?.name !== 'AbortError') {
+        toast.error(language === 'fr' ? "Impossible d'envoyer le reçu." : 'Could not send the receipt.');
+      }
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={language === 'fr' ? 'Reçu de vente' : 'Sales Receipt'} maxWidth="650px">
@@ -399,6 +510,24 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
         <div className="receipt-actions no-print">
           <button className="btn btn-ghost" onClick={onClose}>
             {language === 'fr' ? 'Fermer' : 'Close'}
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={handleExportPdf}
+            disabled={isExportingPdf}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            {isExportingPdf ? <Loader2 size={16} className="spin" /> : <Download size={16} />}
+            {language === 'fr' ? 'Télécharger PDF' : 'Download PDF'}
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={handleSendToClient}
+            disabled={isSending}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            {isSending ? <Loader2 size={16} className="spin" /> : <Send size={16} />}
+            {language === 'fr' ? 'Envoyer au client' : 'Send to customer'}
           </button>
           <button className="btn btn-primary" onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Printer size={16} /> {language === 'fr' ? 'Imprimer' : 'Print'}

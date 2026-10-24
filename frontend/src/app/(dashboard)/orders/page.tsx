@@ -594,7 +594,7 @@ export default function OrdersPage() {
                   <button className="oc-btn" onClick={() => setReceiptOrder(order)} title={t('common.print')}>
                     <Printer size={18} />
                   </button>
-                  {order.status === 'delivered' && (
+                  {order.status === 'delivered' && !((order.returned_amount || 0) > 0) && (
                     <button className="oc-btn" onClick={() => openReturnModal(order)} title={t('ord.return_items')}>
                       <RotateCcw size={18} />
                     </button>

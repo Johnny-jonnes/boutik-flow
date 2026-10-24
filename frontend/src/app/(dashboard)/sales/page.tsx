@@ -404,19 +404,35 @@ export default function SalesHistoryPage() {
     );
   };
 
-  const actionButtons = (order: Order) => (
-    <div className={s.actions}>
-      <button type="button" className={s.iconBtn} title={fr ? 'Voir détails' : 'View details'} aria-label={fr ? 'Voir détails' : 'View details'} onClick={() => setSelectedSale(order)}>
-        <Eye size={16} />
-      </button>
-      <button type="button" className={s.iconBtn} title={t('sales.view_receipt') || 'Imprimer reçu'} aria-label={t('sales.view_receipt') || 'Imprimer reçu'} onClick={() => setReceiptOrder(order)}>
-        <Printer size={16} />
-      </button>
-      <button type="button" className={`${s.iconBtn} ${s.iconBtnDanger}`} title={t('sales.refund') || 'Retourner'} aria-label={t('sales.refund') || 'Retourner'} onClick={() => openReturnModal(order)}>
-        <RotateCcw size={16} />
-      </button>
-    </div>
-  );
+  const actionButtons = (order: Order) => {
+    // Un seul retour autorisé par vente — au-delà, le serveur refuse de
+    // toute façon (voir return_order_items) ; désactiver le bouton ici
+    // évite de faire remplir tout le formulaire de retour pour rien.
+    const alreadyReturned = (order.returned_amount || 0) > 0;
+    const returnTitle = alreadyReturned
+      ? (fr ? 'Cette vente a déjà été retournée' : 'This sale has already been returned')
+      : (t('sales.refund') || 'Retourner');
+    return (
+      <div className={s.actions}>
+        <button type="button" className={s.iconBtn} title={fr ? 'Voir détails' : 'View details'} aria-label={fr ? 'Voir détails' : 'View details'} onClick={() => setSelectedSale(order)}>
+          <Eye size={16} />
+        </button>
+        <button type="button" className={s.iconBtn} title={t('sales.view_receipt') || 'Imprimer reçu'} aria-label={t('sales.view_receipt') || 'Imprimer reçu'} onClick={() => setReceiptOrder(order)}>
+          <Printer size={16} />
+        </button>
+        <button
+          type="button"
+          className={`${s.iconBtn} ${s.iconBtnDanger}`}
+          title={returnTitle}
+          aria-label={returnTitle}
+          disabled={alreadyReturned}
+          onClick={() => !alreadyReturned && openReturnModal(order)}
+        >
+          <RotateCcw size={16} />
+        </button>
+      </div>
+    );
+  };
 
   const amountBlock = (order: Order) => (
     <>
