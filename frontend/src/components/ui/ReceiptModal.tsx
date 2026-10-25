@@ -290,12 +290,22 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
         // faire chevaucher le logo juste au-dessus. Retiré uniquement pour
         // la capture : l'aperçu et l'impression affichent toujours le vrai
         // nom, emoji compris.
-        const shopNameEl = clonedDoc.querySelector('.shop-name');
+        const shopNameEl = clonedDoc.querySelector('.shop-name') as HTMLElement | null;
         if (shopNameEl?.textContent) {
           shopNameEl.textContent = shopNameEl.textContent.replace(
             /[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{FE0F}\u{200D}]/gu,
             ''
           ).trim();
+        }
+        // Filet de sécurité en plus du retrait des emoji : un espacement
+        // large et explicite entre le logo et le nom pour la capture
+        // uniquement, afin qu'un éventuel chevauchement reste impossible
+        // même si html2canvas mesure encore mal une autre ligne de texte.
+        const logoEl = clonedDoc.querySelector('.shop-logo-img, .shop-logo-placeholder') as HTMLElement | null;
+        if (logoEl) logoEl.style.marginBottom = '14px';
+        if (shopNameEl) {
+          shopNameEl.style.marginTop = '6px';
+          shopNameEl.style.lineHeight = '1.3';
         }
       },
     });
