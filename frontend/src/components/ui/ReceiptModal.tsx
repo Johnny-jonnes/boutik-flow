@@ -277,6 +277,10 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
         // l'élément tel quel sur un petit écran saisissait un rendu étriqué
         // (~350px) puis l'étirait sur 210mm : texte énorme, proportions
         // cassées, et le contenu dépassait artificiellement une page.
+        // Le but est que le PDF téléchargé garde exactement les mêmes
+        // proportions que la fiche de reçu affichée à l'écran — donc on ne
+        // touche à aucun espacement ici, seulement à la largeur de capture
+        // (ci-dessous) et à un cas de mesure de texte cassé (plus bas).
         if (format === 'a4') {
           const clonedPaper = clonedDoc.querySelector(`.receipt-paper.${format}`) as HTMLElement | null;
           if (clonedPaper) {
@@ -296,16 +300,6 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             /[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{FE0F}\u{200D}]/gu,
             ''
           ).trim();
-        }
-        // Filet de sécurité en plus du retrait des emoji : un espacement
-        // large et explicite entre le logo et le nom pour la capture
-        // uniquement, afin qu'un éventuel chevauchement reste impossible
-        // même si html2canvas mesure encore mal une autre ligne de texte.
-        const logoEl = clonedDoc.querySelector('.shop-logo-img, .shop-logo-placeholder') as HTMLElement | null;
-        if (logoEl) logoEl.style.marginBottom = '14px';
-        if (shopNameEl) {
-          shopNameEl.style.marginTop = '6px';
-          shopNameEl.style.lineHeight = '1.3';
         }
       },
     });
