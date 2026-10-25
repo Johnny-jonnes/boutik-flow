@@ -265,23 +265,37 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
       scale: 3,
       backgroundColor: '#ffffff',
       useCORS: true,
-      // Le format A4 est en `width: 100%` dans l'aperçu (CSS responsive,
-      // pour rester lisible dans la modale sur mobile) — capturer
-      // l'élément tel quel sur un petit écran saisissait un rendu étriqué
-      // (~350px) puis l'étirait sur 210mm : texte énorme, proportions
-      // cassées, et le contenu dépassait artificiellement une page (d'où
-      // la pagination à tort et l'impression d'espace vide). `onclone` est
-      // le point d'entrée documenté d'html2canvas pour ajuster SON propre
-      // clone interne (mis en page dans un iframe caché avant la capture)
-      // — contrairement à une mutation de l'élément réel ou un clone
-      // manuel détaché, essayés d'abord, qui perdaient les valeurs des
-      // lignes alignées à droite (date, totaux) dans le rendu final.
+      // `onclone` est le point d'entrée documenté d'html2canvas pour
+      // ajuster SON propre clone interne (mis en page dans un iframe caché
+      // avant la capture) — contrairement à une mutation de l'élément réel
+      // ou un clone manuel détaché, essayés d'abord, qui perdaient les
+      // valeurs des lignes alignées à droite (date, totaux) dans le rendu
+      // final.
       onclone: (clonedDoc: Document) => {
-        if (format !== 'a4') return;
-        const clonedPaper = clonedDoc.querySelector(`.receipt-paper.${format}`) as HTMLElement | null;
-        if (clonedPaper) {
-          clonedPaper.style.width = '780px';
-          clonedPaper.style.maxWidth = '780px';
+        // Le format A4 est en `width: 100%` dans l'aperçu (CSS responsive,
+        // pour rester lisible dans la modale sur mobile) — capturer
+        // l'élément tel quel sur un petit écran saisissait un rendu étriqué
+        // (~350px) puis l'étirait sur 210mm : texte énorme, proportions
+        // cassées, et le contenu dépassait artificiellement une page.
+        if (format === 'a4') {
+          const clonedPaper = clonedDoc.querySelector(`.receipt-paper.${format}`) as HTMLElement | null;
+          if (clonedPaper) {
+            clonedPaper.style.width = '780px';
+            clonedPaper.style.maxWidth = '780px';
+          }
+        }
+        // Un emoji (ex: drapeau 🇬🇳 dans le nom de la boutique) est un
+        // glyphe couleur que html2canvas mesure mal lors de son rendu texte
+        // manuel — ça décalait la ligne du nom de la boutique jusqu'à la
+        // faire chevaucher le logo juste au-dessus. Retiré uniquement pour
+        // la capture : l'aperçu et l'impression affichent toujours le vrai
+        // nom, emoji compris.
+        const shopNameEl = clonedDoc.querySelector('.shop-name');
+        if (shopNameEl?.textContent) {
+          shopNameEl.textContent = shopNameEl.textContent.replace(
+            /[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{FE0F}\u{200D}]/gu,
+            ''
+          ).trim();
         }
       },
     });
