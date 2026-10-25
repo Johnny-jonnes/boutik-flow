@@ -290,10 +290,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
         }
         // Un emoji (ex: drapeau 🇬🇳 dans le nom de la boutique) est un
         // glyphe couleur que html2canvas mesure mal lors de son rendu texte
-        // manuel — ça décalait la ligne du nom de la boutique jusqu'à la
-        // faire chevaucher le logo juste au-dessus. Retiré uniquement pour
-        // la capture : l'aperçu et l'impression affichent toujours le vrai
-        // nom, emoji compris.
+        // manuel, ce qui peut décaler la ligne du nom de la boutique.
+        // Retiré uniquement pour la capture : l'aperçu et l'impression
+        // affichent toujours le vrai nom, emoji compris.
         const shopNameEl = clonedDoc.querySelector('.shop-name') as HTMLElement | null;
         if (shopNameEl?.textContent) {
           shopNameEl.textContent = shopNameEl.textContent.replace(
@@ -301,6 +300,15 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             ''
           ).trim();
         }
+        // Le retrait des emoji seul ne suffit pas toujours à empêcher le
+        // chevauchement logo/nom sur certains appareils (polices système
+        // différentes, rendu couleur des emoji variable selon l'OS) — on
+        // isole donc clairement le logo en haut avec un espace généreux et
+        // garanti avant le nom de la boutique, uniquement dans le PDF
+        // généré.
+        const logoEl = clonedDoc.querySelector('.shop-logo-img, .shop-logo-placeholder') as HTMLElement | null;
+        if (logoEl) logoEl.style.marginBottom = '16px';
+        if (shopNameEl) shopNameEl.style.marginTop = '20px';
       },
     });
     // JPEG plutôt que PNG : le décodeur PNG intégré à jsPDF a des limites
