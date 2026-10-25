@@ -243,40 +243,97 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
     if (!paperElement) {
       throw new Error('receipt-paper introuvable');
     }
+
     const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
       import('jspdf'),
       import('html2canvas'),
     ]);
 
+    // Le logo boutique (data-URI) peut ne pas avoir fini de décoder au
+    // moment où html2canvas capture le DOM — sans cette attente, le canvas
+    // saisi le peint encore vide, ce qui cassait aussi la mise en page
+    // autour (texte décalé comme si le logo n'existait pas).
+    const images = Array.from(paperElement.querySelectorAll('img'));
+    await Promise.all(images.map((img) => (
+      img.complete ? Promise.resolve() : new Promise<void>((resolve) => {
+        img.addEventListener('load', () => resolve(), { once: true });
+        img.addEventListener('error', () => resolve(), { once: true });
+      })
+    )));
+
     const canvas = await html2canvas(paperElement, {
       scale: 3,
       backgroundColor: '#ffffff',
       useCORS: true,
+      // Le format A4 est en `width: 100%` dans l'aperçu (CSS responsive,
+      // pour rester lisible dans la modale sur mobile) — capturer
+      // l'élément tel quel sur un petit écran saisissait un rendu étriqué
+      // (~350px) puis l'étirait sur 210mm : texte énorme, proportions
+      // cassées, et le contenu dépassait artificiellement une page (d'où
+      // la pagination à tort et l'impression d'espace vide). `onclone` est
+      // le point d'entrée documenté d'html2canvas pour ajuster SON propre
+      // clone interne (mis en page dans un iframe caché avant la capture)
+      // — contrairement à une mutation de l'élément réel ou un clone
+      // manuel détaché, essayés d'abord, qui perdaient les valeurs des
+      // lignes alignées à droite (date, totaux) dans le rendu final.
+      onclone: (clonedDoc: Document) => {
+        if (format !== 'a4') return;
+        const clonedPaper = clonedDoc.querySelector(`.receipt-paper.${format}`) as HTMLElement | null;
+        if (clonedPaper) {
+          clonedPaper.style.width = '780px';
+          clonedPaper.style.maxWidth = '780px';
+        }
+      },
     });
-    const imgData = canvas.toDataURL('image/png');
+    // JPEG plutôt que PNG : le décodeur PNG intégré à jsPDF a des limites
+    // connues sur les images larges (le reçu capturé à l'échelle 3 dépasse
+    // 2000px de large) — il produisait un PDF correct visuellement au
+    // premier coup d'œil mais qui perdait silencieusement les valeurs
+    // alignées à droite (date, totaux) et gonflait le fichier à plus de
+    // 12 Mo (proche d'un bitmap brut non compressé). Le reçu n'a pas besoin
+    // de transparence, JPEG évite entièrement ce chemin de code.
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
 
     if (format === 'thermal') {
       const pageWidthMm = 80;
       const pageHeightMm = (canvas.height / canvas.width) * pageWidthMm;
-      const doc = new jsPDF({ unit: 'mm', format: [pageWidthMm, pageHeightMm] });
-      doc.addImage(imgData, 'PNG', 0, 0, pageWidthMm, pageHeightMm);
+      // jsPDF choisit l'orientation 'portrait' par défaut et, sans la
+      // préciser explicitement, inverse silencieusement un format [largeur,
+      // hauteur] personnalisé dès que la largeur dépasse la hauteur — la
+      // page obtenue devient alors plus étroite que prévu et l'image
+      // (dessinée à la largeur voulue) déborde hors de la page réelle,
+      // coupant tout son côté droit (d'où les valeurs alignées à droite
+      // disparues). Préciser l'orientation réelle l'empêche.
+      const doc = new jsPDF({ unit: 'mm', format: [pageWidthMm, pageHeightMm], orientation: pageWidthMm > pageHeightMm ? 'l' : 'p' });
+      doc.addImage(imgData, 'JPEG', 0, 0, pageWidthMm, pageHeightMm);
       return doc;
     }
 
-    // A4 : image mise à l'échelle sur la largeur de page, découpée sur
-    // plusieurs pages verticalement si elle dépasse une page.
+    // A4 : un reçu tient presque toujours largement sous une page standard
+    // (297mm) — forcer systématiquement cette hauteur pleine laissait un
+    // grand espace vide sous le contenu, surtout visible avec le logo en
+    // en-tête. On ne garde une vraie page A4 fixe (donc paginée) que si le
+    // contenu dépasse réellement cette hauteur ; sinon le PDF est taillé
+    // exactement à la hauteur du reçu, comme le format thermique.
     const pageWidthMm = 210;
-    const pageHeightMm = 297;
+    const standardHeightMm = 297;
     const imgHeightMm = (canvas.height / canvas.width) * pageWidthMm;
+
+    if (imgHeightMm <= standardHeightMm) {
+      const doc = new jsPDF({ unit: 'mm', format: [pageWidthMm, imgHeightMm], orientation: pageWidthMm > imgHeightMm ? 'l' : 'p' });
+      doc.addImage(imgData, 'JPEG', 0, 0, pageWidthMm, imgHeightMm);
+      return doc;
+    }
+
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     let remainingHeight = imgHeightMm;
     let offsetMm = 0;
     let first = true;
     while (remainingHeight > 0) {
       if (!first) doc.addPage();
-      doc.addImage(imgData, 'PNG', 0, -offsetMm, pageWidthMm, imgHeightMm);
-      remainingHeight -= pageHeightMm;
-      offsetMm += pageHeightMm;
+      doc.addImage(imgData, 'JPEG', 0, -offsetMm, pageWidthMm, imgHeightMm);
+      remainingHeight -= standardHeightMm;
+      offsetMm += standardHeightMm;
       first = false;
     }
     return doc;
